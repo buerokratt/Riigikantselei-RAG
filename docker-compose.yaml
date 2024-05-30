@@ -1,0 +1,46 @@
+version: '3'
+
+services:
+
+  rk-elasticsearch:
+    restart: on-failure
+    image: elasticsearch:7.17.21
+    ports:
+      - "9200:9200"
+    environment:
+      - bootstrap.memory_lock=true
+      - discovery.type=single-node
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - elastic-data:/usr/share/elasticsearch/data
+
+
+  rk-mariadb:
+    image: mariadb:10.11
+    restart: on-failure
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_USER: docker
+      MYSQL_ROOT_PASSWORD: docker
+      MYSQL_PORT: 3306
+      MYSQL_ROOT_HOST: '%'
+      MYSQL_DATABASE: docker
+      MYSQL_USER: docker
+      MYSQL_PASSWORD: docker
+    volumes:
+      - mariadb-data:/var/lib/mysql
+
+  rk-redis:
+    container_name: rk-redis
+    image: redis:7.2.5
+    ports:
+      - "6379:6379"
+    restart: on-failure
+
+volumes:
+  elastic-data:
+  mariadb-data:

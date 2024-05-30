@@ -1,0 +1,20 @@
+name: riigikantselei
+channels:
+  - defaults
+dependencies:
+  # Put to 3.11 since 3.12 causes conflict errors with mysqlclient for some reason.
+  - python=3.11
+  - pip
+  - mysqlclient
+  - pip:
+      - requests
+      - FlagEmbedding
+      - Django
+      - djangorestframework
+      - gunicorn
+      - django-environ
+      - django-cors-headers
+      - celery[redis]
+      - elasticsearch==7.*
+      - elasticsearch_dsl==7.*
+      - pytest
