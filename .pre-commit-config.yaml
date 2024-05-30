@@ -1,0 +1,95 @@
+exclude: ^(src/manage.py)
+repos:
+  - repo: https://github.com/ambv/black
+    # black - does automatic code formatting
+    rev: 23.9.1
+    hooks:
+      - id: black
+        args: # arguments to configure black
+          - --line-length=100
+          - --include='\.pyi?$'
+          - --skip-string-normalization
+          - --exclude="""\.git |
+            \.__pycache__|
+            \.hg|
+            \.tox|
+            \.venv"""
+        language_version: python3.11
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    # pre-commit-hooks - does automatic code formatting
+    rev: v4.4.0
+    hooks:
+      - id: trailing-whitespace # Trims trailing whitespace.
+      - id: end-of-file-fixer # Makes sure files end in a newline and only a newline.
+      - id: check-yaml # Attempts to load all yaml files to verify syntax.
+        args: [ --allow-multiple-documents ]
+      - id: check-ast # Simply check whether files parse as valid python.
+      - id: name-tests-test # Verifies that test files are named correctly.
+      - id: mixed-line-ending # Replaces or checks mixed line ending.
+      - id: check-case-conflict # Check for files with names that would conflict on a case-insensitive filesystem like MacOS HFS+ or Windows FAT.
+      - id: double-quote-string-fixer # This hook replaces double-quoted strings with single quoted strings.
+
+  - repo: https://github.com/PyCQA/pylint
+    # pylint - responsible for linting code
+    rev: v2.17.5
+    hooks:
+      - id: pylint
+        args: [
+          "--max-line-length=100",
+          "--max-statements=60",
+          "--max-args=6",
+          "--ignore-path=tests/unit",
+          "--load-plugins=pylint.extensions.bad_builtin",
+          "--bad-functions=print",
+          "--disable=R0801,E0611,W0511,C0114,C0115,C0116,E0401,R0903,R0914,W1203",
+        ]
+        # ---- Disabled codes ----
+        # R0801 - Indicates that a set of similar lines has been detected among multiple file
+        # E0611 - No name %r in module %r
+        # W0511 - Warning notes
+        # C0114 - Missing module docstring
+        # C0115 - Missing class docstring
+        # C0116 - Missing function docstring
+        # E0401 - Unable to import %s
+        # R0903 - Class has too few public methods
+        # R0914 - Function or method has too many local variables.
+        # W1203 - Use lazy % formatting in logging functions
+
+  - repo: https://github.com/PyCQA/bandit
+    # bandit - runs security check for common issues
+    rev: 1.7.5
+    hooks:
+      - id: bandit
+        args: [ --skip, "B104,B301,B311,B403,B404,B602,B603,B607","-c","pyproject.toml" ]
+        additional_dependencies: [ "bandit[toml]" ]
+        # ---- Bandit skip ----
+        # === Misc tests
+        # B104 - hardcoded_bind_all_interfaces - Binding to all network interfaces (0.0.0.0) can potentially open up a service to traffic on unintended interfaces, that may not be properly documented or secured.
+        # === Blacklist calls
+        # B301 - pickle - Library appears to be in use, possible security issue.
+        # B311 - random - Standard pseudo-random generators are not suitable for security/cryptographic purposes.
+        # ==== Blacklist imports
+        # B403 - import_pickle - Consider possible security implications associated with these modules.
+        # ==== Injection
+        # B602 - subprocess_popen_with_shell_equals_true - looks for the spawning of a subprocess using a command shell
+        # B603 - subprocess_without_shell_equals_true -  looks for the spawning of a subprocess without the use of a command shell
+        # B607 - start_process_with_partial_path - scan the parameters of all configured Python methods, looking for paths that do not start at the filesystem root, that is, do not have a leading ‘/’ character
+
+  - repo: https://github.com/pycqa/isort
+    # isort - sort imports alphabetically in files
+    rev: 5.12.0
+    hooks:
+      - id: isort
+        name: isort (python)
+        args: [ "--profile", "black", "--filter-files" ] # sort compatible with black reordering
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    # mypy - type checking and validation
+    rev: v1.5.1
+    hooks:
+      - id: mypy
+        args: [ --disallow-untyped-defs, --ignore-missing-imports ]
+        # --disallow-untyped-defs - This flag reports an error whenever it encounters a function definition without type annotations.
+        # --ignore-missing-imports - This flag makes mypy ignore all missing imports. It is equivalent to adding # type: ignore comments to all unresolved imports within your codebase.
+        files: ^src/

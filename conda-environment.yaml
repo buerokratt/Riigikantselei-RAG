@@ -18,3 +18,4 @@ dependencies:
       - elasticsearch==7.*
       - elasticsearch_dsl==7.*
       - pytest
+      - pre-commit

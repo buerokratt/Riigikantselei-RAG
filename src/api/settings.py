@@ -11,7 +11,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 import logging
 import os
-import pathlib
+from pathlib import Path
 
 import environ
 
@@ -23,13 +23,11 @@ import environ
 # Logging in/registration/password change
 # Record keeping
 
-env_file_path = os.getenv("RK_ENV_FILE", None)
+env_file_path = os.getenv('RK_ENV_FILE', None)
 if env_file_path:
     environ.Env.read_env(env_file=env_file_path)
 
 env = environ.Env()
-
-from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -38,12 +36,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = env.str("RK_SECRET_KEY", default='django-insecure-ofn2$!9q0$50i_=&i%^)9j8e9u)8#cbl=4ig8e-&@%m5z*(ien')
+SECRET_KEY = env.str(
+    'RK_SECRET_KEY', default='django-insecure-ofn2$!9q0$50i_=&i%^)9j8e9u)8#cbl=4ig8e-&@%m5z*(ien'
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env.bool("RK_DEBUG", default=True)
+DEBUG = env.bool('RK_DEBUG', default=True)
 
-ALLOWED_HOSTS = env.list("RK_ALLOWED_HOSTS", default=["*"])
+ALLOWED_HOSTS = env.list('RK_ALLOWED_HOSTS', default=['*'])
 
 # Application definition
 
@@ -55,7 +55,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'api'
+    'api',
 ]
 
 MIDDLEWARE = [
@@ -94,32 +94,31 @@ WSGI_APPLICATION = 'api.wsgi.application'
 
 
 DATABASES = {
-    "default": {
-        "ENGINE": env("RK_DATABASE_ENGINE", default="django.db.backends.sqlite3"),
-        # Becomes the file location for sqlite3 when nothing else is set, currently saves into the project root directory.
-        "NAME": env("RK_DATABASE_NAME", default=str(pathlib.Path(BASE_DIR) / "db.sqlite3")),
-        "USER": env("RK_DATABASE_USER", default=""),  # Not used with sqlite3.
-        "PASSWORD": env("RK_DATABASE_PASSWORD", default=""),  # Not used with sqlite3.
-        "HOST": env("RK_DATABASE_HOST", default=""),
+    'default': {
+        'ENGINE': env('RK_DATABASE_ENGINE', default='django.db.backends.sqlite3'),
+        # Becomes the file location for sqlite3 when nothing else is set,
+        # currently saves into the project root directory.
+        'NAME': env('RK_DATABASE_NAME', default=str(Path(BASE_DIR) / 'db.sqlite3')),
+        'USER': env('RK_DATABASE_USER', default=''),  # Not used with sqlite3.
+        'PASSWORD': env('RK_DATABASE_PASSWORD', default=''),  # Not used with sqlite3.
+        'HOST': env('RK_DATABASE_HOST', default=''),
         # Set to empty string for localhost. Not used with sqlite3.
-        "PORT": env("RK_DATABASE_PORT", default=""),
-        "CONN_MAX_AGE": env.int("RK_DATABASE_CONN_MAX_AGE", default=30)
+        'PORT': env('RK_DATABASE_PORT', default=''),
+        'CONN_MAX_AGE': env.int('RK_DATABASE_CONN_MAX_AGE', default=30),
     }
 }
 
 REST_FRAMEWORK = {
-    "DEFAULT_RENDERER_CLASSES": (
-        "rest_framework.renderers.JSONRenderer",
-        "rest_framework.renderers.BrowsableAPIRenderer",
+    'DEFAULT_RENDERER_CLASSES': (
+        'rest_framework.renderers.JSONRenderer',
+        'rest_framework.renderers.BrowsableAPIRenderer',
     ),
-    "DEFAULT_PERMISSION_CLASSES": (
-        "rest_framework.permissions.IsAuthenticated",
-    ),
-    "DEFAULT_AUTHENTICATION_CLASSES": [
+    'DEFAULT_PERMISSION_CLASSES': ('rest_framework.permissions.IsAuthenticated',),
+    'DEFAULT_AUTHENTICATION_CLASSES': [
         # For DRF API browser pages
-        "rest_framework.authentication.SessionAuthentication",
+        'rest_framework.authentication.SessionAuthentication',
         # For authenticating requests with the Token
-        "rest_framework.authentication.TokenAuthentication",
+        'rest_framework.authentication.TokenAuthentication',
     ],
 }
 
@@ -146,7 +145,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = env.str("RK_TIME_ZONE", default='Europe/Tallinn')
+TIME_ZONE = env.str('RK_TIME_ZONE', default='Europe/Tallinn')
 
 USE_I18N = True
 
@@ -162,124 +161,124 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-DATA_DIR = env.str("RK_DATA_DIR", default=pathlib.Path(BASE_DIR).parent / "data")
+DATA_DIR = env.str('RK_DATA_DIR', default=Path(BASE_DIR).parent / 'data')
 
 # TODO: Added initial configuration for logging, revisit it somewhere in the future.
-INFO_LOGGER = "info_logger"
-ERROR_LOGGER = "error_logger"
-LOGGING_SEPARATOR = "-"
-LOGS_DIR = env.str("RK_LOGS_DIR", default=DATA_DIR / "logs")
+INFO_LOGGER = 'info_logger'
+ERROR_LOGGER = 'error_logger'
+LOGGING_SEPARATOR = '-'
+LOGS_DIR = env.str('RK_LOGS_DIR', default=DATA_DIR / 'logs')
 LOGGING = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    "formatters": {
-        "simple": {
-            "format": "\n"
-                      + LOGGING_SEPARATOR.join(
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'simple': {
+            'format': '\n'
+            + LOGGING_SEPARATOR.join(
                 [
-                    "%(levelname)s",
-                    "%(module)s",
-                    "%(name)s",
-                    "%(funcName)s",
-                    "%(message)s",
-                    "%(asctime)-15s",
+                    '%(levelname)s',
+                    '%(module)s',
+                    '%(name)s',
+                    '%(funcName)s',
+                    '%(message)s',
+                    '%(asctime)-15s',
                 ]
             )
         },
-        "detailed": {
-            "format": LOGGING_SEPARATOR.join(
+        'detailed': {
+            'format': LOGGING_SEPARATOR.join(
                 [
-                    "%(levelname)s",
-                    "%(module)s",
-                    "function: %(funcName)s",
-                    "line: %(lineno)s",
-                    "%(name)s",
-                    "PID: %(process)d",
-                    "TID: %(thread)d",
-                    "%(message)s",
-                    "%(asctime)-15s",
+                    '%(levelname)s',
+                    '%(module)s',
+                    'function: %(funcName)s',
+                    'line: %(lineno)s',
+                    '%(name)s',
+                    'PID: %(process)d',
+                    'TID: %(thread)d',
+                    '%(message)s',
+                    '%(asctime)-15s',
                 ]
             ),
         },
-        "detailed_error": {
-            "format": "\n"
-                      + LOGGING_SEPARATOR.join(
+        'detailed_error': {
+            'format': '\n'
+            + LOGGING_SEPARATOR.join(
                 [
-                    "%(levelname)s",
-                    "%(module)s",
-                    "%(name)s",
-                    "PID: %(process)d",
-                    "TID: %(thread)d",
-                    "%(funcName)s",
-                    "%(message)s",
-                    "%(asctime)-15s",
+                    '%(levelname)s',
+                    '%(module)s',
+                    '%(name)s',
+                    'PID: %(process)d',
+                    'TID: %(thread)d',
+                    '%(funcName)s',
+                    '%(message)s',
+                    '%(asctime)-15s',
                 ]
             )
         },
     },
-    "handlers": {
-        "info_file": {
-            "level": "INFO",
-            "class": "logging.FileHandler",
-            "formatter": "detailed",
-            "filename": pathlib.Path(LOGS_DIR) / "info.log",
-            "encoding": "utf8",
+    'handlers': {
+        'info_file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'formatter': 'detailed',
+            'filename': Path(LOGS_DIR) / 'info.log',
+            'encoding': 'utf8',
         },
-        "error_file": {
-            "level": "ERROR",
-            "class": "logging.FileHandler",
-            "formatter": "detailed_error",
-            "filename": pathlib.Path(LOGS_DIR) / "error.log",
-            "encoding": "utf8",
+        'error_file': {
+            'level': 'ERROR',
+            'class': 'logging.FileHandler',
+            'formatter': 'detailed_error',
+            'filename': Path(LOGS_DIR) / 'error.log',
+            'encoding': 'utf8',
         },
-        "console": {
-            "level": "INFO",
-            "class": "logging.StreamHandler",
-            "formatter": "simple",
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
         },
     },
-    "loggers": {
+    'loggers': {
         INFO_LOGGER: {
-            "level": "INFO",
-            "handlers": ["info_file"],
-            "propagate": True,
+            'level': 'INFO',
+            'handlers': ['info_file'],
+            'propagate': True,
         },
         ERROR_LOGGER: {
-            "level": "ERROR",
-            "handlers": ["console", "error_file"],
+            'level': 'ERROR',
+            'handlers': ['console', 'error_file'],
         },
-        "elasticsearch": {
-            "level": logging.WARN,
-            "handles": ["console"]
-        },
+        'elasticsearch': {'level': logging.WARN, 'handles': ['console']},
         # Big parent of all the Django loggers, MOST (not all) of this will get overwritten.
         # https://docs.djangoproject.com/en/2.1/topics/logging/#topic-logging-parts-loggers
-        "django": {"handlers": ["console", "error_file"], "level": "ERROR"},
+        'django': {'handlers': ['console', 'error_file'], 'level': 'ERROR'},
         # Log messages related to the handling of requests.
         # 5XX responses are raised as ERROR messages; 4XX responses are raised as WARNING messages
-        "django.request": {
-            "handlers": ["console", "error_file"],
-            "level": "ERROR",
-            "propagate": False,
+        'django.request': {
+            'handlers': ['console', 'error_file'],
+            'level': 'ERROR',
+            'propagate': False,
         },
-        # Log messages related to the handling of requests received by the server invoked by the runserver command.
-        # HTTP 5XX responses are logged as ERROR messages, 4XX responses are logged as WARNING messages,
+        # Log messages related to the handling of
+        # requests received by the server invoked by the runserver command.
+        # HTTP 5XX responses are logged as ERROR messages,
+        # 4XX responses are logged as WARNING messages,
         # everything else is logged as INFO.
-        "django.server": {
-            "handlers": ["console", "error_file"],
-            "level": "ERROR",
-            "propagate": False,
+        'django.server': {
+            'handlers': ['console', 'error_file'],
+            'level': 'ERROR',
+            'propagate': False,
         },
     },
 }
 
 #### CELERY CONFIGURATIONS ####
 
-CELERY_TASK_ALWAYS_EAGER = env.bool("RK_CELERY_TASK_ALWAYS_EAGER", default=False)  # Whether to run Celery tasks in workers or synchronously in the webserver.
-CELERY_BROKER_URL = env.str("RK_CELERY_BROKER_URL", default='redis://localhost:6379/0')
-CELERY_RESULT_BACKEND = env.str("RK_CELERY_RESULT_BACKEND", default="redis://localhost:6379/0")
-CELERY_TIMEZONE = env.str("RK_CELERY_TIMEZONE", default='Europe/Tallinn')
-CELERY_ACCEPT_CONTENT = ["application/json"]
-CELERY_TASK_SERIALIZER = "json"
-CELERY_RESULT_SERIALIZER = "json"
-CELERYD_PREFETCH_MULTIPLIER = env.int("RK_CELERY_PREFETCH_MULTIPLIER", default=1)
+# Whether to run Celery tasks in workers or synchronously in the webserver.
+CELERY_TASK_ALWAYS_EAGER = env.bool('RK_CELERY_TASK_ALWAYS_EAGER', default=False)
+CELERY_BROKER_URL = env.str('RK_CELERY_BROKER_URL', default='redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = env.str('RK_CELERY_RESULT_BACKEND', default='redis://localhost:6379/0')
+CELERY_TIMEZONE = env.str('RK_CELERY_TIMEZONE', default='Europe/Tallinn')
+CELERY_ACCEPT_CONTENT = ['application/json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERYD_PREFETCH_MULTIPLIER = env.int('RK_CELERY_PREFETCH_MULTIPLIER', default=1)
