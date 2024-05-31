@@ -29,6 +29,17 @@ if env_file_path:
 
 env = environ.Env()
 
+PROTECTED_CORE_KEYS = ("SECRET", "KEY", "PASSWORD")
+
+CORE_SETTINGS = {
+    "ELASTICSEARCH_URL": env("RK_ELASTICSEARCH_URL", default="http://localhost:9200"),
+    # OpenAI integration
+    "OPENAI_API_KEY": env("RK_OPENAI_API_KEY", default=None),
+    "OPENAI_API_TIMEOUT": env.int("RK_OPENAI_API_TIMEOUT", default=10),
+    "OPENAI_API_MAX_RETRIES": env.int("RK_OPENAI_API_MAX_RETRIES", default=5),
+    "OPENAI_SYSTEM_MESSAGE": env.str("RK_OPENAI_SYSTEM_MESSAGE", default="You are a helpful assistant.")
+}
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -55,7 +66,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'api',
+    'core',
 ]
 
 MIDDLEWARE = [
@@ -174,7 +185,7 @@ LOGGING = {
     'formatters': {
         'simple': {
             'format': '\n'
-            + LOGGING_SEPARATOR.join(
+                      + LOGGING_SEPARATOR.join(
                 [
                     '%(levelname)s',
                     '%(module)s',
@@ -202,7 +213,7 @@ LOGGING = {
         },
         'detailed_error': {
             'format': '\n'
-            + LOGGING_SEPARATOR.join(
+                      + LOGGING_SEPARATOR.join(
                 [
                     '%(levelname)s',
                     '%(module)s',
