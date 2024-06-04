@@ -1,3 +1,19 @@
-from django.shortcuts import render
+from rest_framework import viewsets
+from rest_framework.permissions import AllowAny
 
-# Create your views here.
+from .models import CoreVariable
+from .serializers import CoreVariableSerializer
+
+
+class CoreVariableViewSet(viewsets.ModelViewSet):
+    pagination_class = None
+    serializer_class = CoreVariableSerializer
+
+    # TODO: Changed this after authentication is set up.
+    permission_classes = (
+        AllowAny,
+        # IsAdminUser,
+    )
+
+    def get_queryset(self):
+        return CoreVariable.objects.all()
