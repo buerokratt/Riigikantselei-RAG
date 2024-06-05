@@ -9,7 +9,7 @@ class CoreVariableViewSet(viewsets.ModelViewSet):
     pagination_class = None
     serializer_class = CoreVariableSerializer
 
-    # TODO: Changed this after authentication is set up.
+    # TODO here: Change this after authentication is set up.
     permission_classes = (
         AllowAny,
         # IsAdminUser,

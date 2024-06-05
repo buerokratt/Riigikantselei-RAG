@@ -29,15 +29,18 @@ if env_file_path:
 
 env = environ.Env()
 
-PROTECTED_CORE_KEYS = ("SECRET", "KEY", "PASSWORD")
+PROTECTED_CORE_KEYS = ('SECRET', 'KEY', 'PASSWORD')
 
 CORE_SETTINGS = {
-    "ELASTICSEARCH_URL": env("RK_ELASTICSEARCH_URL", default="http://localhost:9200"),
+    'ELASTICSEARCH_URL': env('RK_ELASTICSEARCH_URL', default='http://localhost:9200'),
     # OpenAI integration
-    "OPENAI_API_KEY": env("RK_OPENAI_API_KEY", default=None),
-    "OPENAI_API_TIMEOUT": env.int("RK_OPENAI_API_TIMEOUT", default=10),
-    "OPENAI_API_MAX_RETRIES": env.int("RK_OPENAI_API_MAX_RETRIES", default=5),
-    "OPENAI_SYSTEM_MESSAGE": env.str("RK_OPENAI_SYSTEM_MESSAGE", default="You are a helpful assistant.")
+    'OPENAI_API_KEY': env('RK_OPENAI_API_KEY', default=None),
+    'OPENAI_API_TIMEOUT': env.int('RK_OPENAI_API_TIMEOUT', default=10),
+    'OPENAI_API_MAX_RETRIES': env.int('RK_OPENAI_API_MAX_RETRIES', default=5),
+    'OPENAI_SYSTEM_MESSAGE': env.str(
+        'RK_OPENAI_SYSTEM_MESSAGE', default='You are a helpful assistant.'
+    ),
+    'DEFAULT_USAGE_LIMIT_EUROS': env.float('RK_DEFAULT_USAGE_LIMIT_EUROS', default=10.0),
 }
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -67,6 +70,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'core',
+    'user_profile',
 ]
 
 MIDDLEWARE = [
@@ -130,7 +134,15 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.SessionAuthentication',
         # For authenticating requests with the Token
         'rest_framework.authentication.TokenAuthentication',
+        # TODO here: only use token auth, then remove this
+        'rest_framework.authentication.BasicAuthentication',
     ],
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '10/hour',
+    },
 }
 
 # Password validation
@@ -185,7 +197,7 @@ LOGGING = {
     'formatters': {
         'simple': {
             'format': '\n'
-                      + LOGGING_SEPARATOR.join(
+            + LOGGING_SEPARATOR.join(
                 [
                     '%(levelname)s',
                     '%(module)s',
@@ -213,7 +225,7 @@ LOGGING = {
         },
         'detailed_error': {
             'format': '\n'
-                      + LOGGING_SEPARATOR.join(
+            + LOGGING_SEPARATOR.join(
                 [
                     '%(levelname)s',
                     '%(module)s',

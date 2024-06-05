@@ -128,7 +128,7 @@ class TestCoreVariableViews(APITestCase):
         setting = get_core_setting(key_name)
         self.assertEqual(setting, SAMPLE_ES_VALUE)
 
-    # TODO Fix this test when user creation and authentication is created properly.
+    # TODO here: Fix this test when user creation and authentication is created properly.
     def test_non_admin_users_not_having_access(self):
         # login as non-admin user
         self.client.login(username="tester", password="pw")
@@ -136,7 +136,7 @@ class TestCoreVariableViews(APITestCase):
         response = self.client.get(self.list_url)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         # try post
-        payload = {"name": "ELASTICSEACH_URL", "value": "somerandomstring"}
+        payload = {"name": "ELASTICSEARCH_URL", "value": "somerandomstring"}
         response = self.client.post(self.list_url, payload)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         # go back to being admin
