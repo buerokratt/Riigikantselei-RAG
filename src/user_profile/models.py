@@ -11,7 +11,7 @@ class UserProfile(models.Model):
     # - first_name
     # - last_name
     # Set on creation.
-    auth_user = models.OneToOneField(User, on_delete=models.RESTRICT)
+    auth_user = models.OneToOneField(User, on_delete=models.RESTRICT, related_name='user_profile')
     # Whether the user is an admin for the purposes of customer requirements.
     # Separate from Django superuser or staff as administering the web application is our job
     # and administering the users' rights is the customers' job.
@@ -20,16 +20,17 @@ class UserProfile(models.Model):
     # Whether an admin needs to review this user's request to use the application.
     # Used to choose which users to show to admins as needing review.
     # Will be set to True once an admin reviews the request to use the application.
-    reviewed = models.BooleanField(default=False)
+    is_reviewed = models.BooleanField(default=False)
     # Whether the user has been accepted to use the application.
     # Used to check if the user should be able to log in.
     # Will be set to True if an admin reviews and accepts the request to use the application.
-    accepted = models.BooleanField(default=False)
+    is_accepted = models.BooleanField(default=False)
     # Whether the user is allowed to take actions that cost money.
-    # If this is False (and accepted=True), the user should still see their previous interactions.
+    # If this is False (and is_accepted=True),
+    # the user should still see their previous interactions.
     # Will be set to True if an admin reviews and accepts the request to use the application.
     # May be set to False later to stop an expensive user.
-    allowed_to_spend_resources = models.BooleanField(default=False)
+    is_allowed_to_spend_resources = models.BooleanField(default=False)
     # Whether the user's usage limit should be tied to the default.
     # If this is True, the usage limit should be read from the default value.
     # If this is False, the usage limit should be read from custom_usage_limit_euros.

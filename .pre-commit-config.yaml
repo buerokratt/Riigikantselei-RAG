@@ -97,8 +97,7 @@ repos:
   - repo: local
     hooks:
       - id: tests
-        stages: [pre-push, manual]
-        name: tests-via-pytest-on-conda
+        name: tests
         language: system
         pass_filenames: false
         verbose: True

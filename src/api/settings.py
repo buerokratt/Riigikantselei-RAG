@@ -134,14 +134,13 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.SessionAuthentication',
         # For authenticating requests with the Token
         'rest_framework.authentication.TokenAuthentication',
-        # TODO here: only use token auth, then remove this
-        'rest_framework.authentication.BasicAuthentication',
     ],
     'DEFAULT_THROTTLE_CLASSES': [
         'rest_framework.throttling.AnonRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'anon': '10/hour',
+        # TODO here: override for tests so we can decrease to 10/hour
+        'anon': '100/day',
     },
 }
 
