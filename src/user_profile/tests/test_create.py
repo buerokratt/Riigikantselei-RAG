@@ -6,8 +6,6 @@ from rest_framework.test import APITestCase
 from api.utilities.testing import create_test_user
 from user_profile.models import UserProfile
 
-# TODO here: move to token auth
-
 
 class TestUserProfileCreate(APITestCase):
     @classmethod

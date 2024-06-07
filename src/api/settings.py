@@ -44,7 +44,7 @@ CORE_SETTINGS = {
     ),
     'OPENAI_API_TIMEOUT': env.int('RK_OPENAI_API_TIMEOUT', default=10),
     'OPENAI_API_MAX_RETRIES': env.int('RK_OPENAI_API_MAX_RETRIES', default=5),
-    "OPENAI_API_CHAT_MODEL": env.int("RK_OPENAI_API_CHAT_MODEL", default="gpt-4o"),
+    'OPENAI_API_CHAT_MODEL': env.int('RK_OPENAI_API_CHAT_MODEL', default='gpt-4o'),
 
     'DEFAULT_USAGE_LIMIT_EUROS': env.float('RK_DEFAULT_USAGE_LIMIT_EUROS', default=10.0),
 }
@@ -135,8 +135,6 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_PERMISSION_CLASSES': ('rest_framework.permissions.IsAuthenticated',),
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        # For unit tests
-        'rest_framework.authentication.SessionAuthentication',
         # For authenticating requests with the Token
         'rest_framework.authentication.TokenAuthentication',
     ],
@@ -144,21 +142,26 @@ REST_FRAMEWORK = {
         'rest_framework.throttling.AnonRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
-        # TODO here: override for tests so we can decrease to 10/hour
-        'anon': '100/day',
+        'anon': '10/hour',
     },
 }
 
 if DEBUG is True:
-    REST_FRAMEWORK["DEFAULT_RENDERER_CLASSES"] = (
+    REST_FRAMEWORK['DEFAULT_RENDERER_CLASSES'] = (
         'rest_framework.renderers.JSONRenderer',
         'rest_framework.renderers.BrowsableAPIRenderer',
     )
 
-    REST_FRAMEWORK["DEFAULT_AUTHENTICATION_CLASSES"] = (
+    REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'] = (
+        # TODO here: move to token auth only
+        # For unit tests
+        'rest_framework.authentication.SessionAuthentication',
         # For authenticating requests with the Token
         'rest_framework.authentication.TokenAuthentication',
     )
+
+    REST_FRAMEWORK['DEFAULT_THROTTLE_CLASSES'] = []
+    REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] = {}
 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
@@ -322,19 +325,19 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERYD_PREFETCH_MULTIPLIER = env.int('RK_CELERY_PREFETCH_MULTIPLIER', default=1)
 
 #### VECTORIZATION CONFIGURATIONS ####
-MODEL_DIRECTORY = DATA_DIR / "models"
-VECTORIZATION_MODEL_NAME = "BAAI/bge-m3"
+MODEL_DIRECTORY = DATA_DIR / 'models'
+VECTORIZATION_MODEL_NAME = 'BAAI/bge-m3'
 
 BGEM3_SYSTEM_CONFIGURATION = {
-    "use_fp16": True,
-    "device": None,
-    "normalize_embeddings": True
+    'use_fp16': True,
+    'device': None,
+    'normalize_embeddings': True
 }
 
 BGEM3_INFERENCE_CONFIGURATION = {
-    "batch_size": 12,
-    "return_dense": True,
-    "max_length": 8192
+    'batch_size': 12,
+    'return_dense': True,
+    'max_length': 8192
 }
 
 # DOWNLOAD MODEL DEPENDENCIES

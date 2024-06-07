@@ -4,8 +4,6 @@ from rest_framework.test import APITestCase
 
 from user_profile.utilities import create_test_user_with_user_profile
 
-# TODO here: move to token auth
-
 
 class TestUserProfileRetrieveAndList(APITestCase):
     @classmethod
