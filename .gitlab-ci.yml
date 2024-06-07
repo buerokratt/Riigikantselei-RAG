@@ -1,0 +1,16 @@
+image: continuumio/miniconda3:latest
+
+variables:
+  RK_ELASTICSEARCH_URL: http://elastic-dev.texta.ee:9200
+
+stages:
+  - test-api
+
+TestAPI:
+  stage: test-api
+  tags:
+    - ci-test
+  script:
+    - conda env create -f conda-environment.yaml
+    - source activate riigikantselei
+    - python ./src/manage.py test
