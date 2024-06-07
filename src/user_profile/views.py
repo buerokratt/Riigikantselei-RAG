@@ -55,3 +55,5 @@ class UserProfileViewSet(viewsets.ViewSet):
 # @action(detail=True, methods=['post'])
 # Admin saab kindlat kasutajat muuta (kinnitada või tagasi lükata, kasutust keelata, limiiti seada)
 # Admin saab vaikimisi kasutuslimiiti muuta
+
+# TODO here: something to change and reset password?
