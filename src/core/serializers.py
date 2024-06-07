@@ -6,6 +6,12 @@ from .choices import CORE_VARIABLE_CHOICES
 from .models import CoreVariable
 
 
+class OpenAISerializer(serializers.Serializer):
+    input_text = serializers.CharField(help_text="User query to send towards ChatGPT")
+    system_text = serializers.CharField(default=None, help_text="System context to override the default with for ChatGPT, only use if you know what you're doing.")
+    model = serializers.CharField(default=None, help_text="Manual override for the model to use with ChatGPT, only use if you know what you're doing.")
+
+
 class CoreVariableSerializer(serializers.ModelSerializer):
     name = serializers.ChoiceField(
         help_text="Name of the core variable.",

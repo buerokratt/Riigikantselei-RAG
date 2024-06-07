@@ -18,7 +18,7 @@ from django.contrib import admin
 from django.urls import path, include
 from rest_framework import routers
 
-from core.views import CoreVariableViewSet
+from core.views import CoreVariableViewSet, OpenAIView, AsyncResultView
 
 PREFIX = 'api'
 
@@ -28,4 +28,6 @@ router.register(f'{PREFIX}/core_settings', CoreVariableViewSet, basename='core_s
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include(router.urls)),
+    path(f'{PREFIX}/openai/', OpenAIView.as_view(), name="openai"),
+    path(f'{PREFIX}/async-result/<str:task_id>/', AsyncResultView.as_view(), name="async_result"),
 ]

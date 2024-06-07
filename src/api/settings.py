@@ -27,6 +27,7 @@ from api.utilities.vectorizer import download_vectorization_resources
 
 env_file_path = os.getenv('RK_ENV_FILE', None)
 if env_file_path:
+    print(f"Loading environment variables from {env_file_path} as env variable 'RK_ENV_FILE' is set!")
     environ.Env.read_env(env_file=env_file_path)
 
 env = environ.Env()
@@ -39,7 +40,7 @@ CORE_SETTINGS = {
     # OpenAI integration
     "OPENAI_API_KEY": env("RK_OPENAI_API_KEY", default=None),
     "OPENAI_SYSTEM_MESSAGE": env.str("RK_OPENAI_SYSTEM_MESSAGE", default="You are a helpful assistant."),
-    "OPENAI_API_TIMEOUT": env.int("RK_OPENAI_API_TIMEOUT", default=10),
+    "OPENAI_API_TIMEOUT": env.int("RK_OPENAI_API_TIMEOUT", default=60),
     "OPENAI_API_MAX_RETRIES": env.int("RK_OPENAI_API_MAX_RETRIES", default=5),
     "OPENAI_API_CHAT_MODEL": env.int("RK_OPENAI_API_CHAT_MODEL", default="gpt-4o"),
 }
@@ -304,7 +305,7 @@ CELERY_TIMEZONE = env.str('RK_CELERY_TIMEZONE', default='Europe/Tallinn')
 CELERY_ACCEPT_CONTENT = ['application/json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
-CELERYD_PREFETCH_MULTIPLIER = env.int('RK_CELERY_PREFETCH_MULTIPLIER', default=1)
+CELERY_WORKER_PREFETCH_MULTIPLIER = env.int('RK_CELERY_PREFETCH_MULTIPLIER', default=1)
 
 #### VECTORIZATION CONFIGURATIONS ####
 MODEL_DIRECTORY = DATA_DIR / "models"
