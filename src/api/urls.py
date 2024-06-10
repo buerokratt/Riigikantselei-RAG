@@ -19,9 +19,10 @@ from django.urls import include, path
 from rest_framework import routers
 
 from core.views import CoreVariableViewSet
-from user_profile.views import UserProfileViewSet
+from user_profile.views import UserProfileViewSet, GetTokenView
 
 PREFIX = 'api'
+GET_TOKEN_VIEW_URL = f'{PREFIX}/get_token'
 
 router = routers.DefaultRouter()
 router.register(f'{PREFIX}/core_settings', CoreVariableViewSet, basename='core_settings')
@@ -30,4 +31,5 @@ router.register(f'{PREFIX}/user_profile', UserProfileViewSet, basename='user_pro
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include(router.urls)),
+    path(GET_TOKEN_VIEW_URL, GetTokenView.as_view(), name='get_token'),
 ]

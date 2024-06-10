@@ -75,6 +75,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'rest_framework.authtoken',
     'core',
     'user_profile',
 ]
@@ -153,9 +154,6 @@ if DEBUG is True:
     )
 
     REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'] = (
-        # TODO here: move to token auth only
-        # For unit tests
-        'rest_framework.authentication.SessionAuthentication',
         # For authenticating requests with the Token
         'rest_framework.authentication.TokenAuthentication',
     )

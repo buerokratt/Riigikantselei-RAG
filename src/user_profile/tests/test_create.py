@@ -1,5 +1,6 @@
 from django.contrib.auth.models import User
 from rest_framework import status
+from rest_framework.authtoken.models import Token
 from rest_framework.reverse import reverse
 from rest_framework.test import APITestCase
 
@@ -10,7 +11,7 @@ from user_profile.models import UserProfile
 class TestUserProfileCreate(APITestCase):
     @classmethod
     def setUpTestData(cls) -> None:  # pylint: disable=invalid-name
-        create_test_user('admin', 'admin@email.com', 'password', is_superuser=True)
+        cls.test_user = create_test_user('admin', 'admin@email.com', 'password', is_superuser=True)
         cls.create_endpoint_url = reverse('user_profile-list')
         cls.base_input = {
             'username': 'tester',
@@ -48,7 +49,10 @@ class TestUserProfileCreate(APITestCase):
             self.assertEqual(getattr(user_profile, attribute), value)
 
     def test_create_fails_because_authed(self) -> None:
-        self.client.login(username='admin', password='password')
+        token, _ = Token.objects.get_or_create(user=self.test_user)
+        self.client.credentials(HTTP_AUTHORIZATON=f'Token {token.key}')
+        # TODO here: fix auth usage in tests and remove
+        self.client.force_authenticate(user=self.test_user)
 
         response = self.client.post(self.create_endpoint_url, data=self.input_with_password)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)

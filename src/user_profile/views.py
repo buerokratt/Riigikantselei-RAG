@@ -2,17 +2,32 @@ from typing import Optional
 
 from django.contrib.auth.models import User
 from rest_framework import status, viewsets
+from rest_framework.authentication import BasicAuthentication, TokenAuthentication
+from rest_framework.authtoken.models import Token
 from rest_framework.generics import get_object_or_404
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from user_profile.models import UserProfile
 from user_profile.permissions import UserProfilePermission  # type: ignore
 from user_profile.serializers import UserCreateSerializer, UserProfileReadOnlySerializer
 
 
+class GetTokenView(APIView):
+    authentication_classes = (BasicAuthentication,)
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request: Request) -> Response:
+        token, _ = Token.objects.get_or_create(user=request.user)
+        content = {'token': token.key}
+        return Response(content)
+
+
 class UserProfileViewSet(viewsets.ViewSet):
     # TODO here: pagination_class?
+    authentication_classes = (TokenAuthentication,)
     permission_classes = (UserProfilePermission,)
 
     def create(self, request: Request) -> Response:
@@ -52,7 +67,7 @@ class UserProfileViewSet(viewsets.ViewSet):
 
 
 # TODO here: more views
-# @action(detail=True, methods=['post'])
+# @action(detail=True, methods=['post'], permission_classes=[IsAdminOrIsSelf])
 # Admin saab kindlat kasutajat muuta (kinnitada või tagasi lükata, kasutust keelata, limiiti seada)
 # Admin saab vaikimisi kasutuslimiiti muuta
 
