@@ -29,9 +29,7 @@ class TestUserProfileRetrieveAndList(APITestCase):
         # Admin should be able to access other user, non-admin should be able to access self
         for user in [self.admin_auth_user, self.non_admin_auth_user]:
             token, _ = Token.objects.get_or_create(user=user)
-            self.client.credentials(HTTP_AUTHORIZATON=f'Token {token.key}')
-            # TODO here: fix auth usage in tests and remove
-            self.client.force_authenticate(user=user)
+            self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
             response = self.client.get(self.retrieve_endpoint_url_non_admin)
             self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -64,27 +62,21 @@ class TestUserProfileRetrieveAndList(APITestCase):
         non_accepted_user_profile.save()
 
         token, _ = Token.objects.get_or_create(user=non_accepted_auth_user)
-        self.client.credentials(HTTP_AUTHORIZATON=f'Token {token.key}')
-        # TODO here: fix auth usage in tests and remove
-        self.client.force_authenticate(user=non_accepted_auth_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
         response = self.client.get(self.retrieve_endpoint_url_admin)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_retrieve_fails_because_non_admin_user_asking_other_user(self) -> None:
         token, _ = Token.objects.get_or_create(user=self.non_admin_auth_user)
-        self.client.credentials(HTTP_AUTHORIZATON=f'Token {token.key}')
-        # TODO here: fix auth usage in tests and remove
-        self.client.force_authenticate(user=self.non_admin_auth_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
         response = self.client.get(self.retrieve_endpoint_url_admin)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_retrieve_fails_because_not_exists(self) -> None:
         token, _ = Token.objects.get_or_create(user=self.admin_auth_user)
-        self.client.credentials(HTTP_AUTHORIZATON=f'Token {token.key}')
-        # TODO here: fix auth usage in tests and remove
-        self.client.force_authenticate(user=self.admin_auth_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
         retrieve_endpoint_url = reverse('user_profile-detail', kwargs={'pk': 999})
 
         response = self.client.get(retrieve_endpoint_url)
@@ -92,9 +84,7 @@ class TestUserProfileRetrieveAndList(APITestCase):
 
     def test_list(self) -> None:
         token, _ = Token.objects.get_or_create(user=self.admin_auth_user)
-        self.client.credentials(HTTP_AUTHORIZATON=f'Token {token.key}')
-        # TODO here: fix auth usage in tests and remove
-        self.client.force_authenticate(user=self.admin_auth_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
         response = self.client.get(self.list_endpoint_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -135,9 +125,7 @@ class TestUserProfileRetrieveAndList(APITestCase):
 
     def test_list_fails_because_not_admin(self) -> None:
         token, _ = Token.objects.get_or_create(user=self.non_admin_auth_user)
-        self.client.credentials(HTTP_AUTHORIZATON=f'Token {token.key}')
-        # TODO here: fix auth usage in tests and remove
-        self.client.force_authenticate(user=self.non_admin_auth_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
         response = self.client.get(self.list_endpoint_url)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)

@@ -22,9 +22,7 @@ class TestGetToken(APITestCase):
         encoded_credentials = b64encode('admin:password'.encode(HTTP_HEADER_ENCODING)).decode(
             HTTP_HEADER_ENCODING
         )
-        self.client.credentials(HTTP_AUTHORIZATON=f'Basic {encoded_credentials}')
-        # TODO here: fix auth usage in tests and remove
-        self.client.force_authenticate(user=self.admin_auth_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Basic {encoded_credentials}')
 
         response = self.client.get(self.token_endpoint_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -35,9 +33,7 @@ class TestGetToken(APITestCase):
         encoded_credentials = b64encode('admin:password'.encode(HTTP_HEADER_ENCODING)).decode(
             HTTP_HEADER_ENCODING
         )
-        self.client.credentials(HTTP_AUTHORIZATON=f'Basic {encoded_credentials}')
-        # TODO here: fix auth usage in tests and remove
-        self.client.force_authenticate(user=self.admin_auth_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Basic {encoded_credentials}')
 
         response = self.client.get(self.token_endpoint_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)

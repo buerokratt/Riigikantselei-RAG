@@ -50,9 +50,7 @@ class TestUserProfileCreate(APITestCase):
 
     def test_create_fails_because_authed(self) -> None:
         token, _ = Token.objects.get_or_create(user=self.test_user)
-        self.client.credentials(HTTP_AUTHORIZATON=f'Token {token.key}')
-        # TODO here: fix auth usage in tests and remove
-        self.client.force_authenticate(user=self.test_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
         response = self.client.post(self.create_endpoint_url, data=self.input_with_password)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
