@@ -64,6 +64,14 @@ class TestUserProfileCreate(APITestCase):
                 'last_name': 'tester',
                 'password': 'password',
             },
+            # duplicate username
+            {
+                'username': 'admin',
+                'email': 'tester@email.com',
+                'first_name': 'tester',
+                'last_name': 'tester',
+                'password': 'password',
+            },
             # duplicate email
             {
                 'username': 'tester',

@@ -40,7 +40,5 @@ class UserProfile(models.Model):
     # May be set and unset later to change the user's limit logic.
     custom_usage_limit_euros = models.FloatField(default=None, null=True)
 
-    # TODO: confirm with customer whether limit is total or monthly or something else
-
     # TODO: The user's current usage balance is the sum of the costs of UsageEvents
     #  tied to the user and will be calculated when needed.

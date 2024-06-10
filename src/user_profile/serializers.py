@@ -23,6 +23,12 @@ def _simple_email_format_validator(email: str) -> str:
     return email
 
 
+def _unique_username_validator(username: str) -> str:
+    if User.objects.filter(username=username):
+        raise serializers.ValidationError('The given username is already in use.')
+    return username
+
+
 def _unique_email_validator(email: str) -> str:
     if User.objects.filter(email=email):
         raise serializers.ValidationError('The given email is already in use.')
@@ -31,7 +37,10 @@ def _unique_email_validator(email: str) -> str:
 
 class UserCreateSerializer(serializers.Serializer):
     username = serializers.CharField(
-        required=True, max_length=100, min_length=4, validators=[_reasonable_character_validator]
+        required=True,
+        max_length=100,
+        min_length=4,
+        validators=[_reasonable_character_validator, _unique_username_validator],
     )
     password = serializers.CharField(
         required=True, max_length=100, min_length=4, validators=[_reasonable_character_validator]
@@ -79,3 +88,7 @@ class UserProfileReadOnlySerializer(serializers.ModelSerializer):
             'custom_usage_limit_euros',
         )
         read_only_fields = ('__all__',)
+
+
+class LimitSerializer(serializers.Serializer):
+    limit = serializers.FloatField(min_value=0.0, max_value=1000.0)
