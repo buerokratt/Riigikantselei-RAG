@@ -18,16 +18,16 @@ from django.contrib import admin
 from django.urls import path, include
 from rest_framework import routers
 
-from core.views import CoreVariableViewSet, OpenAIView, AsyncResultView
+from core.views import CoreVariableViewSet, AsyncResultView, GPTConversationViewset
 
 PREFIX = 'api'
 
 router = routers.DefaultRouter()
 router.register(f'{PREFIX}/core_settings', CoreVariableViewSet, basename='core_settings')
+router.register(f'{PREFIX}/gpt', GPTConversationViewset, basename='chat_gpt')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include(router.urls)),
-    path(f'{PREFIX}/openai/', OpenAIView.as_view(), name="openai"),
     path(f'{PREFIX}/async-result/<str:task_id>/', AsyncResultView.as_view(), name="async_result"),
 ]

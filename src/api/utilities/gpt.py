@@ -1,4 +1,5 @@
 import logging
+from typing import List
 
 import openai
 from openai import OpenAI
@@ -11,9 +12,8 @@ logger = logging.getLogger("chatgpt")
 
 # TODO Maybe replace this with an actual DB model later on but for now it's a good enough abstraction for GPT responses.
 class LLMResponse:
-    def __init__(self, message: str, model: str, system_input: str, user_input: str, input_tokens: int, response_tokens: int, headers: dict):
+    def __init__(self, message: str, model: str, user_input: str, input_tokens: int, response_tokens: int, headers: dict):
         self.message = message
-        self.system_input = system_input
         self.user_input = user_input
 
         self.model = model
@@ -85,12 +85,11 @@ class ChatGPT:
 
         return message
 
-    def parse_results(self, system_input: str, user_input: str, response: dict, headers: dict):
+    def parse_results(self, user_input: str, response: dict, headers: dict):
         message = self._parse_message(response, user_input)
 
         return LLMResponse(
             message=message,
-            system_input=system_input,
             user_input=user_input,
             model=response.get("model", self.model),
             input_tokens=response.get("usage", {}).get("prompt_tokens"),
@@ -98,15 +97,12 @@ class ChatGPT:
             headers=headers
         )
 
-    def commit_api(self, system_input: str, user_input: str) -> (dict, dict, int):
+    def commit_api(self, messages: List[dict]) -> (dict, dict, int):
         try:
             response = self.gpt.chat.completions.with_raw_response.create(
                 model=self.model,
                 stream=False,
-                messages=[
-                    {"role": "system", "content": system_input},
-                    {"role": "user", "content": user_input}
-                ]
+                messages=messages
             )
 
             headers = dict(response.headers)
@@ -158,10 +154,9 @@ class ChatGPT:
             logger.exception(f"Couldn't connect to the OpenAI API")
             raise APIException("Couldn't connect to the OpenAI API!")
 
-    def chat(self, user_input: str, system_input=None):
-        system_input = system_input or get_core_setting("OPENAI_SYSTEM_MESSAGE")
-        headers, response, status_code = self.commit_api(system_input, user_input)
-        llm_result = self.parse_results(system_input=system_input, user_input=user_input, response=response, headers=headers)
+    def chat(self, user_input: str, messages: List[dict]):
+        headers, response, status_code = self.commit_api(messages)
+        llm_result = self.parse_results(user_input=user_input, response=response, headers=headers)
         return llm_result
 
 

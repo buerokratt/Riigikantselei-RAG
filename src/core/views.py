@@ -1,13 +1,13 @@
-from typing import Optional
-
 from celery.result import AsyncResult
 from django.urls import reverse
 from rest_framework import viewsets, views
+from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
-from .models import CoreVariable
-from .serializers import CoreVariableSerializer, OpenAISerializer
+from api.utilities.core_settings import get_core_setting
+from .models import CoreVariable, ChatGPTConversation
+from .serializers import CoreVariableSerializer, OpenAISerializer, ChatGPTConversationSerializer
 from .tasks import commit_openai_api_call
 
 
@@ -33,19 +33,27 @@ class AsyncResultView(views.APIView):
         return Response(response)
 
 
-class OpenAIView(views.APIView):
-    serializer_class = OpenAISerializer
-    permission_classes = (AllowAny,)
+class GPTConversationViewset(viewsets.ModelViewSet):
+    permission_classes = (
+        AllowAny,
+        # IsAuthenticated
+    )
+    serializer_class = ChatGPTConversationSerializer
 
-    def post(self, request):
+    def perform_create(self, serializer):
+        system_text = serializer.validated_data['system_input']
+        system_text = system_text or get_core_setting('OPENAI_SYSTEM_MESSAGE')
+        serializer.save(author=self.request, system_text=system_text)
+
+    @action(methods=["POST"], detail=True, serializer_class=OpenAISerializer)
+    def chat(self, request, pk: int):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         input_text: str = serializer.validated_data['input_text']
-        system_text: Optional[str] = serializer.validated_data['system_text']
         model: str = serializer.validated_data['model']
 
-        task: AsyncResult = commit_openai_api_call.s(system_text, input_text, model).apply_async()
+        task: AsyncResult = commit_openai_api_call.s(pk, input_text, model).apply_async()
         relative_path = reverse("async_result", kwargs={"task_id": task.task_id})
         return Response(
             {
@@ -53,6 +61,16 @@ class OpenAIView(views.APIView):
                 "task_id": task.task_id
             }
         )
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_authenticated:
+            return ChatGPTConversation.objects.filter(author=user)
+        else:
+            return ChatGPTConversation.objects.all()
+
+    class Meta:
+        model = ChatGPTConversation
 
 
 class CoreVariableViewSet(viewsets.ModelViewSet):

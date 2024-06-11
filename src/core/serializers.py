@@ -3,12 +3,24 @@ from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 
 from .choices import CORE_VARIABLE_CHOICES
-from .models import CoreVariable
+from .models import CoreVariable, ChatGPTConversation
+
+
+class ChatGPTConversationSerializer(serializers.ModelSerializer):
+    system_input = serializers.CharField(default=None, allow_blank=True)
+    messages = serializers.SerializerMethodField()
+
+    def get_messages(self, obj):
+        return obj.messages
+
+    class Meta:
+        model = ChatGPTConversation
+        fields = '__all__'
+        read_only_fields = ('created_at', 'updated_at', 'author')
 
 
 class OpenAISerializer(serializers.Serializer):
     input_text = serializers.CharField(help_text="User query to send towards ChatGPT")
-    system_text = serializers.CharField(default=None, help_text="System context to override the default with for ChatGPT, only use if you know what you're doing.")
     model = serializers.CharField(default=None, help_text="Manual override for the model to use with ChatGPT, only use if you know what you're doing.")
 
 
