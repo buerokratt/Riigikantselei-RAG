@@ -1,3 +1,4 @@
+from django.contrib.auth.models import User
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 from rest_framework.reverse import reverse
@@ -56,6 +57,11 @@ class TestUserProfileEdit(APITestCase):
         response = self.client.post(self.accept_unreviewed_endpoint_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
+        updated_auth_user = User.objects.get(id=self.non_admin_unreviewed_auth_user.id)
+        updated_user_profile = updated_auth_user.user_profile
+        self.assertTrue(updated_user_profile.is_reviewed)
+        self.assertTrue(updated_user_profile.is_accepted)
+
     def test_accept_fails_because_not_authed(self) -> None:
         response = self.client.post(self.accept_unreviewed_endpoint_url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
@@ -91,6 +97,11 @@ class TestUserProfileEdit(APITestCase):
 
         response = self.client.post(self.decline_unreviewed_endpoint_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        updated_auth_user = User.objects.get(id=self.non_admin_unreviewed_auth_user.id)
+        updated_user_profile = updated_auth_user.user_profile
+        self.assertTrue(updated_user_profile.is_reviewed)
+        self.assertFalse(updated_user_profile.is_accepted)
 
     def test_decline_fails_because_not_authed(self) -> None:
         response = self.client.post(self.decline_unreviewed_endpoint_url)
@@ -128,6 +139,10 @@ class TestUserProfileEdit(APITestCase):
         response = self.client.post(self.ban_endpoint_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
+        updated_auth_user = User.objects.get(id=self.non_admin_reviewed_auth_user.id)
+        updated_user_profile = updated_auth_user.user_profile
+        self.assertFalse(updated_user_profile.is_allowed_to_spend_resources)
+
     def test_ban_fails_because_not_authed(self) -> None:
         response = self.client.post(self.ban_endpoint_url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
@@ -156,6 +171,11 @@ class TestUserProfileEdit(APITestCase):
 
         response = self.client.post(self.set_limit_endpoint_url, data=self.input_data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        updated_auth_user = User.objects.get(id=self.non_admin_reviewed_auth_user.id)
+        updated_user_profile = updated_auth_user.user_profile
+        self.assertFalse(updated_user_profile.usage_limit_is_default)
+        self.assertEqual(updated_user_profile.custom_usage_limit_euros, 20.5)
 
     def test_set_limit_fails_because_not_authed(self) -> None:
         response = self.client.post(self.set_limit_endpoint_url, data=self.input_data)

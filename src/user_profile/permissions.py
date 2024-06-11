@@ -1,18 +1,25 @@
 # type: ignore
 from rest_framework import permissions
 
+_LOGGED_OUT_ONLY_ACTIONS = {
+    'create',
+    'request_password_reset',
+    'confirm_password_reset',
+    'reset_password',
+}
+_LOGGED_IN_AND_ACCEPTED_ONLY_ACTIONS = {'retrieve', 'change_password'}
 _ADMIN_ONLY_ACTIONS = {'list', 'accept', 'decline', 'ban', 'set_limit'}
 
 
 class UserProfilePermission(permissions.BasePermission):
     def has_permission(self, request, view):
-        if view.action == 'create':
+        if view.action in _LOGGED_OUT_ONLY_ACTIONS:
             return not request.user.is_authenticated
-        if view.action == 'retrieve':
+        if view.action in _LOGGED_IN_AND_ACCEPTED_ONLY_ACTIONS:
             return request.user.is_authenticated and request.user.user_profile.is_accepted
         if view.action in _ADMIN_ONLY_ACTIONS:
             return request.user.is_authenticated and request.user.user_profile.is_admin
-        return False
+        raise RuntimeError('Unknown action.')
 
     def has_object_permission(self, request, view, obj):
         if view.action == 'retrieve':

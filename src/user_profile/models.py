@@ -1,5 +1,6 @@
 from django.contrib.auth.models import User
 from django.db import models
+from rest_framework.authtoken.models import Token
 
 
 class UserProfile(models.Model):
@@ -42,3 +43,8 @@ class UserProfile(models.Model):
 
     # TODO: The user's current usage balance is the sum of the costs of UsageEvents
     #  tied to the user and will be calculated when needed.
+
+
+class PasswordResetToken(models.Model):
+    auth_user = models.ForeignKey(User, on_delete=models.RESTRICT)
+    key = models.CharField(default=Token.generate_key, max_length=50)

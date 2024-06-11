@@ -340,3 +340,21 @@ BGEM3_INFERENCE_CONFIGURATION = {
 
 # DOWNLOAD MODEL DEPENDENCIES
 download_vectorization_resources(VECTORIZATION_MODEL_NAME, MODEL_DIRECTORY)
+
+#### EMAIL CONFIGURATION ####
+
+EMAIL_HOST = env('RK_EMAIL_HOST', default='localhost')
+EMAIL_PORT = env('RK_EMAIL_PORT', default=25)
+EMAIL_HOST_USER = env('RK_EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = env('RK_EMAIL_HOST_PASSWORD', default='')
+EMAIL_TIMEOUT = env('RK_EMAIL_TIMEOUT_IN_SECONDS', default=5)  # in seconds.
+EMAIL_USE_TLS = env.bool('RK_EMAIL_USE_TLS', default=False)
+EMAIL_USE_SSL = env.bool('RK_EMAIL_USE_SSL', default=False)
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+
+#### OTHER ####
+
+SERVICE_NAME = 'Riigikantselei semantiline tekstiotsing'
+BASE_URL = env('RK_BASE_URL', default='http://localhost')
