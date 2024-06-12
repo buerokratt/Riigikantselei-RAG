@@ -19,7 +19,7 @@ from django.urls import include, path
 from rest_framework import routers
 
 from core.views import CoreVariableViewSet
-from user_profile.views import UserProfileViewSet, GetTokenView
+from user_profile.views import GetTokenView, UserProfileViewSet
 
 PREFIX = 'api'
 GET_TOKEN_VIEW_URL = f'{PREFIX}/get_token'

@@ -1,5 +1,4 @@
-# TODO here: remove from here and below to run everywhere, get to pass
-exclude: ^(src/manage.py)|(src/api/)|(src/core/)
+exclude: ^(src/manage.py)
 repos:
   - repo: https://github.com/ambv/black
     # black - does automatic code formatting
@@ -89,10 +88,10 @@ repos:
     rev: v1.5.1
     hooks:
       - id: mypy
-        args: [ --disallow-untyped-defs, --ignore-missing-imports ]
+        pass_filenames: false
+        args: [ --disallow-untyped-defs, --ignore-missing-imports, 'src' ]
         # --disallow-untyped-defs - This flag reports an error whenever it encounters a function definition without type annotations.
         # --ignore-missing-imports - This flag makes mypy ignore all missing imports. It is equivalent to adding # type: ignore comments to all unresolved imports within your codebase.
-        files: ^src/
 
   - repo: local
     hooks:

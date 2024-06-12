@@ -13,4 +13,5 @@ TestAPI:
   script:
     - conda env create -f conda-environment.yaml
     - source activate riigikantselei
-    - python ./src/manage.py test
+    - python manage.py migrate
+    - pre-commit run --all-files

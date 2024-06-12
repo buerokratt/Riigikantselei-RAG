@@ -10,6 +10,6 @@ def create_test_user(username: str, email: str, password: str, is_superuser: boo
         password=password,
         is_superuser=is_superuser,
         is_staff=is_superuser,
-        is_active=True
+        is_active=True,
     )
     return user

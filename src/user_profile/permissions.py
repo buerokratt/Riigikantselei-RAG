@@ -12,7 +12,7 @@ _ADMIN_ONLY_ACTIONS = {'list', 'accept', 'decline', 'ban', 'set_limit'}
 
 
 class UserProfilePermission(permissions.BasePermission):
-    def has_permission(self, request, view):
+    def has_permission(self, request, view):  # type: ignore
         if view.action in _LOGGED_OUT_ONLY_ACTIONS:
             return not request.user.is_authenticated
         if view.action in _LOGGED_IN_AND_ACCEPTED_ONLY_ACTIONS:
@@ -21,7 +21,20 @@ class UserProfilePermission(permissions.BasePermission):
             return request.user.is_authenticated and request.user.user_profile.is_admin
         raise RuntimeError('Unknown action.')
 
-    def has_object_permission(self, request, view, obj):
+    def has_object_permission(self, request, view, obj):  # type: ignore
         if view.action == 'retrieve':
             return request.user.user_profile.is_admin or obj.auth_user == request.user
         raise RuntimeError('No action other than "retrieve" should check for object permission.')
+
+
+class IsAppAdminPermission(permissions.BasePermission):
+    def has_permission(self, request, view):  # pylint: disable=unused-argument
+        return request.user.is_authenticated and request.user.user_profile.is_admin
+
+
+class CanSpendResourcesPermission(permissions.BasePermission):
+    def has_permission(self, request, view):  # pylint: disable=unused-argument
+        return (
+            request.user.is_authenticated
+            and request.user.user_profile.is_allowed_to_spend_resources
+        )

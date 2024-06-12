@@ -9,9 +9,8 @@ check:
 	conda run -n riigikantselei pre-commit run --all-files
 
 
-# TODO here: run everywhere
 test:
-	cd src && conda run -n riigikantselei python manage.py test user_profile.tests
+	cd src && conda run -n riigikantselei python manage.py test
 
 makemigrations:
 	cd src && conda run -n riigikantselei python manage.py makemigrations

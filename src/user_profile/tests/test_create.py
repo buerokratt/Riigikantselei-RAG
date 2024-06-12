@@ -11,7 +11,9 @@ from user_profile.models import UserProfile
 class TestUserProfileCreate(APITestCase):
     @classmethod
     def setUpTestData(cls) -> None:  # pylint: disable=invalid-name
-        cls.test_user = create_test_user('admin', 'admin@email.com', 'password', is_superuser=True)
+        cls.admin_auth_user = create_test_user(
+            'admin', 'admin@email.com', 'password', is_superuser=True
+        )
         cls.create_endpoint_url = reverse('user_profile-list')
         cls.base_input = {
             'username': 'tester',
@@ -49,7 +51,7 @@ class TestUserProfileCreate(APITestCase):
             self.assertEqual(getattr(user_profile, attribute), value)
 
     def test_create_fails_because_authed(self) -> None:
-        token, _ = Token.objects.get_or_create(user=self.test_user)
+        token, _ = Token.objects.get_or_create(user=self.admin_auth_user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
         response = self.client.post(self.create_endpoint_url, data=self.input_with_password)
