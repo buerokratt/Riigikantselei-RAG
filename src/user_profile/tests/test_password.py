@@ -103,4 +103,45 @@ class TestUserProfilePassword(APITestCase):
         self.assertNotEqual(old_hash, updated_auth_user.password)
         self.assertEqual(PasswordResetToken.objects.filter(auth_user=updated_auth_user).count(), 0)
 
-    # TODO here: test situations where errors are expected
+    def test_password_reset_fails_because_authed(self) -> None:
+        token, _ = Token.objects.get_or_create(user=self.non_admin_auth_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
+
+        response = self.client.post(self.request_password_reset_endpoint_url, self.email_input_data)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        confirm_password_reset_endpoint_url = reverse(
+            'user_profile-confirm-password-reset', kwargs={'pk': 0}
+        )
+        response = self.client.get(confirm_password_reset_endpoint_url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        password_token_input_data = self.password_input_data | {'token': '0'}
+        response = self.client.post(self.reset_password_url, data=password_token_input_data)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_password_reset_fails_because_not_exists(self) -> None:
+        response = self.client.post(
+            self.request_password_reset_endpoint_url, data={'email': 'admin@email.com'}
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+        confirm_password_reset_endpoint_url = reverse(
+            'user_profile-confirm-password-reset', kwargs={'pk': 0}
+        )
+        response = self.client.get(confirm_password_reset_endpoint_url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+        password_token_input_data = self.password_input_data | {'token': '0'}
+        response = self.client.post(self.reset_password_url, data=password_token_input_data)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_password_reset_fails_because_bad_input(self) -> None:
+        response = self.client.post(
+            self.request_password_reset_endpoint_url, data={'email': 'tester@email'}
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        password_token_input_data = {'password': 'password\0', 'token': '0'}
+        response = self.client.post(self.reset_password_url, data=password_token_input_data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

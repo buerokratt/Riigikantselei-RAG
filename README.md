@@ -32,7 +32,12 @@ conda run -n riigikantselei pre-commit run --all-files
 
 ## Execution
 
-# TODO here: running
+```
+make run
+# OR
+cd src
+conda run -n riigikantselei python manage.py runserver 0.0.0.0:8000
+```
 
 ### Known issues ###
 

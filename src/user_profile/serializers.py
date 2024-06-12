@@ -35,12 +35,6 @@ def _unique_email_validator(email: str) -> str:
     return email
 
 
-def _not_unique_email_validator(email: str) -> str:
-    if User.objects.filter(email=email):
-        return email
-    raise serializers.ValidationError('The given email is not in use.')
-
-
 class UserCreateSerializer(serializers.Serializer):
     username = serializers.CharField(
         required=True,
@@ -117,5 +111,5 @@ class EmailSerializer(serializers.Serializer):
     email = serializers.CharField(
         required=True,
         max_length=100,
-        validators=[_simple_email_format_validator, _not_unique_email_validator],
+        validators=[_simple_email_format_validator],
     )

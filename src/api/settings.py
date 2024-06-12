@@ -352,7 +352,8 @@ EMAIL_USE_TLS = env.bool('RK_EMAIL_USE_TLS', default=False)
 EMAIL_USE_SSL = env.bool('RK_EMAIL_USE_SSL', default=False)
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# TODO: replace dummy backend with real backend
+EMAIL_BACKEND = 'django.core.mail.backends.dummy.EmailBackend'
 
 #### OTHER ####
 

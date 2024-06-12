@@ -129,7 +129,7 @@ class UserProfileViewSet(viewsets.ViewSet):
 
         email = serializer.validated_data['email']
 
-        auth_user = User.objects.get(email=email)
+        auth_user = get_object_or_404(User.objects.all(), email=email)
         token = PasswordResetToken(auth_user=auth_user)
         token.save()
 
@@ -156,7 +156,6 @@ class UserProfileViewSet(viewsets.ViewSet):
 
         return Response()
 
-    # TODO here: test manually
     @action(
         detail=True,
         methods=['get'],
