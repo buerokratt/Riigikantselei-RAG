@@ -15,10 +15,10 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import include, path
 from rest_framework import routers
 
-from core.views import CoreVariableViewSet, AsyncResultView, GPTConversationViewset
+from core.views import AsyncResultView, CoreVariableViewSet, GPTConversationViewset
 
 PREFIX = 'api'
 
@@ -29,5 +29,5 @@ router.register(f'{PREFIX}/gpt', GPTConversationViewset, basename='chat_gpt')
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include(router.urls)),
-    path(f'{PREFIX}/async-result/<str:task_id>/', AsyncResultView.as_view(), name="async_result"),
+    path(f'{PREFIX}/async-result/<str:task_id>/', AsyncResultView.as_view(), name='async_result'),
 ]

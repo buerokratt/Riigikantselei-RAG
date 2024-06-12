@@ -27,22 +27,27 @@ from api.utilities.vectorizer import download_vectorization_resources
 
 env_file_path = os.getenv('RK_ENV_FILE', None)
 if env_file_path:
-    print(f"Loading environment variables from {env_file_path} as env variable 'RK_ENV_FILE' is set!")
+    print(
+        f"Loading environment variables from {env_file_path} as env variable 'RK_ENV_FILE' is set!"
+    )
     environ.Env.read_env(env_file=env_file_path)
 
 env = environ.Env()
 
-PROTECTED_CORE_KEYS = ("SECRET", "KEY", "PASSWORD")
+PROTECTED_CORE_KEYS = ('SECRET', 'KEY', 'PASSWORD')
 CORE_SETTINGS = {
-    "ELASTICSEARCH_URL": env("RK_ELASTICSEARCH_URL", default="http://localhost:9200"),
-    "ELASTICSEARCH_TIMEOUT": env("RK_ELASTICSEARCH_TIMEOUT", default=10),
-
+    'ELASTICSEARCH_URL': env('RK_ELASTICSEARCH_URL', default='http://localhost:9200'),
+    'ELASTICSEARCH_TIMEOUT': env('RK_ELASTICSEARCH_TIMEOUT', default=10),
+    'ELASTICSEARCH_VECTOR_FIELD': env('RK_ELASTICSEARCH_VECTOR_FIELD', default='vector'),
+    'ELASTICSEARCH_TEXT_CONTENT_FIELD': env('RK_ELASTICSEARCH_TEXT_CONTENT_FIELD', default='text'),
     # OpenAI integration
-    "OPENAI_API_KEY": env("RK_OPENAI_API_KEY", default=None),
-    "OPENAI_SYSTEM_MESSAGE": env.str("RK_OPENAI_SYSTEM_MESSAGE", default="You are a helpful assistant."),
-    "OPENAI_API_TIMEOUT": env.int("RK_OPENAI_API_TIMEOUT", default=60),
-    "OPENAI_API_MAX_RETRIES": env.int("RK_OPENAI_API_MAX_RETRIES", default=5),
-    "OPENAI_API_CHAT_MODEL": env.int("RK_OPENAI_API_CHAT_MODEL", default="gpt-4o"),
+    'OPENAI_API_KEY': env('RK_OPENAI_API_KEY', default=None),
+    'OPENAI_SYSTEM_MESSAGE': env.str(
+        'RK_OPENAI_SYSTEM_MESSAGE', default='You are a helpful assistant.'
+    ),
+    'OPENAI_API_TIMEOUT': env.int('RK_OPENAI_API_TIMEOUT', default=60),
+    'OPENAI_API_MAX_RETRIES': env.int('RK_OPENAI_API_MAX_RETRIES', default=5),
+    'OPENAI_API_CHAT_MODEL': env.int('RK_OPENAI_API_CHAT_MODEL', default='gpt-4o'),
 }
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -125,9 +130,7 @@ DATABASES = {
 }
 
 REST_FRAMEWORK = {
-    'DEFAULT_RENDERER_CLASSES': (
-        'rest_framework.renderers.JSONRenderer',
-    ),
+    'DEFAULT_RENDERER_CLASSES': ('rest_framework.renderers.JSONRenderer',),
     'DEFAULT_PERMISSION_CLASSES': ('rest_framework.permissions.IsAuthenticated',),
     'DEFAULT_AUTHENTICATION_CLASSES': [
         # For authenticating requests with the Token
@@ -136,12 +139,12 @@ REST_FRAMEWORK = {
 }
 
 if DEBUG is True:
-    REST_FRAMEWORK["DEFAULT_RENDERER_CLASSES"] = (
+    REST_FRAMEWORK['DEFAULT_RENDERER_CLASSES'] = (
         'rest_framework.renderers.JSONRenderer',
         'rest_framework.renderers.BrowsableAPIRenderer',
     )
 
-    REST_FRAMEWORK["DEFAULT_AUTHENTICATION_CLASSES"] = (
+    REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'] = (
         # For authenticating requests with the Token
         'rest_framework.authentication.TokenAuthentication',
     )
@@ -198,7 +201,7 @@ LOGGING = {
     'formatters': {
         'simple': {
             'format': '\n'
-                      + LOGGING_SEPARATOR.join(
+            + LOGGING_SEPARATOR.join(
                 [
                     '%(levelname)s',
                     '%(module)s',
@@ -226,7 +229,7 @@ LOGGING = {
         },
         'detailed_error': {
             'format': '\n'
-                      + LOGGING_SEPARATOR.join(
+            + LOGGING_SEPARATOR.join(
                 [
                     '%(levelname)s',
                     '%(module)s',
@@ -308,20 +311,12 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERY_WORKER_PREFETCH_MULTIPLIER = env.int('RK_CELERY_PREFETCH_MULTIPLIER', default=1)
 
 #### VECTORIZATION CONFIGURATIONS ####
-MODEL_DIRECTORY = DATA_DIR / "models"
-VECTORIZATION_MODEL_NAME = "BAAI/bge-m3"
+MODEL_DIRECTORY = DATA_DIR / 'models'
+VECTORIZATION_MODEL_NAME = 'BAAI/bge-m3'
 
-BGEM3_SYSTEM_CONFIGURATION = {
-    "use_fp16": True,
-    "device": None,
-    "normalize_embeddings": True
-}
+BGEM3_SYSTEM_CONFIGURATION = {'use_fp16': True, 'device': None, 'normalize_embeddings': True}
 
-BGEM3_INFERENCE_CONFIGURATION = {
-    "batch_size": 12,
-    "return_dense": True,
-    "max_length": 8192
-}
+BGEM3_INFERENCE_CONFIGURATION = {'batch_size': 12, 'return_dense': True, 'max_length': 8192}
 
 # DOWNLOAD MODEL DEPENDENCIES
 download_vectorization_resources(VECTORIZATION_MODEL_NAME, MODEL_DIRECTORY)

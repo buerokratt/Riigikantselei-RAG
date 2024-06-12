@@ -6,7 +6,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('core', '0001_initial'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
@@ -16,17 +15,32 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='ChatGPTConversation',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name='ID'
+                    ),
+                ),
                 ('system_input', models.TextField()),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
-                ('author', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
+                (
+                    'author',
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
             name='LLMResult',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name='ID'
+                    ),
+                ),
                 ('celery_task_id', models.TextField()),
                 ('response', models.TextField()),
                 ('user_input', models.TextField()),
@@ -36,7 +50,12 @@ class Migration(migrations.Migration):
                 ('headers', models.JSONField()),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
-                ('conversation', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='core.chatgptconversation')),
+                (
+                    'conversation',
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE, to='core.chatgptconversation'
+                    ),
+                ),
             ],
         ),
     ]

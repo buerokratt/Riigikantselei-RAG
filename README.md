@@ -30,7 +30,12 @@ conda run -n riigikantselei pre-commit run --all-files
 
 ## Execution
 
-# TODO:
+1. Ensure you have all the services up and running through ```docker-compose up```
+1. Enter the src directory.
+1. Activate the conda environment with ```conda activate riigikantselei```
+1. Ensure the database changes are brought over with ```python manage.py migrate```
+1. Run the Celery workers for asynchronous tasks with ```celery -A api.celery_handler worker -l debug```
+1. Run the development web server with ```python manage.py runserver```.
 
 ### Known issues ###
 
