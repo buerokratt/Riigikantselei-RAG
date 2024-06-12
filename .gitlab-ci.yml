@@ -11,8 +11,7 @@ TestAPI:
   tags:
     - ci-test
   script:
+    - apt-get update && apt-get install -y make
     - conda env create -f conda-environment.yaml
-    - source activate riigikantselei
-    - cd src
-    - python manage.py migrate
-    - pre-commit run --all-files
+    - make migrate
+    - make check
