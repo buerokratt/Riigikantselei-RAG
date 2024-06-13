@@ -10,16 +10,16 @@ from user_profile.utilities import create_test_user_with_user_profile
 
 class TestGetToken(APITestCase):
     def setUp(self) -> None:  # pylint: disable=invalid-name
-        self.admin_auth_user = create_test_user_with_user_profile(
-            self, 'admin', 'admin@email.com', 'password', is_superuser=True
+        self.manager_auth_user = create_test_user_with_user_profile(
+            self, 'manager', 'manager@email.com', 'password', is_manager=True
         )
         self.token_endpoint_url = reverse('get_token')
 
     def test_get_existing_token(self) -> None:
-        admin_token, created = Token.objects.get_or_create(user=self.admin_auth_user)
+        manager_token, created = Token.objects.get_or_create(user=self.manager_auth_user)
         self.assertTrue(created)
 
-        encoded_credentials = b64encode('admin:password'.encode(HTTP_HEADER_ENCODING)).decode(
+        encoded_credentials = b64encode('manager:password'.encode(HTTP_HEADER_ENCODING)).decode(
             HTTP_HEADER_ENCODING
         )
         self.client.credentials(HTTP_AUTHORIZATION=f'Basic {encoded_credentials}')
@@ -27,10 +27,10 @@ class TestGetToken(APITestCase):
         response = self.client.get(self.token_endpoint_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        self.assertEqual(response.data['token'], admin_token.key)
+        self.assertEqual(response.data['token'], manager_token.key)
 
     def test_get_new_token(self) -> None:
-        encoded_credentials = b64encode('admin:password'.encode(HTTP_HEADER_ENCODING)).decode(
+        encoded_credentials = b64encode('manager:password'.encode(HTTP_HEADER_ENCODING)).decode(
             HTTP_HEADER_ENCODING
         )
         self.client.credentials(HTTP_AUTHORIZATION=f'Basic {encoded_credentials}')
@@ -38,7 +38,7 @@ class TestGetToken(APITestCase):
         response = self.client.get(self.token_endpoint_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        admin_token, created = Token.objects.get_or_create(user=self.admin_auth_user)
+        manager_token, created = Token.objects.get_or_create(user=self.manager_auth_user)
         self.assertFalse(created)
 
-        self.assertEqual(response.data['token'], admin_token.key)
+        self.assertEqual(response.data['token'], manager_token.key)

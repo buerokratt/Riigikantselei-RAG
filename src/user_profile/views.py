@@ -103,7 +103,6 @@ class UserProfileViewSet(viewsets.ViewSet):
         auth_user = get_object_or_404(User.objects.all(), pk=pk)
         user_profile = auth_user.user_profile
 
-        user_profile.usage_limit_is_default = False
         user_profile.custom_usage_limit_euros = serializer.validated_data['limit']
         user_profile.save()
 

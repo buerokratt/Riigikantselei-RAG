@@ -30,11 +30,10 @@ class TestUserProfileCreate(APITestCase):
 
         auth_user_id = response.data['id']
         model_data = {
-            'is_admin': False,
+            'is_manager': False,
             'is_reviewed': False,
             'is_accepted': False,
             'is_allowed_to_spend_resources': False,
-            'usage_limit_is_default': True,
             'custom_usage_limit_euros': None,
         }
         expected_data = self.base_input | model_data | {'id': auth_user_id}

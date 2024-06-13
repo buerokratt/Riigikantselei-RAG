@@ -13,8 +13,8 @@ from user_profile.utilities import create_test_user_with_user_profile
 # pylint: disable=too-many-instance-attributes
 class TestUserProfilePassword(APITestCase):
     def setUp(self) -> None:  # pylint: disable=invalid-name
-        self.non_admin_auth_user = create_test_user_with_user_profile(
-            self, 'tester', 'tester@email.com', 'password', is_superuser=False
+        self.non_manager_auth_user = create_test_user_with_user_profile(
+            self, 'tester', 'tester@email.com', 'password', is_manager=False
         )
 
         self.change_password_endpoint_url = reverse('user_profile-change-password')
@@ -27,9 +27,9 @@ class TestUserProfilePassword(APITestCase):
     # Change
 
     def test_change_password(self) -> None:
-        old_hash = self.non_admin_auth_user.password
+        old_hash = self.non_manager_auth_user.password
 
-        token, _ = Token.objects.get_or_create(user=self.non_admin_auth_user)
+        token, _ = Token.objects.get_or_create(user=self.non_manager_auth_user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
         response = self.client.post(
@@ -37,7 +37,7 @@ class TestUserProfilePassword(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        updated_auth_user = User.objects.get(id=self.non_admin_auth_user.id)
+        updated_auth_user = User.objects.get(id=self.non_manager_auth_user.id)
         self.assertNotEqual(old_hash, updated_auth_user.password)
 
     def test_change_password_fails_because_not_authed(self) -> None:
@@ -45,7 +45,7 @@ class TestUserProfilePassword(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_change_password_fails_because_bad_password(self) -> None:
-        token, _ = Token.objects.get_or_create(user=self.non_admin_auth_user)
+        token, _ = Token.objects.get_or_create(user=self.non_manager_auth_user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
         input_data = {'password': 'password\0'}
@@ -57,9 +57,9 @@ class TestUserProfilePassword(APITestCase):
 
     @override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
     def test_password_reset(self) -> None:
-        old_hash = self.non_admin_auth_user.password
+        old_hash = self.non_manager_auth_user.password
         self.assertEqual(
-            PasswordResetToken.objects.filter(auth_user=self.non_admin_auth_user).count(), 0
+            PasswordResetToken.objects.filter(auth_user=self.non_manager_auth_user).count(), 0
         )
         self.assertEqual(len(mail.outbox), 0)
 
@@ -70,7 +70,7 @@ class TestUserProfilePassword(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(
-            PasswordResetToken.objects.filter(auth_user=self.non_admin_auth_user).count(), 1
+            PasswordResetToken.objects.filter(auth_user=self.non_manager_auth_user).count(), 1
         )
         self.assertEqual(len(mail.outbox), 1)
 
@@ -99,12 +99,12 @@ class TestUserProfilePassword(APITestCase):
         response = self.client.post(self.reset_password_url, data=password_token_input_data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        updated_auth_user = User.objects.get(id=self.non_admin_auth_user.id)
+        updated_auth_user = User.objects.get(id=self.non_manager_auth_user.id)
         self.assertNotEqual(old_hash, updated_auth_user.password)
         self.assertEqual(PasswordResetToken.objects.filter(auth_user=updated_auth_user).count(), 0)
 
     def test_password_reset_fails_because_authed(self) -> None:
-        token, _ = Token.objects.get_or_create(user=self.non_admin_auth_user)
+        token, _ = Token.objects.get_or_create(user=self.non_manager_auth_user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
         response = self.client.post(self.request_password_reset_endpoint_url, self.email_input_data)
@@ -122,7 +122,7 @@ class TestUserProfilePassword(APITestCase):
 
     def test_password_reset_fails_because_not_exists(self) -> None:
         response = self.client.post(
-            self.request_password_reset_endpoint_url, data={'email': 'admin@email.com'}
+            self.request_password_reset_endpoint_url, data={'email': 'manager@email.com'}
         )
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 

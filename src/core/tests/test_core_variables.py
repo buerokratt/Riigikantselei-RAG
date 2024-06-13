@@ -17,14 +17,14 @@ class TestCoreVariableViews(APITestCase):
         cls.list_url = reverse('core_settings-list')
 
     def setUp(self) -> None:  # pylint: disable=invalid-name
-        self.admin_auth_user = create_test_user_with_user_profile(
-            self, 'admin', 'admin@email.com', 'password', is_superuser=True
+        self.manager_auth_user = create_test_user_with_user_profile(
+            self, 'manager', 'manager@email.com', 'password', is_manager=True
         )
-        self.non_admin_auth_user = create_test_user_with_user_profile(
-            self, 'tester', 'tester@email.com', 'password', is_superuser=False
+        self.non_manager_auth_user = create_test_user_with_user_profile(
+            self, 'tester', 'tester@email.com', 'password', is_manager=False
         )
 
-        token, _ = Token.objects.get_or_create(user=self.admin_auth_user)
+        token, _ = Token.objects.get_or_create(user=self.manager_auth_user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
     @override_settings(CORE_SETTINGS={'ELASTICSEARCH': SAMPLE_ES_VALUE})
@@ -158,8 +158,8 @@ class TestCoreVariableViews(APITestCase):
         setting = get_core_setting(key_name)
         self.assertEqual(setting, SAMPLE_ES_VALUE)
 
-    def test_non_admin_users_not_having_access(self) -> None:
-        token, _ = Token.objects.get_or_create(user=self.non_admin_auth_user)
+    def test_non_manager_users_not_having_access(self) -> None:
+        token, _ = Token.objects.get_or_create(user=self.non_manager_auth_user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
         # try get

@@ -57,11 +57,10 @@ class UserCreateSerializer(serializers.Serializer):
 # Objects are modified only through very specific views,
 # so the serializer is used only for reading
 class UserProfileReadOnlySerializer(serializers.ModelSerializer):
-    is_admin = serializers.BooleanField()
+    is_manager = serializers.BooleanField()
     is_reviewed = serializers.BooleanField()
     is_accepted = serializers.BooleanField()
     is_allowed_to_spend_resources = serializers.BooleanField()
-    usage_limit_is_default = serializers.BooleanField()
     custom_usage_limit_euros = serializers.FloatField()
 
     def to_representation(self, instance: UserProfile) -> dict:
@@ -80,11 +79,10 @@ class UserProfileReadOnlySerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
         fields = (
-            'is_admin',
+            'is_manager',
             'is_reviewed',
             'is_accepted',
             'is_allowed_to_spend_resources',
-            'usage_limit_is_default',
             'custom_usage_limit_euros',
         )
         read_only_fields = ('__all__',)

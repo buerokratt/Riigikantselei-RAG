@@ -16,16 +16,13 @@ from api.utilities.vectorizer import Vectorizer
 
 class TestElasticCore(APITestCase):
     def setUp(self) -> None:  # pylint: disable=invalid-name
-        # We add a little bit randomness here to ensure we always test in a clean state.
-        self.index_prefix = 'test_ci_rk_vectors_'
-        self.index_name = self.index_prefix + uuid.uuid4().hex
+        self.index_name = 'test_ci_rk_vectors'
         self.vector_field_name = 'vector'
-        self.elastic_core = ElasticCore()
 
-    # We wipe out all indices that have been created for the purpose of the test because
-    # improper shutdowns etc may not reach tearDown and can cause stagglers.
-    def tearDown(self) -> None:  # pylint: disable=invalid-name
-        self.elastic_core.elasticsearch.indices.delete(index=self.index_prefix + '*', ignore=[404])
+        # We wipe out all indices that have been created for the purpose of the test because
+        # improper shutdowns etc may not reach tearDown and can cause stragglers.
+        self.elastic_core = ElasticCore()
+        self.elastic_core.elasticsearch.indices.delete(index=self.index_name, ignore=[404])
 
     def test_creating_index(self) -> None:
         response = self.elastic_core.create_index(self.index_name, shards=3, replicas=1)
