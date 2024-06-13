@@ -1,3 +1,5 @@
+from typing import Any
+
 from django.conf import settings
 from django.db import transaction
 from django.urls import reverse
@@ -88,8 +90,8 @@ class CoreVariableSerializer(serializers.ModelSerializer):
 
     env_value = serializers.SerializerMethodField()
 
-    def to_representation(self, instance):
-        data = super(CoreVariableSerializer, self).to_representation(instance)
+    def to_representation(self, instance: CoreVariable) -> dict:
+        data = super().to_representation(instance)
         protected = settings.PROTECTED_CORE_KEYS
 
         for protected_key in protected:
@@ -102,7 +104,7 @@ class CoreVariableSerializer(serializers.ModelSerializer):
         model = CoreVariable
         fields = ('id', 'name', 'value', 'env_value')
 
-    def get_env_value(self, obj):
+    def get_env_value(self, obj: CoreVariable) -> Any:
         """Retrieves value for the variable from env."""
         variable_name = obj.name
         env_value = settings.CORE_SETTINGS.get(variable_name, '')

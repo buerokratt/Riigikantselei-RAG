@@ -1,6 +1,8 @@
 import logging
-from typing import List
+import os
+from typing import Optional, Tuple, List
 
+import django
 import openai
 from openai import OpenAI
 from rest_framework.exceptions import (
@@ -13,20 +15,22 @@ from rest_framework.exceptions import (
 
 from api.utilities.core_settings import get_core_setting
 
-logger = logging.getLogger('chatgpt')
+logger = logging.getLogger(__name__)
 
 
-# TODO Maybe replace this with an actual DB model later on but for now it's a good enough abstraction for GPT responses.
+# TODO Maybe replace this with an actual DB model later on
+#  but for now it's a good enough abstraction for GPT responses.
 class LLMResponse:
     def __init__(
         self,
         message: str,
         model: str,
+        system_input: str,
         user_input: str,
         input_tokens: int,
         response_tokens: int,
         headers: dict,
-    ):
+    ):  # pylint: disable=too-many-arguments
         self.message = message
         self.user_input = user_input
 
@@ -36,34 +40,34 @@ class LLMResponse:
         self.headers = headers
 
     @property
-    def ratelimit_requests(self):
-        return int(self.headers.get('x-ratelimit-limit-requests'))
+    def ratelimit_requests(self) -> int:
+        return int(str(self.headers.get('x-ratelimit-limit-requests')))
 
     @property
-    def ratelimit_tokens(self):
-        return int(self.headers.get('x-ratelimit-limit-tokens'))
+    def ratelimit_tokens(self) -> int:
+        return int(str(self.headers.get('x-ratelimit-limit-tokens')))
 
     @property
-    def remaining_requests(self):
-        return int(self.headers.get('x-ratelimit-remaining-requests'))
+    def remaining_requests(self) -> int:
+        return int(str(self.headers.get('x-ratelimit-remaining-requests')))
 
     @property
-    def remaining_tokens(self):
-        return int(self.headers.get('x-ratelimit-remaining-tokens'))
+    def remaining_tokens(self) -> int:
+        return int(str(self.headers.get('x-ratelimit-remaining-tokens')))
 
     @property
-    def reset_requests_at_ms(self):
-        return self.headers.get('x-ratelimit-reset-requests')
+    def reset_requests_at_ms(self) -> str:
+        return str(self.headers.get('x-ratelimit-reset-requests'))
 
     @property
-    def reset_tokens_at_ms(self):
-        return self.headers.get('x-ratelimit-reset-tokens')
+    def reset_tokens_at_ms(self) -> str:
+        return str(self.headers.get('x-ratelimit-reset-tokens'))
 
     @property
-    def total_tokens(self):
+    def total_tokens(self) -> int:
         return self.input_tokens + self.response_tokens
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f'{self.message} / {self.total_tokens} tokens used'
 
 
@@ -72,7 +76,13 @@ class ContentFilteredException(Exception):
 
 
 class ChatGPT:
-    def __init__(self, api_key=None, model=None, timeout=None, max_retries=None):
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        model: Optional[str] = None,
+        timeout: Optional[int] = None,
+        max_retries: Optional[int] = None,
+    ):
         self.api_key = api_key or get_core_setting('OPENAI_API_KEY')
         self.timeout = timeout or get_core_setting('OPENAI_API_TIMEOUT')
         self.max_retries = max_retries or get_core_setting('OPENAI_API_MAX_RETRIES')
@@ -90,15 +100,19 @@ class ChatGPT:
             finish_reason = choice.get('finish_reason', 'N/A')
             if finish_reason == 'content_filter':
                 message = f'Input {user_input} was filtered by OpenAI API!'
-                logger.warning(message)
                 raise ContentFilteredException(message)
 
             if finish_reason == 'stop':
                 message = choice.get('message', {}).get('content', None)
 
+        if message is None:
+            raise RuntimeError
+
         return message
 
-    def parse_results(self, user_input: str, response: dict, headers: dict):
+    def parse_results(
+        self, system_input: str, user_input: str, response: dict, headers: dict
+    ) -> LLMResponse:
         message = self._parse_message(response, user_input)
 
         return LLMResponse(
@@ -110,70 +124,58 @@ class ChatGPT:
             headers=headers,
         )
 
-    def commit_api(self, messages: List[dict]) -> (dict, dict, int):
+    def commit_api(self, messages: List[dict]) -> Tuple[dict, dict, int]:
         try:
             response = self.gpt.chat.completions.with_raw_response.create(
                 model=self.model, stream=False, messages=messages
             )
 
             headers = dict(response.headers)
-            status_code = response.status_code
             response = response.parse().to_dict()
+            status_code = response.status_code
             return headers, response, status_code
 
-        except openai.AuthenticationError as e:
-            logger.exception(
-                f"Couldn't authenticate with OpenAI API! Status: {e.status_code} Response: {e.response.text}"
-            )
-            raise AuthenticationFailed("Couldn't authenticate with OpenAI API!")
+        except openai.AuthenticationError as exception:
+            raise AuthenticationFailed("Couldn't authenticate with OpenAI API!") from exception
 
-        except openai.BadRequestError as e:
-            logger.exception(
-                f'OpenAI request is malformed! Status: {e.status_code} Response: {e.response.text}'
-            )
-            raise ValidationError('OpenAI request is not correct!')
+        except openai.BadRequestError as exception:
+            raise ValidationError('OpenAI request is not correct!') from exception
 
-        except openai.InternalServerError as e:
-            logger.exception(
-                f'Issues on OpenAI server! Status: {e.status_code} Response: {e.response.text}'
-            )
-            raise e
+        # TODO: We will be handling this exception with retries later,
+        #  either through Celery or something else.
+        except openai.InternalServerError as exception:
+            logger.exception('Issues on OpenAI server!')
+            raise exception
 
-        except openai.NotFoundError as e:
-            logger.exception(
-                f'Requested resource was not found! Status: {e.status_code} Response: {e.response.text}'
-            )
-            raise NotFound('Requested resource was not found! Is the right model configured?')
+        except openai.NotFoundError as exception:
+            raise NotFound(
+                'Requested resource was not found! Is the right model configured?'
+            ) from exception
 
-        except openai.PermissionDeniedError as e:
-            logger.exception(
-                f'Requested resource was denied! Status: {e.status_code} Response: {e.response.text}'
-            )
-            raise PermissionDenied('Requested resource was denied!')
+        except openai.PermissionDeniedError as exception:
+            raise PermissionDenied('Requested resource was denied!') from exception
 
-        except openai.RateLimitError as e:
-            logger.warning(
-                f'Requested resource was rate-limited! Status: {e.status_code} Response: {e.response.text}'
-            )
-            raise e
+        # TODO: We will be handling this exception with retries later,
+        #  either through Celery or something else.
+        except openai.RateLimitError as exception:
+            raise exception from exception
 
-        except openai.UnprocessableEntityError as e:
-            logger.exception(
-                f'Unable to process the request despite the format being correct! Status: {e.status_code} Response: {e.response.text}'
-            )
-            raise e
+        # TODO: We will be handling this exception with retries later,
+        #  either through Celery or something else.
+        except openai.UnprocessableEntityError as exception:
+            logger.exception('Unable to process the request despite the format being correct!')
+            raise exception from exception
 
-        except openai.APITimeoutError as e:
-            logger.warning(f'OpenAI API timed out!')
-            raise e
+        # TODO: We will be handling this exception with retries later,
+        #  either through Celery or something else.
+        except openai.APITimeoutError as exception:
+            raise exception
 
-        except openai.APIConnectionError as e:
-            logger.exception("Couldn't connect to the OpenAI API")
-            raise APIException("Couldn't connect to the OpenAI API!")
+        except openai.APIConnectionError as exception:
+            raise APIException("Couldn't connect to the OpenAI API!") from exception
 
-        except Exception as e:
-            logger.exception("Couldn't connect to the OpenAI API")
-            raise APIException("Couldn't connect to the OpenAI API!")
+        except Exception as exception:
+            raise APIException("Couldn't connect to the OpenAI API!") from exception
 
     @staticmethod
     def construct_messages(system_input: str, user_input: str) -> List[dict]:
@@ -184,19 +186,16 @@ class ChatGPT:
 
     def chat(self, messages: List[dict]) -> LLMResponse:
         user_input = messages[-1]['content']
-        headers, response, status_code = self.commit_api(messages)
+        headers, response, _ = self.commit_api(messages)
         llm_result = self.parse_results(user_input=user_input, response=response, headers=headers)
         return llm_result
 
 
 if __name__ == '__main__':
-    import os
-
-    import django
-
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'api.settings')
     django.setup()
 
     gpt = ChatGPT()
-    response = gpt.chat('Hello there!')
-    pass
+    gpt_response = gpt.chat('Hello there!')
+
+    logger.info(gpt_response)

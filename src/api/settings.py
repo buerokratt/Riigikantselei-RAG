@@ -45,9 +45,10 @@ CORE_SETTINGS = {
     'OPENAI_SYSTEM_MESSAGE': env.str(
         'RK_OPENAI_SYSTEM_MESSAGE', default='You are a helpful assistant.'
     ),
-    'OPENAI_API_TIMEOUT': env.int('RK_OPENAI_API_TIMEOUT', default=60),
+    'OPENAI_API_TIMEOUT': env.int('RK_OPENAI_API_TIMEOUT', default=10),
     'OPENAI_API_MAX_RETRIES': env.int('RK_OPENAI_API_MAX_RETRIES', default=5),
     'OPENAI_API_CHAT_MODEL': env.int('RK_OPENAI_API_CHAT_MODEL', default='gpt-4o'),
+    'DEFAULT_USAGE_LIMIT_EUROS': env.float('RK_DEFAULT_USAGE_LIMIT_EUROS', default=10.0),
 }
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -76,7 +77,9 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'rest_framework.authtoken',
     'core',
+    'user_profile',
 ]
 
 MIDDLEWARE = [
@@ -136,6 +139,12 @@ REST_FRAMEWORK = {
         # For authenticating requests with the Token
         'rest_framework.authentication.TokenAuthentication',
     ],
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '10/hour',
+    },
 }
 
 if DEBUG is True:
@@ -148,6 +157,9 @@ if DEBUG is True:
         # For authenticating requests with the Token
         'rest_framework.authentication.TokenAuthentication',
     )
+
+    REST_FRAMEWORK['DEFAULT_THROTTLE_CLASSES'] = []
+    REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] = {}
 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
@@ -320,3 +332,22 @@ BGEM3_INFERENCE_CONFIGURATION = {'batch_size': 12, 'return_dense': True, 'max_le
 
 # DOWNLOAD MODEL DEPENDENCIES
 download_vectorization_resources(VECTORIZATION_MODEL_NAME, MODEL_DIRECTORY)
+
+#### EMAIL CONFIGURATION ####
+
+EMAIL_HOST = env('RK_EMAIL_HOST', default='localhost')
+EMAIL_PORT = env('RK_EMAIL_PORT', default=25)
+EMAIL_HOST_USER = env('RK_EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = env('RK_EMAIL_HOST_PASSWORD', default='')
+EMAIL_TIMEOUT = env('RK_EMAIL_TIMEOUT_IN_SECONDS', default=5)  # in seconds.
+EMAIL_USE_TLS = env.bool('RK_EMAIL_USE_TLS', default=False)
+EMAIL_USE_SSL = env.bool('RK_EMAIL_USE_SSL', default=False)
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+# TODO: replace dummy backend with real backend
+EMAIL_BACKEND = 'django.core.mail.backends.dummy.EmailBackend'
+
+#### OTHER ####
+
+SERVICE_NAME = 'Riigikantselei semantiline tekstiotsing'
+BASE_URL = env('RK_BASE_URL', default='http://localhost')

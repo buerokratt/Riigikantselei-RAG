@@ -1,3 +1,4 @@
+from typing import Any, Dict
 from unittest import mock
 
 from rest_framework.exceptions import AuthenticationFailed
@@ -7,8 +8,8 @@ from api.utilities.gpt import ChatGPT, ContentFilteredException
 
 
 class ChatGPTTestCase(APITestCase):
-    def setUp(self):
-        self.api_response = {
+    def setUp(self) -> None:  # pylint: disable=invalid-name
+        self.api_response: Dict[str, Any] = {
             'id': 'chatcmpl-9WkWmu5OQwhsYRJvFArNzDwlBuhAa',
             'choices': [
                 {
@@ -44,7 +45,15 @@ class ChatGPTTestCase(APITestCase):
             'x-ratelimit-reset-tokens': '56ms',
             'x-request-id': 'req_b74e6ad94b04367098b39f1c3acf54b2',
             'cf-cache-status': 'DYNAMIC',
-            'set-cookie': '__cf_bm=LDZOZXQfvCDzOrqomiWkkMMZ4eqrPsvPSpM2M9NYKZs-1717592376-1.0.1.1-60MKAcfYUo50.hDcIfIfgz8zR4psKcCnGCMwGyOBWwJv1OgmRUHEuL4puwiuUb_2JeMy3d_fn0fvmKsxKxXmbA; path=/; expires=Wed, 05-Jun-24 13:29:36 GMT; domain=.api.openai.com; HttpOnly; Secure; SameSite=None, _cfuvid=_9iq19utMBYd3JjR8OQZ2OVFHI16qkFU4GPF6FLNSRo-1717592376822-0.0.1.1-604800000; path=/; domain=.api.openai.com; HttpOnly; Secure; SameSite=None',
+            'set-cookie': (
+                '__cf_bm=LDZOZXQfvCDzOrqomiWkkMMZ4eqrPsvPSpM2M9NYKZs-1717592376-1.0.1.1-60MKAcfYU'
+                'o50.hDcIfIfgz8zR4psKcCnGCMwGyOBWwJv1OgmRUHEuL4puwiuUb_2JeMy3d_fn0fvmKsxKxXmbA; '
+                'path=/; expires=Wed, 05-Jun-24 13:29:36 GMT; domain=.api.openai.com; HttpOnly; '
+                'Secure; SameSite=None, '
+                '_cfuvid=_9iq19utMBYd3JjR8OQZ2OVFHI16qkFU4GPF6FLNSRo-1717592376822-0.0.1.1-'
+                '604800000; '
+                'path=/; domain=.api.openai.com; HttpOnly; Secure; SameSite=None'
+            ),
             'server': 'cloudflare',
             'cf-ray': '88f0573e1a507125-TLL',
             'content-encoding': 'gzip',
@@ -54,7 +63,7 @@ class ChatGPTTestCase(APITestCase):
         self.api_status_code = 200
         self.messages = ChatGPT.construct_messages('You are an helpful assistant', 'hello there')
 
-    def test_simple_chat_completion(self):
+    def test_simple_chat_completion(self) -> None:
         return_values = (self.api_response_headers, self.api_response, self.api_status_code)
         with mock.patch('api.utilities.gpt.ChatGPT.commit_api', return_value=return_values):
             gpt = ChatGPT(api_key='None')
@@ -74,15 +83,15 @@ class ChatGPTTestCase(APITestCase):
             self.assertEqual(llm_result.reset_requests_at_ms, '120ms')
             self.assertEqual(llm_result.reset_tokens_at_ms, '56ms')
 
-    def test_errors_being_caught_with_api_exceptions(self):
+    def test_errors_being_caught_with_api_exceptions(self) -> None:
         with self.assertRaises(AuthenticationFailed):
             gpt = ChatGPT(api_key='None')
-            llm_result = gpt.chat(messages=self.messages)
+            _ = gpt.chat(messages=self.messages)
 
-    def test_exceptions_being_triggered_on_content_filter(self):
+    def test_exceptions_being_triggered_on_content_filter(self) -> None:
         self.api_response['choices'][0]['finish_reason'] = 'content_filter'
         with self.assertRaises(ContentFilteredException):
             return_values = (self.api_response_headers, self.api_response, self.api_status_code)
             with mock.patch('api.utilities.gpt.ChatGPT.commit_api', return_value=return_values):
                 gpt = ChatGPT(api_key='None')
-                llm_result = gpt.chat(messages=self.messages)
+                _ = gpt.chat(messages=self.messages)

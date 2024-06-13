@@ -1,3 +1,4 @@
+import logging
 import os
 
 from celery import Celery, Task
@@ -10,7 +11,9 @@ app = Celery('taskman')
 app.config_from_object('django.conf:settings', namespace='CELERY')
 app.autodiscover_tasks()
 
+logger = logging.getLogger(__name__)
+
 
 @app.task(bind=True)
 def debug_task(self: Task) -> None:
-    print(f'Request: {self.request!r}')
+    logger.info(f'Request: {self.request!r}')

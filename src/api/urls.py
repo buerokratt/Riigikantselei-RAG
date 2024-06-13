@@ -19,15 +19,19 @@ from django.urls import include, path
 from rest_framework import routers
 
 from core.views import AsyncResultView, CoreVariableViewSet, GPTConversationViewset
+from user_profile.views import GetTokenView, UserProfileViewSet
 
 PREFIX = 'api'
+GET_TOKEN_VIEW_URL = f'{PREFIX}/get_token'
 
 router = routers.DefaultRouter()
 router.register(f'{PREFIX}/core_settings', CoreVariableViewSet, basename='core_settings')
+router.register(f'{PREFIX}/user_profile', UserProfileViewSet, basename='user_profile')
 router.register(f'{PREFIX}/gpt', GPTConversationViewset, basename='chat_gpt')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include(router.urls)),
+    path(GET_TOKEN_VIEW_URL, GetTokenView.as_view(), name='get_token'),
     path(f'{PREFIX}/async-result/<str:task_id>/', AsyncResultView.as_view(), name='async_result'),
 ]

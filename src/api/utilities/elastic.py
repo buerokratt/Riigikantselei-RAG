@@ -1,6 +1,6 @@
 import functools
 import logging
-from typing import List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from elasticsearch import AuthenticationException
 from elasticsearch import ConnectionError as ElasticsearchConnectionError
@@ -10,9 +10,9 @@ from rest_framework.exceptions import APIException, AuthenticationFailed, NotFou
 
 from api.utilities.core_settings import get_core_setting
 
-logger = logging.getLogger('elastic_core')
+logger = logging.getLogger(__name__)
 
-MATCH_ALL_QUERY = {'query': {'match_all': {}}}
+MATCH_ALL_QUERY: Dict[str, Dict[str, dict]] = {'query': {'match_all': {}}}
 ELASTIC_NOT_FOUND_MESSAGE = 'Could not find specified data!'
 ELASTIC_REQUEST_ERROR_MESSAGE = 'Could not connect to Elasticsearch!'
 ELASTIC_CONNECTION_TIMEOUT_MESSAGE = (
@@ -25,48 +25,38 @@ ELASTIC_CONNECTION_ERROR_MESSAGE = (
 )
 
 
-def elastic_connection(func):
+def elastic_connection(func: Callable) -> Callable:
     @functools.wraps(func)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: tuple, **kwargs: dict) -> Any:
         try:
             return func(*args, **kwargs)
-        except NotFoundError:
-            logger.exception('Could not find Elasticsearch resource!')
-            raise NotFound(ELASTIC_NOT_FOUND_MESSAGE)
+        except NotFoundError as exception:
+            raise NotFound(ELASTIC_NOT_FOUND_MESSAGE) from exception
 
-        except RequestError:
-            logger.exception(f'Could not connect to Elasticsearch!')
-            raise APIException(ELASTIC_REQUEST_ERROR_MESSAGE)
+        except RequestError as exception:
+            raise APIException(ELASTIC_REQUEST_ERROR_MESSAGE) from exception
 
-        except ConnectionTimeout as e:
-            logger.exception(
-                'Connection to Elasticsearch timed out! '
-                f'Info: {e.info}, '
-                f'Status Code: {e.status_code}, '
-                f'Error: {e.error}'
-            )
-            raise APIException(ELASTIC_CONNECTION_TIMEOUT_MESSAGE)
+        except ConnectionTimeout as exception:
+            raise APIException(ELASTIC_CONNECTION_TIMEOUT_MESSAGE) from exception
 
-        except AuthenticationException:
-            logger.exception('Could not authenticate Elasticsearch!')
-            raise AuthenticationFailed(ELASTIC_AUTHENTICATION_ERROR_MESSAGE)
+        except AuthenticationException as exception:
+            raise AuthenticationFailed(ELASTIC_AUTHENTICATION_ERROR_MESSAGE) from exception
 
-        # Important to set the ConnectionError to the bottom of the chain as it's one of the superclasses the other exceptions inherit.
-        except ElasticsearchConnectionError as e:
-            error_message = (
-                f'{ELASTIC_CONNECTION_ERROR_MESSAGE} '
-                f'Info: {e.info}, '
-                f'Status Code: {e.status_code}, '
-                f'Error: {e.error}'
-            )
-            logger.exception(error_message)
-            raise APIException(ELASTIC_CONNECTION_ERROR_MESSAGE)
+        # Important to set the ConnectionError to the bottom of the chain
+        # as it's one of the superclasses the other exceptions inherit.
+        except ElasticsearchConnectionError as exception:
+            if exception.__context__ and 'timed out' in str(exception.__context__):
+                # urllib3.exceptions.ConnectTimeoutError can cause an
+                # elasticsearch.exceptions.ConnectionError,
+                # but we'd like to treat timing out separately
+                raise APIException(ELASTIC_CONNECTION_TIMEOUT_MESSAGE) from exception
 
-        except Exception:
-            logger.exception('Unexpected exception occurred!')
+            raise APIException(ELASTIC_CONNECTION_ERROR_MESSAGE) from exception
+
+        except Exception as exception:
             raise APIException(
                 ELASTIC_UNKNOWN_ERROR_MESSAGE, code=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            ) from exception
 
     return wrapper
 
@@ -75,28 +65,28 @@ class ElasticCore:
     def __init__(self, es_url: Optional[str] = None, timeout: Optional[int] = None):
         self.timeout = timeout or get_core_setting('ELASTICSEARCH_TIMEOUT')
         self.es_url = es_url or get_core_setting('ELASTICSEARCH_URL')
-        self.es = Elasticsearch(self.es_url, timeout=self.timeout)
+        self.elasticsearch = Elasticsearch(self.es_url, timeout=self.timeout)
 
     @elastic_connection
     def create_index(
         self, index_name: str, shards: int = 3, replicas: int = 1, settings: Optional[dict] = None
-    ):
+    ) -> Dict:
         body = settings or {
             'number_of_shards': shards,
             'number_of_replicas': replicas,
         }
-        return self.es.indices.create(index=index_name, settings=body, ignore=[400])
+        return self.elasticsearch.indices.create(index=index_name, settings=body, ignore=[400])
 
     @elastic_connection
     def add_vector_mapping(
         self, index: str, field: str, body: Optional[dict] = None, dims: int = 1024
-    ):
+    ) -> Dict:
         mapping = body or {'properties': {field: {'type': 'dense_vector', 'dims': dims}}}
-        return self.es.indices.put_mapping(body=mapping, index=index)
+        return self.elasticsearch.indices.put_mapping(body=mapping, index=index)
 
     @elastic_connection
-    def add_vector(self, index: str, document_id: str, vector: List[float], field: str):
-        return self.es.update(
+    def add_vector(self, index: str, document_id: str, vector: List[float], field: str) -> Dict:
+        return self.elasticsearch.update(
             index=index, id=document_id, body={'doc': {field: vector}}, refresh='wait_for'
         )
 
@@ -106,22 +96,27 @@ class ElasticCore:
         indices: str,
         vector: List[float],
         comparison_field: str,
-        search_query: dict = MATCH_ALL_QUERY,
-    ):
+        search_query: Optional[dict] = None,
+    ) -> Dict:
+        if search_query is None:
+            search_query = MATCH_ALL_QUERY
+
         query = {
             'query': {
                 'script_score': {
                     **search_query,
                     'script': {
-                        'source': f"cosineSimilarity(params.query_vector, '{comparison_field}') + 1.0",
+                        'source': (
+                            f"cosineSimilarity(params.query_vector, '{comparison_field}')" ' + 1.0'
+                        ),
                         'params': {'query_vector': vector},
                     },
                 }
             }
         }
 
-        response = self.es.search(body=query, index=indices)
+        response = self.elasticsearch.search(body=query, index=indices)
         return response
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.es_url

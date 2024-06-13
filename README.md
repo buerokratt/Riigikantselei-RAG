@@ -16,7 +16,13 @@ Setup pre-commit hooks (optional):
 conda run -n riigikantselei pre-commit install
 ```
 
-## Checks
+## Migrations
+
+```
+make makemigrations migrate
+```
+
+## Checks and tests
 
 ```
 make check
@@ -24,18 +30,12 @@ make check
 conda run -n riigikantselei pre-commit run --all-files
 ```
 
-## Tests
-
-# TODO:
-
 ## Execution
 
 1. Ensure you have all the services up and running through ```docker-compose up```
-1. Enter the src directory.
-1. Activate the conda environment with ```conda activate riigikantselei```
-1. Ensure the database changes are brought over with ```python manage.py migrate```
-1. Run the Celery workers for asynchronous tasks with ```celery -A api.celery_handler worker -l debug```
-1. Run the development web server with ```python manage.py runserver```.
+1. Ensure you have run the migrations.
+1. Run the Celery workers for asynchronous tasks with ```conda run -n riigikantselei celery -A api.celery_handler worker -l debug```
+1. Run the development web server with ```make run```.
 
 ### Known issues ###
 

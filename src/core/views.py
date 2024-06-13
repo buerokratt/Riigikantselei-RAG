@@ -1,4 +1,5 @@
 from celery.result import AsyncResult
+from django.db.models import QuerySet
 from django.urls import reverse
 from rest_framework import views, viewsets
 from rest_framework.decorators import action
@@ -6,6 +7,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from api.utilities.core_settings import get_core_setting
+from user_profile.permissions import IsManagerPermission
 
 from .models import ChatGPTConversation, CoreVariable
 from .serializers import (
@@ -74,12 +76,7 @@ class GPTConversationViewset(viewsets.ModelViewSet):
 class CoreVariableViewSet(viewsets.ModelViewSet):
     pagination_class = None
     serializer_class = CoreVariableSerializer
+    permission_classes = (IsManagerPermission,)
 
-    # TODO: Changed this after authentication is set up.
-    permission_classes = (
-        AllowAny,
-        # IsAdminUser,
-    )
-
-    def get_queryset(self):
+    def get_queryset(self) -> QuerySet:
         return CoreVariable.objects.all()

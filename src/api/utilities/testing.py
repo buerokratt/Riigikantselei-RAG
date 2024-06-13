@@ -1,7 +1,8 @@
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import User
 
 
-def create_test_user(username: str, email: str, password: str, is_superuser: bool = False):
+def create_test_user(username: str, email: str, password: str, is_superuser: bool = False) -> User:
     model = get_user_model()
     user = model.objects.create_user(
         username=username,
