@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 import django
 import openai
@@ -25,17 +25,15 @@ class LLMResponse:
         self,
         message: str,
         model: str,
-        system_input: str,
         user_input: str,
         input_tokens: int,
         response_tokens: int,
         headers: dict,
     ):  # pylint: disable=too-many-arguments
         self.message = message
-        self.system_input = system_input
+        self.model = model
         self.user_input = user_input
 
-        self.model = model
         self.input_tokens = input_tokens
         self.response_tokens = response_tokens
         self.headers = headers
@@ -111,14 +109,11 @@ class ChatGPT:
 
         return message
 
-    def parse_results(
-        self, system_input: str, user_input: str, response: dict, headers: dict
-    ) -> LLMResponse:
+    def parse_results(self, user_input: str, response: dict, headers: dict) -> LLMResponse:
         message = self._parse_message(response, user_input)
 
         return LLMResponse(
             message=message,
-            system_input=system_input,
             user_input=user_input,
             model=response.get('model', self.model),
             input_tokens=response.get('usage', {}).get('prompt_tokens'),
@@ -126,15 +121,10 @@ class ChatGPT:
             headers=headers,
         )
 
-    def commit_api(self, system_input: str, user_input: str) -> Tuple[dict, dict, int]:
+    def commit_api(self, messages: List[dict]) -> Tuple[dict, dict, int]:
         try:
             response = self.gpt.chat.completions.with_raw_response.create(
-                model=self.model,
-                stream=False,
-                messages=[
-                    {'role': 'system', 'content': system_input},
-                    {'role': 'user', 'content': user_input},
-                ],
+                model=self.model, stream=False, messages=messages
             )
 
             headers = dict(response.headers)
@@ -184,12 +174,17 @@ class ChatGPT:
         except Exception as exception:
             raise APIException("Couldn't connect to the OpenAI API!") from exception
 
-    def chat(self, user_input: str, system_input: Optional[str] = None) -> LLMResponse:
-        system_input = system_input or get_core_setting('OPENAI_SYSTEM_MESSAGE')
-        headers, response, _ = self.commit_api(system_input, user_input)
-        llm_result = self.parse_results(
-            system_input=system_input, user_input=user_input, response=response, headers=headers
-        )
+    @staticmethod
+    def construct_messages(system_input: str, user_input: str) -> List[dict]:
+        return [
+            {'role': 'system', 'content': system_input},
+            {'role': 'user', 'content': user_input},
+        ]
+
+    def chat(self, messages: List[dict]) -> LLMResponse:
+        user_input = messages[-1]['content']
+        headers, response, _ = self.commit_api(messages)
+        llm_result = self.parse_results(user_input=user_input, response=response, headers=headers)
         return llm_result
 
 
@@ -198,6 +193,6 @@ if __name__ == '__main__':
     django.setup()
 
     gpt = ChatGPT()
-    gpt_response = gpt.chat('Hello there!')
+    gpt_response = gpt.chat([{'response': 'Hello there!'}])
 
     logger.info(gpt_response)

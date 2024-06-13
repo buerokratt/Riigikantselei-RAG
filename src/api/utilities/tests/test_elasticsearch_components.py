@@ -5,12 +5,12 @@ from django.conf import settings
 from rest_framework.exceptions import APIException
 from rest_framework.test import APITestCase
 
-from api.utilities.core_settings import set_core_setting
 from api.utilities.elastic import (
     ELASTIC_CONNECTION_ERROR_MESSAGE,
     ELASTIC_CONNECTION_TIMEOUT_MESSAGE,
     ElasticCore,
 )
+from api.utilities.testing import set_core_setting
 from api.utilities.vectorizer import Vectorizer
 
 

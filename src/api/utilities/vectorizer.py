@@ -21,7 +21,7 @@ def download_vectorization_resources(model_name: str, model_directory: pathlib.P
             model_name,
             system_configuration={},
             inference_configuration={},
-            model_directory=str(model_directory),
+            model_directory=model_directory,
         ).download_model(model_name)
 
 
@@ -31,9 +31,9 @@ class Vectorizer:
         model_name: str,
         system_configuration: dict,
         inference_configuration: dict,
-        model_directory: str,
+        model_directory: pathlib.Path,
     ):
-        self.model_directory = pathlib.Path(model_directory)
+        self.model_directory = model_directory
         self.model_name = model_name
         self.system_configuration = system_configuration
         self.inference_configuration = inference_configuration

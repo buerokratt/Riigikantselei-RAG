@@ -48,11 +48,19 @@ class ChatGPTTestCase(APITestCase):
             'set-cookie': (
                 '__cf_bm=LDZOZXQfvCDzOrqomiWkkMMZ4eqrPsvPSpM2M9NYKZs-1717592376-1.0.1.1-60MKAcfYU'
                 'o50.hDcIfIfgz8zR4psKcCnGCMwGyOBWwJv1OgmRUHEuL4puwiuUb_2JeMy3d_fn0fvmKsxKxXmbA; '
-                'path=/; expires=Wed, 05-Jun-24 13:29:36 GMT; domain=.api.openai.com; HttpOnly; '
-                'Secure; SameSite=None, '
+                'path=/; '
+                'expires=Wed, 05-Jun-24 13:29:36 GMT; '
+                'domain=.api.openai.com; '
+                'HttpOnly; '
+                'Secure; '
+                'SameSite=None, '
                 '_cfuvid=_9iq19utMBYd3JjR8OQZ2OVFHI16qkFU4GPF6FLNSRo-1717592376822-0.0.1.1-'
                 '604800000; '
-                'path=/; domain=.api.openai.com; HttpOnly; Secure; SameSite=None'
+                'path=/; '
+                'domain=.api.openai.com; '
+                'HttpOnly; '
+                'Secure; '
+                'SameSite=None'
             ),
             'server': 'cloudflare',
             'cf-ray': '88f0573e1a507125-TLL',
@@ -61,14 +69,13 @@ class ChatGPTTestCase(APITestCase):
         }
 
         self.api_status_code = 200
+        self.messages = ChatGPT.construct_messages('You are an helpful assistant', 'hello there')
 
     def test_simple_chat_completion(self) -> None:
-        with mock.patch(
-            'api.utilities.gpt.ChatGPT.commit_api',
-            return_value=(self.api_response_headers, self.api_response, self.api_status_code),
-        ):
+        return_values = (self.api_response_headers, self.api_response, self.api_status_code)
+        with mock.patch('api.utilities.gpt.ChatGPT.commit_api', return_value=return_values):
             gpt = ChatGPT(api_key='None')
-            llm_result = gpt.chat(user_input='hello there')
+            llm_result = gpt.chat(messages=self.messages)
 
             # Asser the model is the full name instead of the simple gpt-4o we give in.
             self.assertEqual(llm_result.model, 'gpt-4o-2024-05-13')
@@ -87,14 +94,12 @@ class ChatGPTTestCase(APITestCase):
     def test_errors_being_caught_with_api_exceptions(self) -> None:
         with self.assertRaises(AuthenticationFailed):
             gpt = ChatGPT(api_key='None')
-            _ = gpt.chat(user_input='hello there')
+            _ = gpt.chat(messages=self.messages)
 
     def test_exceptions_being_triggered_on_content_filter(self) -> None:
         self.api_response['choices'][0]['finish_reason'] = 'content_filter'
         with self.assertRaises(ContentFilteredException):
-            with mock.patch(
-                'api.utilities.gpt.ChatGPT.commit_api',
-                return_value=(self.api_response_headers, self.api_response, self.api_status_code),
-            ):
+            return_values = (self.api_response_headers, self.api_response, self.api_status_code)
+            with mock.patch('api.utilities.gpt.ChatGPT.commit_api', return_value=return_values):
                 gpt = ChatGPT(api_key='None')
-                _ = gpt.chat(user_input='hello there')
+                _ = gpt.chat(messages=self.messages)

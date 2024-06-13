@@ -32,12 +32,10 @@ conda run -n riigikantselei pre-commit run --all-files
 
 ## Execution
 
-```
-make run
-# OR
-cd src
-conda run -n riigikantselei python manage.py runserver 0.0.0.0:8000
-```
+1. Ensure you have all the services up and running through ```docker-compose up```
+1. Ensure you have run the migrations.
+1. Run the Celery workers for asynchronous tasks with ```conda run -n riigikantselei celery -A api.celery_handler worker -l debug```
+1. Run the development web server with ```make run```.
 
 ### Known issues ###
 
