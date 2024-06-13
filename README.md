@@ -16,7 +16,13 @@ Setup pre-commit hooks (optional):
 conda run -n riigikantselei pre-commit install
 ```
 
-## Checks
+## Migrations
+
+```
+make makemigrations migrate
+```
+
+## Checks and tests
 
 ```
 make check
@@ -24,13 +30,14 @@ make check
 conda run -n riigikantselei pre-commit run --all-files
 ```
 
-## Tests
-
-# TODO:
-
 ## Execution
 
-# TODO:
+```
+make run
+# OR
+cd src
+conda run -n riigikantselei python manage.py runserver 0.0.0.0:8000
+```
 
 ### Known issues ###
 

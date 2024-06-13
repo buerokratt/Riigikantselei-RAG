@@ -31,17 +31,20 @@ if env_file_path:
 
 env = environ.Env()
 
-PROTECTED_CORE_KEYS = ("SECRET", "KEY", "PASSWORD")
-CORE_SETTINGS = {
-    "ELASTICSEARCH_URL": env("RK_ELASTICSEARCH_URL", default="http://localhost:9200"),
-    "ELASTICSEARCH_TIMEOUT": env("RK_ELASTICSEARCH_TIMEOUT", default=10),
+PROTECTED_CORE_KEYS = ('SECRET', 'KEY', 'PASSWORD')
 
+CORE_SETTINGS = {
+    'ELASTICSEARCH_URL': env('RK_ELASTICSEARCH_URL', default='http://localhost:9200'),
+    'ELASTICSEARCH_TIMEOUT': env('RK_ELASTICSEARCH_TIMEOUT', default=10),
     # OpenAI integration
-    "OPENAI_API_KEY": env("RK_OPENAI_API_KEY", default=None),
-    "OPENAI_SYSTEM_MESSAGE": env.str("RK_OPENAI_SYSTEM_MESSAGE", default="You are a helpful assistant."),
-    "OPENAI_API_TIMEOUT": env.int("RK_OPENAI_API_TIMEOUT", default=10),
-    "OPENAI_API_MAX_RETRIES": env.int("RK_OPENAI_API_MAX_RETRIES", default=5),
-    "OPENAI_API_CHAT_MODEL": env.int("RK_OPENAI_API_CHAT_MODEL", default="gpt-4o"),
+    'OPENAI_API_KEY': env('RK_OPENAI_API_KEY', default=None),
+    'OPENAI_SYSTEM_MESSAGE': env.str(
+        'RK_OPENAI_SYSTEM_MESSAGE', default='You are a helpful assistant.'
+    ),
+    'OPENAI_API_TIMEOUT': env.int('RK_OPENAI_API_TIMEOUT', default=10),
+    'OPENAI_API_MAX_RETRIES': env.int('RK_OPENAI_API_MAX_RETRIES', default=5),
+    'OPENAI_API_CHAT_MODEL': env.int('RK_OPENAI_API_CHAT_MODEL', default='gpt-4o'),
+    'DEFAULT_USAGE_LIMIT_EUROS': env.float('RK_DEFAULT_USAGE_LIMIT_EUROS', default=10.0),
 }
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -70,7 +73,9 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'rest_framework.authtoken',
     'core',
+    'user_profile',
 ]
 
 MIDDLEWARE = [
@@ -124,26 +129,33 @@ DATABASES = {
 }
 
 REST_FRAMEWORK = {
-    'DEFAULT_RENDERER_CLASSES': (
-        'rest_framework.renderers.JSONRenderer',
-    ),
+    'DEFAULT_RENDERER_CLASSES': ('rest_framework.renderers.JSONRenderer',),
     'DEFAULT_PERMISSION_CLASSES': ('rest_framework.permissions.IsAuthenticated',),
     'DEFAULT_AUTHENTICATION_CLASSES': [
         # For authenticating requests with the Token
         'rest_framework.authentication.TokenAuthentication',
     ],
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '10/hour',
+    },
 }
 
 if DEBUG is True:
-    REST_FRAMEWORK["DEFAULT_RENDERER_CLASSES"] = (
+    REST_FRAMEWORK['DEFAULT_RENDERER_CLASSES'] = (
         'rest_framework.renderers.JSONRenderer',
         'rest_framework.renderers.BrowsableAPIRenderer',
     )
 
-    REST_FRAMEWORK["DEFAULT_AUTHENTICATION_CLASSES"] = (
+    REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'] = (
         # For authenticating requests with the Token
         'rest_framework.authentication.TokenAuthentication',
     )
+
+    REST_FRAMEWORK['DEFAULT_THROTTLE_CLASSES'] = []
+    REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] = {}
 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
@@ -197,7 +209,7 @@ LOGGING = {
     'formatters': {
         'simple': {
             'format': '\n'
-                      + LOGGING_SEPARATOR.join(
+            + LOGGING_SEPARATOR.join(
                 [
                     '%(levelname)s',
                     '%(module)s',
@@ -225,7 +237,7 @@ LOGGING = {
         },
         'detailed_error': {
             'format': '\n'
-                      + LOGGING_SEPARATOR.join(
+            + LOGGING_SEPARATOR.join(
                 [
                     '%(levelname)s',
                     '%(module)s',
@@ -307,20 +319,31 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERYD_PREFETCH_MULTIPLIER = env.int('RK_CELERY_PREFETCH_MULTIPLIER', default=1)
 
 #### VECTORIZATION CONFIGURATIONS ####
-MODEL_DIRECTORY = DATA_DIR / "models"
-VECTORIZATION_MODEL_NAME = "BAAI/bge-m3"
+MODEL_DIRECTORY = DATA_DIR / 'models'
+VECTORIZATION_MODEL_NAME = 'BAAI/bge-m3'
 
-BGEM3_SYSTEM_CONFIGURATION = {
-    "use_fp16": True,
-    "device": None,
-    "normalize_embeddings": True
-}
+BGEM3_SYSTEM_CONFIGURATION = {'use_fp16': True, 'device': None, 'normalize_embeddings': True}
 
-BGEM3_INFERENCE_CONFIGURATION = {
-    "batch_size": 12,
-    "return_dense": True,
-    "max_length": 8192
-}
+BGEM3_INFERENCE_CONFIGURATION = {'batch_size': 12, 'return_dense': True, 'max_length': 8192}
 
 # DOWNLOAD MODEL DEPENDENCIES
 download_vectorization_resources(VECTORIZATION_MODEL_NAME, MODEL_DIRECTORY)
+
+#### EMAIL CONFIGURATION ####
+
+EMAIL_HOST = env('RK_EMAIL_HOST', default='localhost')
+EMAIL_PORT = env('RK_EMAIL_PORT', default=25)
+EMAIL_HOST_USER = env('RK_EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = env('RK_EMAIL_HOST_PASSWORD', default='')
+EMAIL_TIMEOUT = env('RK_EMAIL_TIMEOUT_IN_SECONDS', default=5)  # in seconds.
+EMAIL_USE_TLS = env.bool('RK_EMAIL_USE_TLS', default=False)
+EMAIL_USE_SSL = env.bool('RK_EMAIL_USE_SSL', default=False)
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+# TODO: replace dummy backend with real backend
+EMAIL_BACKEND = 'django.core.mail.backends.dummy.EmailBackend'
+
+#### OTHER ####
+
+SERVICE_NAME = 'Riigikantselei semantiline tekstiotsing'
+BASE_URL = env('RK_BASE_URL', default='http://localhost')

@@ -25,7 +25,6 @@ repos:
       - id: check-yaml # Attempts to load all yaml files to verify syntax.
         args: [ --allow-multiple-documents ]
       - id: check-ast # Simply check whether files parse as valid python.
-      - id: name-tests-test # Verifies that test files are named correctly.
       - id: mixed-line-ending # Replaces or checks mixed line ending.
       - id: check-case-conflict # Check for files with names that would conflict on a case-insensitive filesystem like MacOS HFS+ or Windows FAT.
       - id: double-quote-string-fixer # This hook replaces double-quoted strings with single quoted strings.
@@ -39,7 +38,7 @@ repos:
           "--max-line-length=100",
           "--max-statements=60",
           "--max-args=6",
-          "--ignore-path=tests/unit",
+          "--ignore-path=src/core/migrations/,src/user_profile/migrations/",
           "--load-plugins=pylint.extensions.bad_builtin",
           "--bad-functions=print",
           "--disable=R0801,E0611,W0511,C0114,C0115,C0116,E0401,R0903,R0914,W1203",
@@ -89,7 +88,17 @@ repos:
     rev: v1.5.1
     hooks:
       - id: mypy
-        args: [ --disallow-untyped-defs, --ignore-missing-imports ]
+        pass_filenames: false
+        args: [ --disallow-untyped-defs, --ignore-missing-imports, 'src' ]
         # --disallow-untyped-defs - This flag reports an error whenever it encounters a function definition without type annotations.
         # --ignore-missing-imports - This flag makes mypy ignore all missing imports. It is equivalent to adding # type: ignore comments to all unresolved imports within your codebase.
-        files: ^src/
+
+  - repo: local
+    hooks:
+      - id: tests
+        name: tests
+        language: system
+        pass_filenames: false
+        verbose: True
+        # We assume that conda environment has been created/is available.
+        entry: make test
