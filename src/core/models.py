@@ -14,7 +14,7 @@ class CoreVariable(models.Model):
 
 class ChatGPTConversation(models.Model):
     system_input = models.TextField(null=True)
-    indices = models.JSONField(default=['*'])
+    indices = models.JSONField(default=lambda: ['*'])
 
     author = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -81,5 +81,5 @@ class LLMResult(models.Model):
     def total_tokens(self) -> int:
         return self.input_tokens + self.output_tokens
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f'{self.response} / {self.total_tokens} tokens used'

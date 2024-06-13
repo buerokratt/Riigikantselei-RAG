@@ -1,6 +1,7 @@
 from typing import List, Optional
 
 import openai
+from celery import Task
 from django.conf import settings
 
 from api.celery_handler import app
@@ -9,24 +10,28 @@ from api.utilities.gpt import ChatGPT, LLMResponse
 from api.utilities.vectorizer import Vectorizer
 from core.models import ChatGPTConversation, LLMResult
 
-# TODO: Revisit the retry parameters, or do it by hand, probably using the headers information about timeout expirations would be useful.
+# TODO: Revisit the retry parameters, or do it by hand,
+#   probably using the headers information about timeout expirations would be useful.
 
 
 @app.task(name='get_rag_context', max_retries=5, bind=True)
 def get_rag_context(
-    self, input_text: str, indices: List[str], vector_field: str, content_field: str
-):
+    self: Task, input_text: str, indices: List[str], vector_field: str, content_field: str
+) -> str:
     """
     Task for fetching the RAG context from pre-processed vectors in ElasticSearch.
 
     :param self: Contains access to the Celery Task instance.
     :param input_text: User sent input to vectorise and search from Elasticsearch.
     :param indices: Which indices to search from Elasticsearch.
-    :param vector_field: Which field in the indices contains the pre-vectorized information to search from.
-    :param content_field: Which field in the indices contains the textual information we need to send to OpenAI.
+    :param vector_field: Which field in the indices contains
+    the pre-vectorized information to search from.
+    :param content_field: Which field in the indices contains
+    the textual information we need to send to OpenAI.
     :return:
     """
-    ec = ElasticCore()
+    # pylint: disable=unused-argument
+    elastic_core = ElasticCore()
     vectorizer = Vectorizer(
         model_name=settings.VECTORIZATION_MODEL_NAME,
         system_configuration=settings.BGEM3_SYSTEM_CONFIGURATION,
@@ -35,9 +40,9 @@ def get_rag_context(
     )
 
     input_vectors = vectorizer.vectorize([input_text])['vectors'][0]
-    indices = ','.join(indices)
-    matching_documents = ec.search_vector(
-        indices=indices, vector=input_vectors, comparison_field=vector_field
+    indices_string = ','.join(indices)
+    matching_documents = elastic_core.search_vector(
+        indices=indices_string, vector=input_vectors, comparison_field=vector_field
     )
 
     container = []
@@ -69,7 +74,9 @@ def get_rag_context(
     max_retries=5,
     bind=True,
 )
-def commit_openai_api_call(self, user_text: str, conversation_pk: int, model: Optional[str]):
+def commit_openai_api_call(
+    self: Task, user_text: str, conversation_pk: int, model: Optional[str]
+) -> dict:
     conversation = ChatGPTConversation.objects.get(pk=conversation_pk)
 
     messages = conversation.messages + [{'role': 'user', 'content': user_text}]

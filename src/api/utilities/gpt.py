@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Optional, Tuple, List
+from typing import List, Optional, Tuple
 
 import django
 import openai
@@ -25,16 +25,15 @@ class LLMResponse:
         self,
         message: str,
         model: str,
-        system_input: str,
         user_input: str,
         input_tokens: int,
         response_tokens: int,
         headers: dict,
     ):  # pylint: disable=too-many-arguments
         self.message = message
+        self.model = model
         self.user_input = user_input
 
-        self.model = model
         self.input_tokens = input_tokens
         self.response_tokens = response_tokens
         self.headers = headers
@@ -110,9 +109,7 @@ class ChatGPT:
 
         return message
 
-    def parse_results(
-        self, system_input: str, user_input: str, response: dict, headers: dict
-    ) -> LLMResponse:
+    def parse_results(self, user_input: str, response: dict, headers: dict) -> LLMResponse:
         message = self._parse_message(response, user_input)
 
         return LLMResponse(
@@ -196,6 +193,6 @@ if __name__ == '__main__':
     django.setup()
 
     gpt = ChatGPT()
-    gpt_response = gpt.chat('Hello there!')
+    gpt_response = gpt.chat([{'response': 'Hello there!'}])
 
     logger.info(gpt_response)

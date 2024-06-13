@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, List
 
 from django.conf import settings
 from django.db import transaction
@@ -28,8 +28,9 @@ class ChatGPTConversationSerializer(serializers.ModelSerializer):
     system_input = serializers.CharField(default=None, allow_blank=True)
     messages = serializers.SerializerMethodField()
 
-    # Since we create the the first chat upon the creation of the conversation we need to display the first task id in the output for the CREATE.
-    def to_representation(self, instance: ChatGPTConversation):
+    # Since we create the the first chat upon the creation of the conversation,
+    # we need to display the first task id in the output for the CREATE.
+    def to_representation(self, instance: ChatGPTConversation) -> dict:
         data = super().to_representation(instance)
         creation_task = instance.llmresult_set.first()
         if creation_task:
@@ -42,7 +43,7 @@ class ChatGPTConversationSerializer(serializers.ModelSerializer):
 
         return data
 
-    def create(self, validated_data):
+    def create(self, validated_data: dict) -> ChatGPTConversation:
         input_text = validated_data.pop('input_text', None)
         model = validated_data.pop('model', None)
 
@@ -50,16 +51,17 @@ class ChatGPTConversationSerializer(serializers.ModelSerializer):
         vector_field = get_core_setting('ELASTICSEARCH_VECTOR_FIELD')
         content_field = get_core_setting('ELASTICSEARCH_TEXT_CONTENT_FIELD')
 
-        # Since Celery tasks can happen quicker than the db can handle transaction, we only launch the task AFTER the commit.
+        # Since Celery tasks can happen quicker than the db can handle transaction,
+        # we only launch the task AFTER the commit.
         with transaction.atomic():
             orm = super().create(validated_data)
             task = get_rag_context.s(
                 input_text, indices, vector_field, content_field
             ) | commit_openai_api_call.s(orm.pk, model)
-            transaction.on_commit(lambda: task.apply_async())
+            transaction.on_commit(task.apply_async)
             return orm
 
-    def get_messages(self, obj):
+    def get_messages(self, obj: ChatGPTConversation) -> List[dict]:
         return obj.messages
 
     class Meta:

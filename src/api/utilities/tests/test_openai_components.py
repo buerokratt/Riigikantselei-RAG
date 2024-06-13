@@ -48,11 +48,19 @@ class ChatGPTTestCase(APITestCase):
             'set-cookie': (
                 '__cf_bm=LDZOZXQfvCDzOrqomiWkkMMZ4eqrPsvPSpM2M9NYKZs-1717592376-1.0.1.1-60MKAcfYU'
                 'o50.hDcIfIfgz8zR4psKcCnGCMwGyOBWwJv1OgmRUHEuL4puwiuUb_2JeMy3d_fn0fvmKsxKxXmbA; '
-                'path=/; expires=Wed, 05-Jun-24 13:29:36 GMT; domain=.api.openai.com; HttpOnly; '
-                'Secure; SameSite=None, '
+                'path=/; '
+                'expires=Wed, 05-Jun-24 13:29:36 GMT; '
+                'domain=.api.openai.com; '
+                'HttpOnly; '
+                'Secure; '
+                'SameSite=None, '
                 '_cfuvid=_9iq19utMBYd3JjR8OQZ2OVFHI16qkFU4GPF6FLNSRo-1717592376822-0.0.1.1-'
                 '604800000; '
-                'path=/; domain=.api.openai.com; HttpOnly; Secure; SameSite=None'
+                'path=/; '
+                'domain=.api.openai.com; '
+                'HttpOnly; '
+                'Secure; '
+                'SameSite=None'
             ),
             'server': 'cloudflare',
             'cf-ray': '88f0573e1a507125-TLL',

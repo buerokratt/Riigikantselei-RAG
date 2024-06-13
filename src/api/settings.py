@@ -17,13 +17,7 @@ import environ
 
 from api.utilities.vectorizer import download_vectorization_resources
 
-# Version namespacing? No.
-# Custom User model data. Foreign Key.
-# Gunicorn
-# Unittest + custom pytest
-# GPT V3
-# Logging in/registration/password change
-# Record keeping
+# pylint: disable=bad-builtin
 
 env_file_path = os.getenv('RK_ENV_FILE', None)
 if env_file_path:
@@ -200,7 +194,7 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-DATA_DIR = env.str('RK_DATA_DIR', default=Path(BASE_DIR).parent / 'data')
+DATA_DIR = Path(env.str('RK_DATA_DIR', default=Path(BASE_DIR).parent / 'data'))
 
 # TODO: Added initial configuration for logging, revisit it somewhere in the future.
 INFO_LOGGER = 'info_logger'

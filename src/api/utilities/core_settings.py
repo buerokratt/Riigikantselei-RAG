@@ -3,7 +3,6 @@ from typing import Any, Optional
 from django.conf import settings
 
 from core.models import CoreVariable
-from core.serializers import CoreVariableSerializer
 
 
 def is_float(value: str) -> bool:
@@ -40,28 +39,3 @@ def get_core_setting(setting_name: str) -> Any:
     if value.lower() == 'true':
         return True
     return value
-
-
-def set_core_setting(setting_name: str, setting_value: Any) -> None:
-    """
-    Set core settings outside of the API.
-    :param: str setting name: Name of the variable to update.
-    :param: str setting_value: New Value of the variable.
-    """
-
-    data = {'name': setting_name, 'value': setting_value}
-    validated_data = CoreVariableSerializer().validate(data)
-    setting_name = validated_data['name']
-    setting_value = validated_data['value']
-    variable_matches = CoreVariable.objects.filter(name=setting_name)
-
-    if not variable_matches:
-        # Add a new variable
-        new_variable = CoreVariable(name=setting_name, value=setting_value)
-        new_variable.save()
-
-    else:
-        # Change existing variable
-        variable_match = variable_matches.first()
-        variable_match.value = setting_value
-        variable_match.save()
