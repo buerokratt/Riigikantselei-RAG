@@ -45,6 +45,12 @@ def elastic_connection(func: Callable) -> Callable:
         # Important to set the ConnectionError to the bottom of the chain
         # as it's one of the superclasses the other exceptions inherit.
         except ElasticsearchConnectionError as exception:
+            if exception.__context__ and 'timed out' in str(exception.__context__):
+                # urllib3.exceptions.ConnectTimeoutError can cause an
+                # elasticsearch.exceptions.ConnectionError,
+                # but we'd like to treat timing out separately
+                raise APIException(ELASTIC_CONNECTION_TIMEOUT_MESSAGE) from exception
+
             raise APIException(ELASTIC_CONNECTION_ERROR_MESSAGE) from exception
 
         except Exception as exception:
