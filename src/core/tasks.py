@@ -93,6 +93,7 @@ def commit_openai_api_call(
         input_tokens=llm_response.input_tokens,
         output_tokens=llm_response.response_tokens,
         headers=llm_response.headers,
+        total_price=llm_response.total_price,
     )
 
     return {

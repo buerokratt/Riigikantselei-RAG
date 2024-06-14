@@ -28,8 +28,11 @@ if env_file_path:
 
 env = environ.Env()
 
+# TODO: why are some parameters in core settings and some not?
+#  Does anything other than default usage limit need to be here?
 PROTECTED_CORE_KEYS = ('SECRET', 'KEY', 'PASSWORD')
 CORE_SETTINGS = {
+    # Elasticearch
     'ELASTICSEARCH_URL': env('RK_ELASTICSEARCH_URL', default='http://localhost:9200'),
     'ELASTICSEARCH_TIMEOUT': env('RK_ELASTICSEARCH_TIMEOUT', default=10),
     'ELASTICSEARCH_VECTOR_FIELD': env('RK_ELASTICSEARCH_VECTOR_FIELD', default='vector'),
@@ -42,6 +45,7 @@ CORE_SETTINGS = {
     'OPENAI_API_TIMEOUT': env.int('RK_OPENAI_API_TIMEOUT', default=10),
     'OPENAI_API_MAX_RETRIES': env.int('RK_OPENAI_API_MAX_RETRIES', default=5),
     'OPENAI_API_CHAT_MODEL': env.int('RK_OPENAI_API_CHAT_MODEL', default='gpt-4o'),
+    # Other
     'DEFAULT_USAGE_LIMIT_EUROS': env.float('RK_DEFAULT_USAGE_LIMIT_EUROS', default=10.0),
 }
 
@@ -126,6 +130,8 @@ DATABASES = {
     }
 }
 
+# TODO here: Remove non-throttle defaults as we always want specific behaviour anyway?
+#  Is there a default when you don't specify one?
 REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': ('rest_framework.renderers.JSONRenderer',),
     'DEFAULT_PERMISSION_CLASSES': ('rest_framework.permissions.IsAuthenticated',),
@@ -145,11 +151,6 @@ if DEBUG is True:
     REST_FRAMEWORK['DEFAULT_RENDERER_CLASSES'] = (
         'rest_framework.renderers.JSONRenderer',
         'rest_framework.renderers.BrowsableAPIRenderer',
-    )
-
-    REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'] = (
-        # For authenticating requests with the Token
-        'rest_framework.authentication.TokenAuthentication',
     )
 
     REST_FRAMEWORK['DEFAULT_THROTTLE_CLASSES'] = []
@@ -317,6 +318,7 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERY_WORKER_PREFETCH_MULTIPLIER = env.int('RK_CELERY_PREFETCH_MULTIPLIER', default=1)
 
 #### VECTORIZATION CONFIGURATIONS ####
+
 MODEL_DIRECTORY = DATA_DIR / 'models'
 VECTORIZATION_MODEL_NAME = 'BAAI/bge-m3'
 
@@ -345,3 +347,10 @@ EMAIL_BACKEND = 'django.core.mail.backends.dummy.EmailBackend'
 
 SERVICE_NAME = 'Riigikantselei semantiline tekstiotsing'
 BASE_URL = env('RK_BASE_URL', default='http://localhost')
+
+# https://openai.com/api/pricing/ GPT-4o
+EURO_COST_PER_MILLION_INPUT_TOKENS = 5
+EURO_COST_PER_MILLION_OUTPUT_TOKENS = 15
+
+EURO_COST_PER_INPUT_TOKEN = EURO_COST_PER_MILLION_INPUT_TOKENS / 1_000_000
+EURO_COST_PER_OUTPUT_TOKEN = EURO_COST_PER_MILLION_OUTPUT_TOKENS / 1_000_000

@@ -4,6 +4,7 @@ from typing import List, Optional, Tuple
 
 import django
 import openai
+from django.conf import settings
 from openai import OpenAI
 from rest_framework.exceptions import (
     APIException,
@@ -65,6 +66,13 @@ class LLMResponse:
     @property
     def total_tokens(self) -> int:
         return self.input_tokens + self.response_tokens
+
+    @property
+    def total_price(self) -> float:
+        return (
+            self.input_tokens * settings.EURO_COST_PER_INPUT_TOKEN
+            + self.response_tokens * settings.EURO_COST_PER_OUTPUT_TOKEN
+        )
 
     def __str__(self) -> str:
         return f'{self.message} / {self.total_tokens} tokens used'

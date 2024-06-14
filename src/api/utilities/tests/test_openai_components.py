@@ -91,6 +91,8 @@ class ChatGPTTestCase(APITestCase):
             self.assertEqual(llm_result.reset_requests_at_ms, '120ms')
             self.assertEqual(llm_result.reset_tokens_at_ms, '56ms')
 
+            self.assertAlmostEqual(llm_result.total_price, 0.000235)
+
     def test_errors_being_caught_with_api_exceptions(self) -> None:
         with self.assertRaises(AuthenticationFailed):
             gpt = ChatGPT(api_key='None')
