@@ -37,7 +37,7 @@ class UserProfile(models.Model):
     # If this is None, the usage limit should be read from the default value.
     custom_usage_limit_euros = models.FloatField(default=None, null=True)
 
-    # TODO: The user's current usage balance is the sum of the costs of UsageEvents
+    # TODO here: The user's current usage balance is the sum of the costs of UsageEvents
     #  tied to the user and will be calculated when needed.
 
 

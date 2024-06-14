@@ -4,7 +4,7 @@ from unittest import mock
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.test import APITestCase
 
-from api.utilities.gpt import ChatGPT, ContentFilteredException
+from api.utilities.gpt import ChatGPT, ContentFilteredException, construct_messages
 
 
 class ChatGPTTestCase(APITestCase):
@@ -69,11 +69,11 @@ class ChatGPTTestCase(APITestCase):
         }
 
         self.api_status_code = 200
-        self.messages = ChatGPT.construct_messages('You are an helpful assistant', 'hello there')
+        self.messages = construct_messages('You are an helpful assistant', 'hello there')
 
     def test_simple_chat_completion(self) -> None:
         return_values = (self.api_response_headers, self.api_response, self.api_status_code)
-        with mock.patch('api.utilities.gpt.ChatGPT.commit_api', return_value=return_values):
+        with mock.patch('api.utilities.gpt.ChatGPT._commit_api', return_value=return_values):
             gpt = ChatGPT(api_key='None')
             llm_result = gpt.chat(messages=self.messages)
 
@@ -100,6 +100,6 @@ class ChatGPTTestCase(APITestCase):
         self.api_response['choices'][0]['finish_reason'] = 'content_filter'
         with self.assertRaises(ContentFilteredException):
             return_values = (self.api_response_headers, self.api_response, self.api_status_code)
-            with mock.patch('api.utilities.gpt.ChatGPT.commit_api', return_value=return_values):
+            with mock.patch('api.utilities.gpt.ChatGPT._commit_api', return_value=return_values):
                 gpt = ChatGPT(api_key='None')
                 _ = gpt.chat(messages=self.messages)

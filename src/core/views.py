@@ -19,8 +19,7 @@ from .serializers import (
 from .tasks import commit_openai_api_call
 
 
-# TODO: Change the permissions schema,
-#  left at AllowAny to allow for easy demo and rapid prototyping.
+# TODO here: Change the permissions
 class AsyncResultView(views.APIView):
     permission_classes = (AllowAny,)
 
@@ -62,7 +61,7 @@ class GPTConversationViewset(viewsets.ModelViewSet):
         input_text: str = serializer.validated_data['input_text']
         model: str = serializer.validated_data['model']
 
-        task: AsyncResult = commit_openai_api_call.s(pk, input_text, model).apply_async()
+        task: AsyncResult = commit_openai_api_call.s(input_text, pk, model).apply_async()
         relative_path = reverse('async_result', kwargs={'task_id': task.task_id})
         response = {'url': request.build_absolute_uri(relative_path), 'task_id': task.task_id}
         return Response(response)

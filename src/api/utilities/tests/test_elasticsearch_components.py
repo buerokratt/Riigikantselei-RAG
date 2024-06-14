@@ -85,7 +85,7 @@ class TestElasticCore(APITestCase):
 
         self._index_document_and_add_vector('See on ainult lihas haav', vectorizer)
         self._index_document_and_add_vector(
-            'Mingi märg eit kes loobib mõõku ei ole korralik alus valistuse loomiseks!', vectorizer
+            'Mingi märg eit kes loobib mõõku ei ole korralik alus valitsuse loomiseks!', vectorizer
         )
 
         search_vector = vectorizer.vectorize(['Miks sa tahad öelda, et kookosed migreeruvad'])[

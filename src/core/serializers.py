@@ -57,7 +57,7 @@ class ChatGPTConversationSerializer(serializers.ModelSerializer):
             orm = super().create(validated_data)
             task = get_rag_context.s(
                 input_text, indices, vector_field, content_field
-            ) | commit_openai_api_call.s(orm.pk, model)
+            ) | commit_openai_api_call.s(input_text, orm.pk, model)
             transaction.on_commit(task.apply_async)
             return orm
 

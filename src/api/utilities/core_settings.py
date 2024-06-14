@@ -5,7 +5,7 @@ from django.conf import settings
 from core.models import CoreVariable
 
 
-def is_float(value: str) -> bool:
+def _is_float(value: str) -> bool:
     normalized_numbers = value.replace('.', '')
     if '.' in value and str.isdigit(normalized_numbers):
         return True
@@ -30,7 +30,7 @@ def get_core_setting(setting_name: str) -> Any:
     # return value from db
     value = variable_match.value
 
-    if is_float(value):
+    if _is_float(value):
         return float(value)
     if str.isnumeric(value):
         return int(value)

@@ -18,7 +18,7 @@ from api.utilities.core_settings import get_core_setting
 logger = logging.getLogger(__name__)
 
 
-# TODO Maybe replace this with an actual DB model later on
+# TODO: Maybe replace this with an actual DB model later on
 #  but for now it's a good enough abstraction for GPT responses.
 class LLMResponse:
     def __init__(
@@ -74,6 +74,35 @@ class ContentFilteredException(Exception):
     pass
 
 
+def _parse_message(response: dict, user_input: str) -> str:
+    # This will be stop if the model hit a natural stop point or a provided stop sequence,
+    # length if the maximum number of tokens specified in the request was reached,
+    # content_filter if content was omitted due to a flag from our content filters
+    message = None
+
+    for choice in response.get('choices', []):
+        finish_reason = choice.get('finish_reason', 'N/A')
+        if finish_reason == 'content_filter':
+            message = f'Input {user_input} was filtered by OpenAI API!'
+            raise ContentFilteredException(message)
+
+        if finish_reason == 'stop':
+            message = choice.get('message', {}).get('content', None)
+
+    if message is None:
+        raise RuntimeError
+
+    return message
+
+
+# TODO here: somewhat duplicates LLMResult.message
+def construct_messages(system_input: str, user_input: str) -> List[dict]:
+    return [
+        {'role': 'system', 'content': system_input},
+        {'role': 'user', 'content': user_input},
+    ]
+
+
 class ChatGPT:
     def __init__(
         self,
@@ -89,48 +118,28 @@ class ChatGPT:
         self.model = model or get_core_setting('OPENAI_API_CHAT_MODEL')
         self.gpt = OpenAI(api_key=self.api_key, timeout=self.timeout, max_retries=self.max_retries)
 
-    def _parse_message(self, response: dict, user_input: str) -> str:
-        # This will be stop if the model hit a natural stop point or a provided stop sequence,
-        # length if the maximum number of tokens specified in the request was reached,
-        # content_filter if content was omitted due to a flag from our content filters
-        message = None
-
-        for choice in response.get('choices', []):
-            finish_reason = choice.get('finish_reason', 'N/A')
-            if finish_reason == 'content_filter':
-                message = f'Input {user_input} was filtered by OpenAI API!'
-                raise ContentFilteredException(message)
-
-            if finish_reason == 'stop':
-                message = choice.get('message', {}).get('content', None)
-
-        if message is None:
-            raise RuntimeError
-
-        return message
-
     def parse_results(self, user_input: str, response: dict, headers: dict) -> LLMResponse:
-        message = self._parse_message(response, user_input)
+        message = _parse_message(response, user_input)
 
         return LLMResponse(
             message=message,
-            user_input=user_input,
             model=response.get('model', self.model),
+            user_input=user_input,
             input_tokens=response.get('usage', {}).get('prompt_tokens'),
             response_tokens=response.get('usage', {}).get('completion_tokens'),
             headers=headers,
         )
 
-    def commit_api(self, messages: List[dict]) -> Tuple[dict, dict, int]:
+    def _commit_api(self, messages: List[dict]) -> Tuple[dict, dict, int]:
         try:
             response = self.gpt.chat.completions.with_raw_response.create(
                 model=self.model, stream=False, messages=messages
             )
 
             headers = dict(response.headers)
-            response = response.parse().to_dict()
+            response_dict = response.parse().to_dict()
             status_code = response.status_code
-            return headers, response, status_code
+            return headers, response_dict, status_code
 
         except openai.AuthenticationError as exception:
             raise AuthenticationFailed("Couldn't authenticate with OpenAI API!") from exception
@@ -174,16 +183,9 @@ class ChatGPT:
         except Exception as exception:
             raise APIException("Couldn't connect to the OpenAI API!") from exception
 
-    @staticmethod
-    def construct_messages(system_input: str, user_input: str) -> List[dict]:
-        return [
-            {'role': 'system', 'content': system_input},
-            {'role': 'user', 'content': user_input},
-        ]
-
     def chat(self, messages: List[dict]) -> LLMResponse:
         user_input = messages[-1]['content']
-        headers, response, _ = self.commit_api(messages)
+        headers, response, _ = self._commit_api(messages)
         llm_result = self.parse_results(user_input=user_input, response=response, headers=headers)
         return llm_result
 

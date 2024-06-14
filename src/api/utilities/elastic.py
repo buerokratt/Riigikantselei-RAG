@@ -25,7 +25,7 @@ ELASTIC_CONNECTION_ERROR_MESSAGE = (
 )
 
 
-def elastic_connection(func: Callable) -> Callable:
+def _elastic_connection(func: Callable) -> Callable:
     @functools.wraps(func)
     def wrapper(*args: tuple, **kwargs: dict) -> Any:
         try:
@@ -62,12 +62,12 @@ def elastic_connection(func: Callable) -> Callable:
 
 
 class ElasticCore:
-    def __init__(self, es_url: Optional[str] = None, timeout: Optional[int] = None):
+    def __init__(self, elasticsearch_url: Optional[str] = None, timeout: Optional[int] = None):
         self.timeout = timeout or get_core_setting('ELASTICSEARCH_TIMEOUT')
-        self.es_url = es_url or get_core_setting('ELASTICSEARCH_URL')
-        self.elasticsearch = Elasticsearch(self.es_url, timeout=self.timeout)
+        self.elasticsearch_url = elasticsearch_url or get_core_setting('ELASTICSEARCH_URL')
+        self.elasticsearch = Elasticsearch(self.elasticsearch_url, timeout=self.timeout)
 
-    @elastic_connection
+    @_elastic_connection
     def create_index(
         self, index_name: str, shards: int = 3, replicas: int = 1, settings: Optional[dict] = None
     ) -> Dict:
@@ -77,20 +77,20 @@ class ElasticCore:
         }
         return self.elasticsearch.indices.create(index=index_name, settings=body, ignore=[400])
 
-    @elastic_connection
+    @_elastic_connection
     def add_vector_mapping(
         self, index: str, field: str, body: Optional[dict] = None, dims: int = 1024
     ) -> Dict:
         mapping = body or {'properties': {field: {'type': 'dense_vector', 'dims': dims}}}
         return self.elasticsearch.indices.put_mapping(body=mapping, index=index)
 
-    @elastic_connection
+    @_elastic_connection
     def add_vector(self, index: str, document_id: str, vector: List[float], field: str) -> Dict:
         return self.elasticsearch.update(
             index=index, id=document_id, body={'doc': {field: vector}}, refresh='wait_for'
         )
 
-    @elastic_connection
+    @_elastic_connection
     def search_vector(
         self,
         indices: str,
@@ -119,4 +119,4 @@ class ElasticCore:
         return response
 
     def __str__(self) -> str:
-        return self.es_url
+        return self.elasticsearch_url
