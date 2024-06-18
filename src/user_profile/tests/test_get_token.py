@@ -20,16 +20,14 @@ class TestGetToken(APITestCase):
         self.assertTrue(created)
 
         response = self.client.post(
-            self.token_endpoint_url,
-            data={"username": self.username, "password": self.password}
+            self.token_endpoint_url, data={'username': self.username, 'password': self.password}
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['token'], manager_token.key)
 
     def test_get_new_token(self) -> None:
         response = self.client.post(
-            self.token_endpoint_url,
-            data={"username": self.username, "password": self.password}
+            self.token_endpoint_url, data={'username': self.username, 'password': self.password}
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 

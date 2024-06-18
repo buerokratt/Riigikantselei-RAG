@@ -7,7 +7,7 @@ from rest_framework import status, viewsets
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import action
-from rest_framework.exceptions import APIException, ParseError, AuthenticationFailed
+from rest_framework.exceptions import APIException, AuthenticationFailed, ParseError
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import AllowAny
 from rest_framework.renderers import TemplateHTMLRenderer
@@ -21,10 +21,11 @@ from user_profile.permissions import UserProfilePermission  # type: ignore
 from user_profile.serializers import (
     EmailSerializer,
     LimitSerializer,
+    LoginSerializer,
     PasswordResetSerializer,
     PasswordSerializer,
     UserCreateSerializer,
-    UserProfileReadOnlySerializer, LoginSerializer,
+    UserProfileReadOnlySerializer,
 )
 
 
@@ -40,16 +41,12 @@ class GetTokenView(APIView):
 
         if authenticate(request=request, username=username, password=password):
             user = User.objects.get(username=username)
-            token, created = Token.objects.get_or_create(user=user)
+            token, _ = Token.objects.get_or_create(user=user)
 
-            response = {
-                'username': user.username,
-                'email': user.email,
-                'token': token.key
-            }
+            response = {'username': user.username, 'email': user.email, 'token': token.key}
             return Response(response, status=status.HTTP_200_OK)
 
-        raise AuthenticationFailed("User and password do not match!")
+        raise AuthenticationFailed('User and password do not match!')
 
 
 class UserProfileViewSet(viewsets.ViewSet):

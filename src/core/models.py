@@ -14,8 +14,8 @@ class CoreVariable(models.Model):
 
 # Necessary since the previous lambda based implementation for the callable default created
 # errors within makemigrations.
-def indices_default():
-    return ["*"]
+def indices_default() -> list[str]:
+    return ['*']
 
 
 class ChatGPTConversation(models.Model):
