@@ -1,14 +1,15 @@
 from django.conf import settings
+from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from rest_framework import status, viewsets
-from rest_framework.authentication import BasicAuthentication, TokenAuthentication
+from rest_framework.authentication import TokenAuthentication
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import action
-from rest_framework.exceptions import APIException, ParseError
+from rest_framework.exceptions import APIException, AuthenticationFailed, ParseError
 from rest_framework.generics import get_object_or_404
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny
 from rest_framework.renderers import TemplateHTMLRenderer
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -20,6 +21,7 @@ from user_profile.permissions import UserProfilePermission  # type: ignore
 from user_profile.serializers import (
     EmailSerializer,
     LimitSerializer,
+    LoginSerializer,
     PasswordResetSerializer,
     PasswordSerializer,
     UserCreateSerializer,
@@ -28,13 +30,23 @@ from user_profile.serializers import (
 
 
 class GetTokenView(APIView):
-    authentication_classes = (BasicAuthentication,)
-    permission_classes = (IsAuthenticated,)
+    permission_classes = (AllowAny,)
+    serializer_class = LoginSerializer
 
-    def get(self, request: Request) -> Response:
-        token, _ = Token.objects.get_or_create(user=request.user)
-        content = {'token': token.key}
-        return Response(content)
+    def post(self, request: Request) -> Response:
+        serializer = LoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        username = serializer.data['username']
+        password = serializer.data['password']
+
+        if authenticate(request=request, username=username, password=password):
+            user = User.objects.get(username=username)
+            token, _ = Token.objects.get_or_create(user=user)
+
+            response = {'username': user.username, 'email': user.email, 'token': token.key}
+            return Response(response, status=status.HTTP_200_OK)
+
+        raise AuthenticationFailed('User and password do not match!')
 
 
 class UserProfileViewSet(viewsets.ViewSet):

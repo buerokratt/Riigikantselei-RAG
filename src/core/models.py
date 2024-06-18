@@ -12,9 +12,15 @@ class CoreVariable(models.Model):
         return f'{self.name} - {self.value}'
 
 
+# Necessary since the previous lambda based implementation for the callable default created
+# errors within makemigrations.
+def indices_default() -> list[str]:
+    return ['*']
+
+
 class ChatGPTConversation(models.Model):
     system_input = models.TextField(null=True)
-    indices = models.JSONField(default=lambda: ['*'])
+    indices = models.JSONField(default=indices_default)
 
     author = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
