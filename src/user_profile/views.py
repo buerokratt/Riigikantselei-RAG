@@ -67,10 +67,8 @@ class UserProfileViewSet(viewsets.ViewSet):
             first_name=request_serializer.validated_data['first_name'],
             last_name=request_serializer.validated_data['last_name'],
         )
-        user_profile = UserProfile(auth_user=auth_user)
-        user_profile.save()
 
-        response_serializer = UserProfileReadOnlySerializer(user_profile)
+        response_serializer = UserProfileReadOnlySerializer(auth_user.user_profile)
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
 
     def retrieve(self, request: Request, pk: int) -> Response:

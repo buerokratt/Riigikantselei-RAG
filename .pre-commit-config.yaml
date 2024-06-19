@@ -38,7 +38,7 @@ repos:
           "--max-line-length=100",
           "--max-statements=60",
           "--max-args=6",
-          "--ignore-path=src/core/migrations/,src/user_profile/migrations/",
+          "--ignore-path=src/core/migrations/,src/user_profile/migrations/,src/user_profile/apps/,src/user_profile/signals/",
           "--load-plugins=pylint.extensions.bad_builtin",
           "--bad-functions=print",
           "--disable=R0801,E0611,W0511,C0114,C0115,C0116,E0401,R0903,R0914,W1203",

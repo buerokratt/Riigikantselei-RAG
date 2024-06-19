@@ -13,6 +13,9 @@ _MANAGER_ONLY_ACTIONS = {'list', 'accept', 'decline', 'ban', 'set_limit'}
 
 class UserProfilePermission(permissions.BasePermission):
     def has_permission(self, request, view):  # type: ignore
+        if request.user.is_authenticated and request.user.is_superuser:
+            return True
+
         if view.action in _LOGGED_OUT_ONLY_ACTIONS:
             return not request.user.is_authenticated
         if view.action in _LOGGED_IN_AND_ACCEPTED_ONLY_ACTIONS:
@@ -22,6 +25,9 @@ class UserProfilePermission(permissions.BasePermission):
         raise RuntimeError('Unknown action.')
 
     def has_object_permission(self, request, view, obj):  # type: ignore
+        if request.user.is_superuser:
+            return True
+
         if view.action == 'retrieve':
             return request.user.user_profile.is_manager or obj.auth_user == request.user
         raise RuntimeError('No action other than "retrieve" should check for object permission.')
