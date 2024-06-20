@@ -21,15 +21,15 @@ class UserProfilePermission(permissions.BasePermission):
             return request.user.is_authenticated and request.user.user_profile.is_manager
         raise RuntimeError('Unknown action.')
 
-    def has_object_permission(self, request, view, obj):  # type: ignore
-        if view.action == 'retrieve':
-            return request.user.user_profile.is_manager or obj.auth_user == request.user
-        raise RuntimeError('No action other than "retrieve" should check for object permission.')
-
 
 class IsManagerPermission(permissions.BasePermission):
     def has_permission(self, request, view):  # pylint: disable=unused-argument
         return request.user.is_authenticated and request.user.user_profile.is_manager
+
+
+class IsAcceptedPermission(permissions.BasePermission):
+    def has_permission(self, request, view):  # pylint: disable=unused-argument
+        return request.user.is_authenticated and request.user.user_profile.is_accepted
 
 
 class CanSpendResourcesPermission(permissions.BasePermission):
@@ -37,4 +37,6 @@ class CanSpendResourcesPermission(permissions.BasePermission):
         return (
             request.user.is_authenticated
             and request.user.user_profile.is_allowed_to_spend_resources
+            # TODO here: unit test with views
+            and request.user.user_profile.used_cost < request.user.user_profile.usage_limit
         )

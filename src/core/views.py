@@ -1,30 +1,43 @@
 from celery.result import AsyncResult
 from django.db.models import QuerySet
-from django.urls import reverse
-from rest_framework import views, viewsets
+from rest_framework import status, views, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import AllowAny
+from rest_framework.generics import get_object_or_404
 from rest_framework.request import Request
 from rest_framework.response import Response
+from rest_framework.reverse import reverse
 
-from api.utilities.core_settings import get_core_setting
-from user_profile.permissions import IsManagerPermission  # type: ignore
-
-from .models import ChatGPTConversation, CoreVariable
-from .serializers import (
-    ChatGPTConversationSerializer,
+from core.models import CoreVariable, TextSearchConversation
+from core.serializers import (
+    ConversationSetTitleSerializer,
     CoreVariableSerializer,
-    OpenAISerializer,
+    TextSearchConversationCreateSerializer,
+    TextSearchConversationReadOnlySerializer,
+    TextSearchQuerySubmitSerializer,
 )
-from .tasks import commit_openai_api_call
+from user_profile.permissions import (  # type: ignore
+    CanSpendResourcesPermission,
+    IsAcceptedPermission,
+    IsManagerPermission,
+)
 
 
-# TODO here: Change the permissions
+class CoreVariableViewSet(viewsets.ModelViewSet):
+    pagination_class = None
+    serializer_class = CoreVariableSerializer
+    permission_classes = (IsManagerPermission,)
+
+    def get_queryset(self) -> QuerySet:
+        return CoreVariable.objects.all()
+
+
 class AsyncResultView(views.APIView):
-    permission_classes = (AllowAny,)
+    permission_classes = (CanSpendResourcesPermission,)
 
     # pylint: disable=unused-argument
 
+    # Since checking on others' async results is not harmful,
+    # we don't bother checking if task_id refers to the user's own task
     def get(self, request: Request, task_id: str) -> Response:
         result = AsyncResult(task_id)
 
@@ -39,48 +52,70 @@ class AsyncResultView(views.APIView):
         return Response(response)
 
 
-class GPTConversationViewset(viewsets.ModelViewSet):
-    permission_classes = (
-        AllowAny,
-        # IsAuthenticated
-    )
-    serializer_class = ChatGPTConversationSerializer
+class TextSearchConversationViewset(viewsets.ViewSet):
+    permission_classes = (IsAcceptedPermission,)
 
-    # pylint: disable=invalid-name
+    # pylint: disable=unused-argument,invalid-name
 
-    def perform_create(self, serializer: ChatGPTConversationSerializer) -> None:
-        system_text = serializer.validated_data['system_input']
-        system_text = system_text or get_core_setting('OPENAI_SYSTEM_MESSAGE')
-        serializer.save(author=self.request, system_input=system_text)
+    # create() uses user_input to name the conversation, but does not query the LLM.
+    # After creating the conversation, the frontend must still call chat() with the input.
+    def create(self, request: Request) -> Response:
+        request_serializer = TextSearchConversationCreateSerializer(data=request.data)
+        if not request_serializer.is_valid():
+            return Response(request_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(methods=['POST'], detail=True, serializer_class=OpenAISerializer)
+        conversation = request_serializer.save(auth_user=request.user)
+
+        response_serializer = TextSearchConversationReadOnlySerializer(conversation)
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+
+    def retrieve(self, request: Request, pk: int) -> Response:
+        queryset = TextSearchConversation.objects.filter(auth_user=request.user)
+        conversation = get_object_or_404(queryset, id=pk)
+
+        serializer = TextSearchConversationReadOnlySerializer(conversation)
+        return Response(serializer.data)
+
+    def list(self, request: Request) -> Response:
+        conversations = TextSearchConversation.objects.filter(auth_user=request.user)
+
+        serializer = TextSearchConversationReadOnlySerializer(conversations, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def set_title(self, request: Request, pk: int) -> Response:
+        # Prevent anyone from changing other users' data.
+        # We do it here, not self.check_object_permissions, because we want to return 404, not 403,
+        # because 403 implies that the resource exists and a non-manager should not know even that.
+        queryset = TextSearchConversation.objects.filter(auth_user=request.user)
+        conversation = get_object_or_404(queryset, id=pk)
+
+        serializer = ConversationSetTitleSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        conversation.title = serializer.validated_data['title']
+        conversation.save()
+
+        return Response()
+
+    @action(detail=True, methods=['post'], permission_classes=(CanSpendResourcesPermission,))
     def chat(self, request: Request, pk: int) -> Response:
-        serializer = self.serializer_class(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        # Prevent anyone from changing other users' data.
+        # We do it here, not self.check_object_permissions, because we want to return 404, not 403,
+        # because 403 implies that the resource exists and a non-manager should not know even that.
+        queryset = TextSearchConversation.objects.filter(auth_user=request.user)
+        get_object_or_404(queryset, id=pk)
 
-        input_text: str = serializer.validated_data['input_text']
-        model: str = serializer.validated_data['model']
+        request_serializer = TextSearchQuerySubmitSerializer(data=request.data)
+        if not request_serializer.is_valid():
+            return Response(request_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        task: AsyncResult = commit_openai_api_call.s(input_text, pk, model).apply_async()
-        relative_path = reverse('async_result', kwargs={'task_id': task.task_id})
-        response = {'url': request.build_absolute_uri(relative_path), 'task_id': task.task_id}
+        async_task = request_serializer.save(conversation_id=pk)
+
+        relative_path = reverse('async_result', kwargs={'task_id': async_task.task_id})
+        response = {
+            'url': request.build_absolute_uri(relative_path),
+            'task_id': async_task.task_id,
+        }
         return Response(response)
-
-    # TODO: Remove this.
-    def get_queryset(self) -> QuerySet:
-        user = self.request.user
-        if user.is_authenticated:
-            return ChatGPTConversation.objects.filter(author=user)
-        return ChatGPTConversation.objects.all()
-
-    class Meta:
-        model = ChatGPTConversation
-
-
-class CoreVariableViewSet(viewsets.ModelViewSet):
-    pagination_class = None
-    serializer_class = CoreVariableSerializer
-    permission_classes = (IsManagerPermission,)
-
-    def get_queryset(self) -> QuerySet:
-        return CoreVariable.objects.all()

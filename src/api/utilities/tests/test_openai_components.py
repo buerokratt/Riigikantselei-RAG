@@ -4,7 +4,11 @@ from unittest import mock
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.test import APITestCase
 
-from api.utilities.gpt import ChatGPT, ContentFilteredException, construct_messages
+from api.utilities.gpt import (
+    ChatGPT,
+    ContentFilteredException,
+    construct_messages_for_testing,
+)
 
 
 class ChatGPTTestCase(APITestCase):
@@ -69,7 +73,9 @@ class ChatGPTTestCase(APITestCase):
         }
 
         self.api_status_code = 200
-        self.messages = construct_messages('You are an helpful assistant', 'hello there')
+        self.messages = construct_messages_for_testing(
+            'You are an helpful assistant', 'hello there'
+        )
 
     def test_simple_chat_completion(self) -> None:
         return_values = (self.api_response_headers, self.api_response, self.api_status_code)
@@ -91,7 +97,7 @@ class ChatGPTTestCase(APITestCase):
             self.assertEqual(llm_result.reset_requests_at_ms, '120ms')
             self.assertEqual(llm_result.reset_tokens_at_ms, '56ms')
 
-            self.assertAlmostEqual(llm_result.total_price, 0.000235)
+            self.assertAlmostEqual(llm_result.total_cost, 0.000235)
 
     def test_errors_being_caught_with_api_exceptions(self) -> None:
         with self.assertRaises(AuthenticationFailed):

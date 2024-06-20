@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any
 
 from django.contrib.auth import get_user_model
@@ -7,9 +8,19 @@ from core.models import CoreVariable
 from core.serializers import CoreVariableSerializer
 
 
+class IsString:
+    def __eq__(self, other: Any) -> bool:
+        return isinstance(other, str)
+
+
+class IsDatetime:
+    def __eq__(self, other: Any) -> bool:
+        return isinstance(other, datetime)
+
+
 def create_test_user(username: str, email: str, password: str, is_superuser: bool = False) -> User:
     model = get_user_model()
-    user = model.objects.create_user(
+    auth_user = model.objects.create_user(
         username=username,
         email=email,
         password=password,
@@ -17,7 +28,7 @@ def create_test_user(username: str, email: str, password: str, is_superuser: boo
         is_staff=is_superuser,
         is_active=True,
     )
-    return user
+    return auth_user
 
 
 def set_core_setting(setting_name: str, setting_value: Any) -> None:

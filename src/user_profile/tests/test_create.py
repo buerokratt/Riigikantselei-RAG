@@ -35,6 +35,8 @@ class TestUserProfileCreate(APITestCase):
             'is_accepted': False,
             'is_allowed_to_spend_resources': False,
             'custom_usage_limit_euros': None,
+            'usage_limit': 10.0,
+            'used_cost': 0.0,
         }
         expected_data = self.base_input | model_data | {'id': auth_user_id}
 

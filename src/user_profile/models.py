@@ -1,6 +1,10 @@
 from django.contrib.auth.models import User
 from django.db import models
+from django.db.models import Sum
 from rest_framework.authtoken.models import Token
+
+from api.utilities.core_settings import get_core_setting
+from core.models import TextSearchQueryResult
 
 
 class UserProfile(models.Model):
@@ -37,8 +41,18 @@ class UserProfile(models.Model):
     # If this is None, the usage limit should be read from the default value.
     custom_usage_limit_euros = models.FloatField(default=None, null=True)
 
-    # TODO here: The user's current usage balance is the sum of the costs of UsageEvents
-    #  tied to the user and will be calculated when needed.
+    # TODO here: unit test with views
+    @property
+    def usage_limit(self) -> float:
+        if self.custom_usage_limit_euros is not None:
+            return self.custom_usage_limit_euros
+        return get_core_setting('DEFAULT_USAGE_LIMIT_EUROS')
+
+    # TODO here: unit test with views
+    @property
+    def used_cost(self) -> float:
+        user_queries = TextSearchQueryResult.objects.filter(conversation__auth_user=self.auth_user)
+        return user_queries.aggregate(Sum('total_cost', default=0.0))['total_cost__sum']
 
 
 class PasswordResetToken(models.Model):

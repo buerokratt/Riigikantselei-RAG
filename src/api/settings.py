@@ -29,7 +29,7 @@ if env_file_path:
 env = environ.Env()
 
 # TODO: why are some parameters in core settings and some not?
-#  Does anything other than default usage limit need to be here?
+#  Does anything other than default usage limit or cost need to be here?
 PROTECTED_CORE_KEYS = ('SECRET', 'KEY', 'PASSWORD')
 CORE_SETTINGS = {
     # Elasticearch
@@ -47,6 +47,11 @@ CORE_SETTINGS = {
     'OPENAI_API_CHAT_MODEL': env.int('RK_OPENAI_API_CHAT_MODEL', default='gpt-4o'),
     # Other
     'DEFAULT_USAGE_LIMIT_EUROS': env.float('RK_DEFAULT_USAGE_LIMIT_EUROS', default=10.0),
+    # defaults from https://openai.com/api/pricing/ GPT-4o
+    'EURO_COST_PER_INPUT_TOKEN': env.float('RK_EURO_COST_PER_INPUT_TOKEN', default=5 / 1_000_000),
+    'EURO_COST_PER_OUTPUT_TOKEN': env.float(
+        'RK_EURO_COST_PER_OUTPUT_TOKEN', default=15 / 1_000_000
+    ),
 }
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -130,21 +135,15 @@ DATABASES = {
     }
 }
 
-# TODO here: Remove non-throttle defaults as we always want specific behaviour anyway?
-#  Is there a default when you don't specify one?
 REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': ('rest_framework.renderers.JSONRenderer',),
-    'DEFAULT_PERMISSION_CLASSES': ('rest_framework.permissions.IsAuthenticated',),
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        # For authenticating requests with the Token
-        'rest_framework.authentication.TokenAuthentication',
-    ],
-    'DEFAULT_THROTTLE_CLASSES': [
-        'rest_framework.throttling.AnonRateThrottle',
-    ],
-    'DEFAULT_THROTTLE_RATES': {
-        'anon': '10/hour',
-    },
+    # Permissions vary a lot and therefore should always be specified.
+    # In case a permission is accidentally missing we set the harshest default
+    'DEFAULT_PERMISSION_CLASSES': ('rest_framework.permissions.IsAdminUser',),
+    # Almost every endpoint uses TokenAuthentication
+    'DEFAULT_AUTHENTICATION_CLASSES': ('rest_framework.authentication.TokenAuthentication',),
+    'DEFAULT_THROTTLE_CLASSES': ('rest_framework.throttling.AnonRateThrottle',),
+    'DEFAULT_THROTTLE_RATES': {'anon': '10/hour'},
 }
 
 if DEBUG is True:
@@ -348,9 +347,8 @@ EMAIL_BACKEND = 'django.core.mail.backends.dummy.EmailBackend'
 SERVICE_NAME = 'Riigikantselei semantiline tekstiotsing'
 BASE_URL = env('RK_BASE_URL', default='http://localhost')
 
-# https://openai.com/api/pricing/ GPT-4o
-EURO_COST_PER_MILLION_INPUT_TOKENS = 5
-EURO_COST_PER_MILLION_OUTPUT_TOKENS = 15
-
-EURO_COST_PER_INPUT_TOKEN = EURO_COST_PER_MILLION_INPUT_TOKENS / 1_000_000
-EURO_COST_PER_OUTPUT_TOKEN = EURO_COST_PER_MILLION_OUTPUT_TOKENS / 1_000_000
+DOCUMENT_CATEGORY_TO_INDICES_MAP = {
+    'a': ['a_1', 'a_2'],
+    'b': ['b'],
+    'c': ['c_1', 'c_2'],
+}

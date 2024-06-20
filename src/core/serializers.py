@@ -1,81 +1,15 @@
-from typing import Any, List
+from typing import Any
 
+from celery.result import AsyncResult
 from django.conf import settings
-from django.db import transaction
-from django.urls import reverse
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 
 from api.utilities.core_settings import get_core_setting
-
-from .choices import CORE_VARIABLE_CHOICES
-from .models import ChatGPTConversation, CoreVariable
-from .tasks import commit_openai_api_call, get_rag_context
-
-MODEL_FIELD_HELPTEXT = (
-    "Manual override for the model to use with ChatGPT, only use if you know what you're doing.",
-)
-
-
-class ChatGPTConversationSerializer(serializers.ModelSerializer):
-    input_text = serializers.CharField(write_only=True)
-    model = serializers.CharField(
-        default=None,
-        help_text=MODEL_FIELD_HELPTEXT,
-        write_only=True,
-    )
-
-    system_input = serializers.CharField(default=None, allow_blank=True)
-    messages = serializers.SerializerMethodField()
-
-    # Since we create the the first chat upon the creation of the conversation,
-    # we need to display the first task id in the output for the CREATE.
-    def to_representation(self, instance: ChatGPTConversation) -> dict:
-        data = super().to_representation(instance)
-        creation_task = instance.llmresult_set.first()
-        if creation_task:
-            task_id = creation_task.celery_task_id
-            relative_path = reverse('async_result', kwargs={'task_id': task_id})
-            data['task'] = {
-                'id': task_id,
-                'url': self.context['request'].build_absolute_uri(relative_path),
-            }
-
-        return data
-
-    def create(self, validated_data: dict) -> ChatGPTConversation:
-        input_text = validated_data.pop('input_text', None)
-        model = validated_data.pop('model', None)
-
-        indices = validated_data['indices']
-        vector_field = get_core_setting('ELASTICSEARCH_VECTOR_FIELD')
-        content_field = get_core_setting('ELASTICSEARCH_TEXT_CONTENT_FIELD')
-
-        # Since Celery tasks can happen quicker than the db can handle transaction,
-        # we only launch the task AFTER the commit.
-        with transaction.atomic():
-            orm = super().create(validated_data)
-            task = get_rag_context.s(
-                input_text, indices, vector_field, content_field
-            ) | commit_openai_api_call.s(input_text, orm.pk, model)
-            transaction.on_commit(task.apply_async)
-            return orm
-
-    def get_messages(self, obj: ChatGPTConversation) -> List[dict]:
-        return obj.messages
-
-    class Meta:
-        model = ChatGPTConversation
-        fields = '__all__'
-        read_only_fields = ('created_at', 'updated_at', 'author')
-
-
-class OpenAISerializer(serializers.Serializer):
-    input_text = serializers.CharField(help_text='User query to send towards ChatGPT')
-    model = serializers.CharField(
-        default=None,
-        help_text=MODEL_FIELD_HELPTEXT,
-    )
+from api.utilities.serializers import reasonable_character_with_spaces_validator
+from core.choices import CORE_VARIABLE_CHOICES
+from core.models import CoreVariable, TextSearchConversation, TextSearchQueryResult
+from core.tasks import async_call_celery_task_chain
 
 
 class CoreVariableSerializer(serializers.ModelSerializer):
@@ -94,8 +28,8 @@ class CoreVariableSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance: CoreVariable) -> dict:
         data = super().to_representation(instance)
-        protected = settings.PROTECTED_CORE_KEYS
 
+        protected = settings.PROTECTED_CORE_KEYS
         for protected_key in protected:
             if protected_key.lower() in instance.name.lower():
                 data['value'] = 12 * '*' + data['value'][-3:]
@@ -111,3 +45,86 @@ class CoreVariableSerializer(serializers.ModelSerializer):
         variable_name = obj.name
         env_value = settings.CORE_SETTINGS.get(variable_name, '')
         return env_value
+
+
+class TextSearchConversationCreateSerializer(serializers.Serializer):
+    user_input = serializers.CharField()
+
+    def create(self, validated_data: dict) -> TextSearchConversation:
+        conversation = TextSearchConversation.objects.create(
+            auth_user=validated_data['auth_user'],
+            system_input=get_core_setting('OPENAI_SYSTEM_MESSAGE'),
+            title=validated_data['user_input'],
+        )
+        conversation.save()
+        return conversation
+
+
+# Objects are never modified, so the serializer is used only for reading
+class TextSearchQueryResultReadOnlySerializer(serializers.ModelSerializer):
+    def to_representation(self, instance: TextSearchQueryResult) -> dict:
+        data = super().to_representation(instance)
+        # This is a list, so is saved in the database as a string,
+        # but we should still return it as a list
+        data['document_types'] = instance.document_types
+        return data
+
+    class Meta:
+        model = TextSearchQueryResult
+        fields = (
+            'min_year',
+            'max_year',
+            'user_input',
+            'response',
+            'total_cost',
+            'created_at',
+        )
+        read_only_fields = ('__all__',)
+
+
+# Objects are never modified, so the serializer is used only for reading
+class TextSearchConversationReadOnlySerializer(serializers.ModelSerializer):
+    query_results = TextSearchQueryResultReadOnlySerializer(many=True)
+
+    class Meta:
+        model = TextSearchConversation
+        fields = (
+            'id',
+            'title',
+            'created_at',
+            'query_results',
+        )
+        read_only_fields = ('__all__',)
+
+
+class ConversationSetTitleSerializer(serializers.Serializer):
+    title = serializers.CharField(
+        required=True, max_length=100, validators=[reasonable_character_with_spaces_validator]
+    )
+
+
+class TextSearchQuerySubmitSerializer(serializers.Serializer):
+    min_year = serializers.IntegerField(required=True, min_value=1900, max_value=2024)
+    max_year = serializers.IntegerField(required=True, min_value=1900, max_value=2024)
+    document_types = serializers.ListField(
+        required=True,
+        child=serializers.ChoiceField(
+            choices=list(settings.DOCUMENT_CATEGORY_TO_INDICES_MAP.keys())
+        ),
+    )
+
+    user_input = serializers.CharField()
+
+    def save(self, conversation_id: int) -> AsyncResult:
+        min_year = self.validated_data['min_year']
+        max_year = self.validated_data['max_year']
+        document_types_string = ','.join(self.validated_data['document_types'])
+        user_input = self.validated_data['user_input']
+
+        document_indices = []
+        for document_type in self.validated_data['document_types']:
+            document_indices.extend(settings.DOCUMENT_CATEGORY_TO_INDICES_MAP[document_type])
+
+        return async_call_celery_task_chain(
+            min_year, max_year, user_input, document_indices, conversation_id, document_types_string
+        )

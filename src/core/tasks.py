@@ -1,70 +1,103 @@
-from typing import List, Optional
+from typing import List
 
 import openai
 from celery import Task
+from celery.result import AsyncResult
 from django.conf import settings
 
 from api.celery_handler import app
+from api.utilities.core_settings import get_core_setting
 from api.utilities.elastic import ElasticCore
-from api.utilities.gpt import ChatGPT, LLMResponse
+from api.utilities.gpt import ChatGPT
 from api.utilities.vectorizer import Vectorizer
-from core.models import ChatGPTConversation, LLMResult
+from core.models import TextSearchConversation, TextSearchQueryResult
+
+# pylint: disable=unused-argument,too-many-arguments
 
 # TODO: Revisit the retry parameters, or do it by hand,
 #   probably using the headers information about timeout expirations would be useful.
 
+# TODO: add real RAG logic to the tasks when it is ready,
+#  unit test async_call_celery_task_chain() and the tasks
 
-@app.task(name='get_rag_context', max_retries=5, bind=True)
-def get_rag_context(
-    self: Task, input_text: str, indices: List[str], vector_field: str, content_field: str
+
+def async_call_celery_task_chain(
+    min_year: int,
+    max_year: int,
+    user_input: str,
+    document_indices: List[str],
+    conversation_id: int,
+    document_types_string: str,
+) -> AsyncResult:
+    task_chain = query_and_format_rag_context.s(
+        min_year=min_year,
+        max_year=max_year,
+        user_input=user_input,
+        document_indices=document_indices,
+    ) | call_openai_api_and_save.s(
+        conversation_id=conversation_id,
+        min_year=min_year,
+        max_year=max_year,
+        document_types_string=document_types_string,
+        user_input=user_input,
+    )
+
+    return task_chain.apply_async()
+
+
+@app.task(name='query_and_format_rag_context', max_retries=5, bind=True)
+def query_and_format_rag_context(
+    self: Task, min_year: int, max_year: int, user_input: str, document_indices: List[str]
 ) -> str:
     """
     Task for fetching the RAG context from pre-processed vectors in ElasticSearch.
 
     :param self: Contains access to the Celery Task instance.
-    :param input_text: User sent input to vectorise and search from Elasticsearch.
-    :param indices: Which indices to search from Elasticsearch.
-    :param vector_field: Which field in the indices contains
-    the pre-vectorized information to search from.
-    :param content_field: Which field in the indices contains
-    the textual information we need to send to OpenAI.
-    :return:
+    :param min_year: Earliest year to consider documents from.
+    :param max_year: Latest year to consider documents from.
+    :param user_input: User sent input to add context to.
+    :param document_indices: Which indices to search from Elasticsearch.
+    :return: Text containing user input and relevant context documents.
     """
-    # pylint: disable=unused-argument
-    elastic_core = ElasticCore()
     vectorizer = Vectorizer(
         model_name=settings.VECTORIZATION_MODEL_NAME,
         system_configuration=settings.BGEM3_SYSTEM_CONFIGURATION,
         inference_configuration=settings.BGEM3_INFERENCE_CONFIGURATION,
         model_directory=settings.MODEL_DIRECTORY,
     )
+    input_vectors = vectorizer.vectorize([user_input])['vectors'][0]
 
-    input_vectors = vectorizer.vectorize([input_text])['vectors'][0]
-    indices_string = ','.join(indices)
+    elastic_core = ElasticCore()
+    indices_string = ','.join(document_indices)
+    # TODO here: use year range to filter documents
+    # TODO here: unit test index and year filtering
     matching_documents = elastic_core.search_vector(
-        indices=indices_string, vector=input_vectors, comparison_field=vector_field
+        indices=indices_string,
+        vector=input_vectors,
+        comparison_field=get_core_setting('ELASTICSEARCH_VECTOR_FIELD'),
     )
 
-    container = []
+    content_field = get_core_setting('ELASTICSEARCH_TEXT_CONTENT_FIELD')
+    context_documents_contents = []
     for hit in matching_documents['hits']['hits']:
         content = hit['_source'].get(content_field, None)
         if content:
-            container.append(content)
+            context_documents_contents.append(content)
 
-    context = '\n\n'.join(container)
-    template = (
-        f''
-        f'Answer the following question using the provided context from below! '
-        f'Question: ```{input_text}```\n\n'
+    context = '\n\n'.join(context_documents_contents)
+    query_with_context = (
+        'Answer the following question using the provided context from below! '
+        f'Question: ```{user_input}```'
+        '\n\n'
         f'Context: ```{context}```'
     )
 
-    return template
+    return query_with_context
 
 
 # Using bind sets the Celery Task object to the first argument, in this case self.
 @app.task(
-    name='commit_openai_api_call',
+    name='call_openai_api_and_save',
     autoretry_for=(
         openai.InternalServerError,
         openai.RateLimitError,
@@ -74,30 +107,46 @@ def get_rag_context(
     max_retries=5,
     bind=True,
 )
-def commit_openai_api_call(
-    self: Task, user_text: str, conversation_pk: int, model: Optional[str]
-) -> dict:
-    conversation = ChatGPTConversation.objects.get(pk=conversation_pk)
+def call_openai_api_and_save(
+    self: Task,
+    user_input_with_context: str,
+    conversation_id: int,
+    min_year: int,
+    max_year: int,
+    document_types_string: str,
+    user_input: str,
+) -> str:
+    """
+    Task for fetching the RAG context from pre-processed vectors in ElasticSearch.
 
-    messages = conversation.messages + [{'role': 'user', 'content': user_text}]
+    :param self: Contains access to the Celery Task instance.
+    :param user_input_with_context: Text containing user input and relevant context documents.
+    :param conversation_id: ID of the conversation this API call is a part of.
+    :param min_year: Earliest year to consider documents from.
+    :param max_year: Latest year to consider documents from.
+    :param document_types_string: Which indices to search from Elasticsearch.
+    :param user_input: User sent input to send to the LLM.
+    :return: The text of the LLM response.
+    """
+    conversation = TextSearchConversation.objects.get(id=conversation_id)
 
-    gpt = ChatGPT(model=model)
-    llm_response: LLMResponse = gpt.chat(messages=messages)
+    messages = conversation.messages + [{'role': 'user', 'content': user_input_with_context}]
 
-    orm: LLMResult = LLMResult.objects.create(
-        conversation=conversation,
-        celery_task_id=self.request.id,
-        response=llm_response.message,
-        user_input=llm_response.user_input,
+    chat_gpt = ChatGPT()
+    llm_response = chat_gpt.chat(messages=messages)
+
+    query_result = TextSearchQueryResult.objects.create(
+        conversation=conversation_id,
         model=llm_response.model,
+        min_year=min_year,
+        max_year=max_year,
+        document_types_string=document_types_string,
+        user_input=user_input,
+        response=llm_response.message,
         input_tokens=llm_response.input_tokens,
         output_tokens=llm_response.response_tokens,
-        headers=llm_response.headers,
-        total_price=llm_response.total_price,
+        total_cost=llm_response.total_cost,
+        response_headers=llm_response.headers,
     )
 
-    return {
-        'response': orm.response,
-        'input_tokens': orm.input_tokens,
-        'output_tokens': orm.output_tokens,
-    }
+    return query_result.response

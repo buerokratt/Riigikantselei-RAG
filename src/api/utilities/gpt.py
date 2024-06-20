@@ -4,8 +4,6 @@ from typing import List, Optional, Tuple
 
 import django
 import openai
-from django.conf import settings
-from openai import OpenAI
 from rest_framework.exceptions import (
     APIException,
     AuthenticationFailed,
@@ -19,8 +17,6 @@ from api.utilities.core_settings import get_core_setting
 logger = logging.getLogger(__name__)
 
 
-# TODO: Maybe replace this with an actual DB model later on
-#  but for now it's a good enough abstraction for GPT responses.
 class LLMResponse:
     def __init__(
         self,
@@ -68,11 +64,10 @@ class LLMResponse:
         return self.input_tokens + self.response_tokens
 
     @property
-    def total_price(self) -> float:
-        return (
-            self.input_tokens * settings.EURO_COST_PER_INPUT_TOKEN
-            + self.response_tokens * settings.EURO_COST_PER_OUTPUT_TOKEN
-        )
+    def total_cost(self) -> float:
+        return self.input_tokens * get_core_setting(
+            'EURO_COST_PER_INPUT_TOKEN'
+        ) + self.response_tokens * get_core_setting('EURO_COST_PER_OUTPUT_TOKEN')
 
     def __str__(self) -> str:
         return f'{self.message} / {self.total_tokens} tokens used'
@@ -103,8 +98,7 @@ def _parse_message(response: dict, user_input: str) -> str:
     return message
 
 
-# TODO here: somewhat duplicates LLMResult.message
-def construct_messages(system_input: str, user_input: str) -> List[dict]:
+def construct_messages_for_testing(system_input: str, user_input: str) -> List[dict]:
     return [
         {'role': 'system', 'content': system_input},
         {'role': 'user', 'content': user_input},
@@ -124,9 +118,11 @@ class ChatGPT:
         self.max_retries = max_retries or get_core_setting('OPENAI_API_MAX_RETRIES')
 
         self.model = model or get_core_setting('OPENAI_API_CHAT_MODEL')
-        self.gpt = OpenAI(api_key=self.api_key, timeout=self.timeout, max_retries=self.max_retries)
+        self.gpt = openai.OpenAI(
+            api_key=self.api_key, timeout=self.timeout, max_retries=self.max_retries
+        )
 
-    def parse_results(self, user_input: str, response: dict, headers: dict) -> LLMResponse:
+    def _parse_results(self, user_input: str, response: dict, headers: dict) -> LLMResponse:
         message = _parse_message(response, user_input)
 
         return LLMResponse(
@@ -194,7 +190,7 @@ class ChatGPT:
     def chat(self, messages: List[dict]) -> LLMResponse:
         user_input = messages[-1]['content']
         headers, response, _ = self._commit_api(messages)
-        llm_result = self.parse_results(user_input=user_input, response=response, headers=headers)
+        llm_result = self._parse_results(user_input=user_input, response=response, headers=headers)
         return llm_result
 
 

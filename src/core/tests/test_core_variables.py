@@ -1,8 +1,8 @@
 # Create your tests here.
 from django.test import override_settings
-from django.urls import reverse
 from rest_framework import status
 from rest_framework.authtoken.models import Token
+from rest_framework.reverse import reverse
 from rest_framework.test import APITestCase
 
 from api.utilities.core_settings import get_core_setting

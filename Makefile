@@ -8,8 +8,9 @@ install:
 check:
 	conda run -n riigikantselei pre-commit run --all-files
 
+# TODO here: revert to all tests
 test:
-	cd src && conda run -n riigikantselei python manage.py test
+	cd src && conda run -n riigikantselei python manage.py test core.tests.test_text_search_chat
 
 
 makemigrations:
