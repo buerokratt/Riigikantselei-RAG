@@ -10,15 +10,14 @@ from api.utilities.core_settings import get_core_setting
 from api.utilities.elastic import ElasticCore
 from api.utilities.gpt import ChatGPT
 from api.utilities.vectorizer import Vectorizer
-from core.models import TextSearchConversation, TextSearchQueryResult
+from core.models import TextSearchConversation
 
 # pylint: disable=unused-argument,too-many-arguments
 
 # TODO: Revisit the retry parameters, or do it by hand,
 #   probably using the headers information about timeout expirations would be useful.
 
-# TODO: add real RAG logic to the tasks when it is ready,
-#  unit test async_call_celery_task_chain() and the tasks
+# TODO: add real RAG logic to the tasks when it is ready and unit test them
 
 
 def async_call_celery_task_chain(
@@ -34,7 +33,7 @@ def async_call_celery_task_chain(
         max_year=max_year,
         user_input=user_input,
         document_indices=document_indices,
-    ) | call_openai_api_and_save.s(
+    ) | call_openai_api.s(
         conversation_id=conversation_id,
         min_year=min_year,
         max_year=max_year,
@@ -97,7 +96,7 @@ def query_and_format_rag_context(
 
 # Using bind sets the Celery Task object to the first argument, in this case self.
 @app.task(
-    name='call_openai_api_and_save',
+    name='call_openai_api',
     autoretry_for=(
         openai.InternalServerError,
         openai.RateLimitError,
@@ -107,7 +106,7 @@ def query_and_format_rag_context(
     max_retries=5,
     bind=True,
 )
-def call_openai_api_and_save(
+def call_openai_api(
     self: Task,
     user_input_with_context: str,
     conversation_id: int,
@@ -115,7 +114,7 @@ def call_openai_api_and_save(
     max_year: int,
     document_types_string: str,
     user_input: str,
-) -> str:
+) -> dict:
     """
     Task for fetching the RAG context from pre-processed vectors in ElasticSearch.
 
@@ -126,7 +125,7 @@ def call_openai_api_and_save(
     :param max_year: Latest year to consider documents from.
     :param document_types_string: Which indices to search from Elasticsearch.
     :param user_input: User sent input to send to the LLM.
-    :return: The text of the LLM response.
+    :return: Dict needed to build a TextSearchQueryResult.
     """
     conversation = TextSearchConversation.objects.get(id=conversation_id)
 
@@ -135,18 +134,22 @@ def call_openai_api_and_save(
     chat_gpt = ChatGPT()
     llm_response = chat_gpt.chat(messages=messages)
 
-    query_result = TextSearchQueryResult.objects.create(
-        conversation=conversation_id,
-        model=llm_response.model,
-        min_year=min_year,
-        max_year=max_year,
-        document_types_string=document_types_string,
-        user_input=user_input,
-        response=llm_response.message,
-        input_tokens=llm_response.input_tokens,
-        output_tokens=llm_response.response_tokens,
-        total_cost=llm_response.total_cost,
-        response_headers=llm_response.headers,
-    )
+    # The output is a dict of all the input data needed to create a TextSearchQueryResult.
+    # To separate testing of view and model logic from testing of RAG logic,
+    # the TextSearchQueryResult is created in the view.
+    query_result_parameters = {
+        'conversation': conversation_id,
+        'celery_task_id': self.id,
+        'model': llm_response.model,
+        'min_year': min_year,
+        'max_year': max_year,
+        'document_types_string': document_types_string,
+        'user_input': user_input,
+        'response': llm_response.message,
+        'input_tokens': llm_response.input_tokens,
+        'output_tokens': llm_response.response_tokens,
+        'total_cost': llm_response.total_cost,
+        'response_headers': llm_response.headers,
+    }
 
-    return query_result.response
+    return query_result_parameters

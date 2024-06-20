@@ -37,5 +37,9 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include(router.urls)),
     path(GET_TOKEN_VIEW_URL, GetTokenView.as_view(), name='get_token'),
-    path(f'{PREFIX}/async_result/<str:task_id>/', AsyncResultView.as_view(), name='async_result'),
+    path(
+        f'{PREFIX}/async_result/<str:celery_task_id>/',
+        AsyncResultView.as_view(),
+        name='async_result',
+    ),
 ]

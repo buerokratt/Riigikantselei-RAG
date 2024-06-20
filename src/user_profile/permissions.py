@@ -37,6 +37,5 @@ class CanSpendResourcesPermission(permissions.BasePermission):
         return (
             request.user.is_authenticated
             and request.user.user_profile.is_allowed_to_spend_resources
-            # TODO here: unit test with views
             and request.user.user_profile.used_cost < request.user.user_profile.usage_limit
         )

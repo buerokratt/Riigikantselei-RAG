@@ -58,7 +58,7 @@ class TestElasticCore(APITestCase):
             set_core_setting('ELASTICSEARCH_URL', f'http://{uuid.uuid4().hex}:8888')
             ElasticCore().create_index(self.index_name, shards=3, replicas=1)
         except APIException as exception:
-            self.assertEquals(ELASTIC_CONNECTION_ERROR_MESSAGE, str(exception))
+            self.assertEqual(ELASTIC_CONNECTION_ERROR_MESSAGE, str(exception))
 
     def test_timeout_setting_being_respected(self) -> None:
         try:

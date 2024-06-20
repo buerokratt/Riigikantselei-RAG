@@ -32,6 +32,8 @@ class TextSearchQueryResult(models.Model):
     conversation = models.ForeignKey(
         TextSearchConversation, on_delete=models.CASCADE, related_name='query_results'
     )
+    celery_task_id = models.TextField()
+
     model = models.CharField(max_length=100)
 
     min_year = models.IntegerField()

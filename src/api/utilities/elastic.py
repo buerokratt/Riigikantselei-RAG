@@ -27,7 +27,7 @@ ELASTIC_CONNECTION_ERROR_MESSAGE = (
 
 def _elastic_connection(func: Callable) -> Callable:
     @functools.wraps(func)
-    def wrapper(*args: tuple, **kwargs: dict) -> Any:
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
         try:
             return func(*args, **kwargs)
         except NotFoundError as exception:

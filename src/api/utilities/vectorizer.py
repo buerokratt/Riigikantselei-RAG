@@ -1,6 +1,6 @@
 import logging
 import pathlib
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from FlagEmbedding import BGEM3FlagModel
 from huggingface_hub import snapshot_download
@@ -58,13 +58,13 @@ class Vectorizer:
                 ignore_patterns=['flax_model.msgpack', 'rust_model.ot', 'tf_model.h5'],
             )
 
-    def _load_model_interface(self, **kwargs: dict) -> None:
+    def _load_model_interface(self, **kwargs: Any) -> None:
         self.model_interface = BGEM3FlagModel(
             str(self._model_path), **self.system_configuration, **kwargs
         )
 
     # Adding additional kwargs here to support overloading the parameters by hand.
-    def vectorize(self, texts: List[str], **kwargs: dict) -> dict:
+    def vectorize(self, texts: List[str], **kwargs: Any) -> dict:
         if self.model_interface is None:
             logger.warning(
                 'Trying to vectorize without initialising the interference interface, '

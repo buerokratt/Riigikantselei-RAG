@@ -4,6 +4,7 @@ from rest_framework.authtoken.models import Token
 from rest_framework.reverse import reverse
 from rest_framework.test import APITestCase
 
+from api.utilities.core_settings import get_core_setting
 from user_profile.utilities import create_test_user_with_user_profile
 
 
@@ -46,7 +47,8 @@ class TestUserProfileEdit(APITestCase):
             'user_profile-set-limit', kwargs={'pk': self.non_manager_reviewed_auth_user.id}
         )
 
-        self.input_data = {'limit': 20.5}
+        self.new_limit = 20.123
+        self.input_data = {'limit': self.new_limit}
 
     # Accept
 
@@ -169,12 +171,18 @@ class TestUserProfileEdit(APITestCase):
         token, _ = Token.objects.get_or_create(user=self.manager_auth_user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
+        self.assertEqual(
+            self.non_manager_reviewed_auth_user.user_profile.usage_limit,
+            get_core_setting('DEFAULT_USAGE_LIMIT_EUROS'),
+        )
+
         response = self.client.post(self.set_limit_endpoint_url, data=self.input_data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         updated_auth_user = User.objects.get(id=self.non_manager_reviewed_auth_user.id)
         updated_user_profile = updated_auth_user.user_profile
-        self.assertEqual(updated_user_profile.custom_usage_limit_euros, 20.5)
+        self.assertEqual(updated_user_profile.custom_usage_limit_euros, self.new_limit)
+        self.assertEqual(updated_user_profile.usage_limit, self.new_limit)
 
     def test_set_limit_fails_because_not_authed(self) -> None:
         response = self.client.post(self.set_limit_endpoint_url, data=self.input_data)

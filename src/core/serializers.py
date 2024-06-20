@@ -1,6 +1,5 @@
 from typing import Any
 
-from celery.result import AsyncResult
 from django.conf import settings
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
@@ -115,7 +114,7 @@ class TextSearchQuerySubmitSerializer(serializers.Serializer):
 
     user_input = serializers.CharField()
 
-    def save(self, conversation_id: int) -> AsyncResult:
+    def save(self, conversation_id: int) -> dict:
         min_year = self.validated_data['min_year']
         max_year = self.validated_data['max_year']
         document_types_string = ','.join(self.validated_data['document_types'])
@@ -125,6 +124,7 @@ class TextSearchQuerySubmitSerializer(serializers.Serializer):
         for document_type in self.validated_data['document_types']:
             document_indices.extend(settings.DOCUMENT_CATEGORY_TO_INDICES_MAP[document_type])
 
-        return async_call_celery_task_chain(
+        async_result = async_call_celery_task_chain(
             min_year, max_year, user_input, document_indices, conversation_id, document_types_string
         )
+        return {'celery_task_id': async_result.task_id}

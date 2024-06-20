@@ -41,14 +41,12 @@ class UserProfile(models.Model):
     # If this is None, the usage limit should be read from the default value.
     custom_usage_limit_euros = models.FloatField(default=None, null=True)
 
-    # TODO here: unit test with views
     @property
     def usage_limit(self) -> float:
         if self.custom_usage_limit_euros is not None:
             return self.custom_usage_limit_euros
         return get_core_setting('DEFAULT_USAGE_LIMIT_EUROS')
 
-    # TODO here: unit test with views
     @property
     def used_cost(self) -> float:
         user_queries = TextSearchQueryResult.objects.filter(conversation__auth_user=self.auth_user)
