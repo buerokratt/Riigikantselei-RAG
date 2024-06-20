@@ -14,6 +14,7 @@ class TestGetToken(APITestCase):
             self, self.username, 'manager@email.com', self.password, is_manager=True
         )
         self.token_endpoint_url = reverse('get_token')
+        self.logout_endpoint_url = reverse('log_out')
 
     def test_get_existing_token(self) -> None:
         manager_token, created = Token.objects.get_or_create(user=self.manager_auth_user)
@@ -23,7 +24,17 @@ class TestGetToken(APITestCase):
             self.token_endpoint_url, data={'username': self.username, 'password': self.password}
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
         self.assertEqual(response.data['token'], manager_token.key)
+        self.assertEqual(response.data['id'], self.manager_auth_user.id)
+
+        # Log out
+
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {manager_token.key}')
+
+        response = self.client.post(self.logout_endpoint_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(Token.objects.filter(user=self.manager_auth_user).exists())
 
     def test_get_new_token(self) -> None:
         response = self.client.post(
@@ -35,3 +46,12 @@ class TestGetToken(APITestCase):
         self.assertFalse(created)
 
         self.assertEqual(response.data['token'], manager_token.key)
+        self.assertEqual(response.data['id'], self.manager_auth_user.id)
+
+        # Log out
+
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {manager_token.key}')
+
+        response = self.client.post(self.logout_endpoint_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(Token.objects.filter(user=self.manager_auth_user).exists())
