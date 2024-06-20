@@ -4,12 +4,11 @@ from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from rest_framework import status, viewsets
-from rest_framework.authentication import TokenAuthentication
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import action
 from rest_framework.exceptions import APIException, AuthenticationFailed, ParseError
 from rest_framework.generics import get_object_or_404
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.renderers import TemplateHTMLRenderer
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -43,14 +42,26 @@ class GetTokenView(APIView):
             user = User.objects.get(username=username)
             token, _ = Token.objects.get_or_create(user=user)
 
-            response = {'username': user.username, 'email': user.email, 'token': token.key}
+            response = {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'token': token.key,
+            }
             return Response(response, status=status.HTTP_200_OK)
 
         raise AuthenticationFailed('User and password do not match!')
 
 
+class LogOutView(APIView):
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request: Request) -> Response:
+        Token.objects.filter(user=request.user).delete()
+        return Response()
+
+
 class UserProfileViewSet(viewsets.ViewSet):
-    authentication_classes = (TokenAuthentication,)
     permission_classes = (UserProfilePermission,)
 
     # pylint: disable=unused-argument,invalid-name

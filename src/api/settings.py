@@ -154,6 +154,9 @@ if DEBUG is True:
     REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'] = (
         # For authenticating requests with the Token
         'rest_framework.authentication.TokenAuthentication',
+        # TODO: remove once browsable API is no longer needed
+        # For the Browsable API Renderer
+        'rest_framework.authentication.SessionAuthentication',
     )
 
     REST_FRAMEWORK['DEFAULT_THROTTLE_CLASSES'] = []

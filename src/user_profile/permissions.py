@@ -22,7 +22,10 @@ class UserProfilePermission(permissions.BasePermission):
             return request.user.is_authenticated and request.user.user_profile.is_accepted
         if view.action in _MANAGER_ONLY_ACTIONS:
             return request.user.is_authenticated and request.user.user_profile.is_manager
-        raise RuntimeError('Unknown action.')
+
+        # TODO: uncomment once browsable API is no longer needed
+        # raise RuntimeError('Unknown action.')
+        return request.user.is_authenticated
 
     def has_object_permission(self, request, view, obj):  # type: ignore
         if request.user.is_superuser:
