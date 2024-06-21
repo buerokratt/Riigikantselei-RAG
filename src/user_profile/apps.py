@@ -7,4 +7,5 @@ class UserProfileConfig(AppConfig):
 
     def ready(self) -> None:
         """When app is loaded, load signals"""
-        import user_profile.signals  # type: ignore
+        # pylint: disable=import-outside-toplevel,unused-import
+        import user_profile.signals

@@ -12,7 +12,8 @@ _MANAGER_ONLY_ACTIONS = {'list', 'accept', 'decline', 'ban', 'set_limit'}
 
 
 class UserProfilePermission(permissions.BasePermission):
-    def has_permission(self, request, view):  # type: ignore
+    def has_permission(self, request, view):
+        # Just in case superuser does not have good UserProfile values set
         if request.user.is_authenticated and request.user.is_superuser:
             return True
 
@@ -30,16 +31,28 @@ class UserProfilePermission(permissions.BasePermission):
 
 class IsManagerPermission(permissions.BasePermission):
     def has_permission(self, request, view):  # pylint: disable=unused-argument
+        # Just in case superuser does not have good UserProfile values set
+        if request.user.is_authenticated and request.user.is_superuser:
+            return True
+
         return request.user.is_authenticated and request.user.user_profile.is_manager
 
 
 class IsAcceptedPermission(permissions.BasePermission):
     def has_permission(self, request, view):  # pylint: disable=unused-argument
+        # Just in case superuser does not have good UserProfile values set
+        if request.user.is_authenticated and request.user.is_superuser:
+            return True
+
         return request.user.is_authenticated and request.user.user_profile.is_accepted
 
 
 class CanSpendResourcesPermission(permissions.BasePermission):
     def has_permission(self, request, view):  # pylint: disable=unused-argument
+        # Just in case superuser does not have good UserProfile values set
+        if request.user.is_authenticated and request.user.is_superuser:
+            return True
+
         return (
             request.user.is_authenticated
             and request.user.user_profile.is_allowed_to_spend_resources

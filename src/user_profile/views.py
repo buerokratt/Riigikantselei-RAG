@@ -4,7 +4,6 @@ from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from rest_framework import status, viewsets
-from rest_framework.authentication import BasicAuthentication
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import action
 from rest_framework.exceptions import APIException, AuthenticationFailed, ParseError
@@ -35,9 +34,11 @@ class GetTokenView(APIView):
 
     def post(self, request: Request) -> Response:
         serializer = LoginSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        username = serializer.data['username']
-        password = serializer.data['password']
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        username = serializer.validated_data['username']
+        password = serializer.validated_data['password']
 
         if authenticate(request=request, username=username, password=password):
             user = User.objects.get(username=username)

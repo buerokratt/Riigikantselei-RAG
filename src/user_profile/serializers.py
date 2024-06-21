@@ -49,16 +49,14 @@ class UserCreateSerializer(serializers.Serializer):
     first_name = serializers.CharField(required=True, max_length=100)
     last_name = serializers.CharField(required=True, max_length=100)
 
-    def create(self, validated_data: dict) -> UserProfile:
-        auth_user = User.objects.create_user(
+    def create(self, validated_data: dict) -> User:
+        return User.objects.create_user(
             username=validated_data['username'],
             password=validated_data['password'],
             email=validated_data['email'],
             first_name=validated_data['first_name'],
             last_name=validated_data['last_name'],
         )
-        user_profile = UserProfile.objects.create(auth_user=auth_user)
-        return user_profile
 
 
 # Objects are modified only through very specific views,
