@@ -23,10 +23,11 @@ from core.views import (
     CoreVariableViewSet,
     TextSearchConversationViewset,
 )
-from user_profile.views import GetTokenView, UserProfileViewSet
+from user_profile.views import GetTokenView, LogOutView, UserProfileViewSet
 
 PREFIX = 'api'
 GET_TOKEN_VIEW_URL = f'{PREFIX}/get_token'
+LOG_OUT_VIEW_URL = f'{PREFIX}/log_out'
 
 router = routers.DefaultRouter()
 router.register(f'{PREFIX}/core_settings', CoreVariableViewSet, basename='core_settings')
@@ -37,6 +38,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include(router.urls)),
     path(GET_TOKEN_VIEW_URL, GetTokenView.as_view(), name='get_token'),
+    path(LOG_OUT_VIEW_URL, LogOutView.as_view(), name='log_out'),
     path(
         f'{PREFIX}/async_result/<str:celery_task_id>/',
         AsyncResultView.as_view(),

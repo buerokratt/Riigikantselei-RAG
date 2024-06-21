@@ -13,13 +13,19 @@ _MANAGER_ONLY_ACTIONS = {'list', 'accept', 'decline', 'ban', 'set_limit'}
 
 class UserProfilePermission(permissions.BasePermission):
     def has_permission(self, request, view):  # type: ignore
+        if request.user.is_authenticated and request.user.is_superuser:
+            return True
+
         if view.action in _LOGGED_OUT_ONLY_ACTIONS:
             return not request.user.is_authenticated
         if view.action in _LOGGED_IN_ONLY_ACTIONS:
             return request.user.is_authenticated and request.user.user_profile.is_accepted
         if view.action in _MANAGER_ONLY_ACTIONS:
             return request.user.is_authenticated and request.user.user_profile.is_manager
-        raise RuntimeError('Unknown action.')
+
+        # TODO: uncomment once browsable API is no longer needed
+        # raise RuntimeError('Unknown action.')
+        return request.user.is_authenticated
 
 
 class IsManagerPermission(permissions.BasePermission):

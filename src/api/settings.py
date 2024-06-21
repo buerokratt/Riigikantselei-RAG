@@ -75,6 +75,8 @@ DEBUG = env.bool('RK_DEBUG', default=True)
 
 ALLOWED_HOSTS = env.list('RK_ALLOWED_HOSTS', default=['*'])
 
+CORS_ALLOWED_ORIGINS = env.list('RK_CORS_ALLOWED_ORIGINS', default=['http://localhost:4200'])
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -86,14 +88,16 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework.authtoken',
+    'corsheaders',
     'core',
-    'user_profile',
+    'user_profile.apps.UserProfileConfig',
 ]
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -155,6 +159,14 @@ if DEBUG is True:
     REST_FRAMEWORK['DEFAULT_RENDERER_CLASSES'] = (
         'rest_framework.renderers.JSONRenderer',
         'rest_framework.renderers.BrowsableAPIRenderer',
+    )
+
+    # TODO: remove once browsable API is no longer needed
+    REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'] = (
+        # For authenticating requests with the Token
+        'rest_framework.authentication.TokenAuthentication',
+        # For the Browsable API Renderer
+        'rest_framework.authentication.SessionAuthentication',
     )
 
     REST_FRAMEWORK['DEFAULT_THROTTLE_CLASSES'] = []

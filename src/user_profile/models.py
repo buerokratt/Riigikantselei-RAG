@@ -52,6 +52,12 @@ class UserProfile(models.Model):
         user_queries = TextSearchQueryResult.objects.filter(conversation__auth_user=self.auth_user)
         return user_queries.aggregate(Sum('total_cost', default=0.0))['total_cost__sum']
 
+    def __str__(self) -> str:
+        if self.auth_user.first_name and self.auth_user.last_name:
+            return f'{self.auth_user.first_name} {self.auth_user.last_name}'
+
+        return self.auth_user.username
+
 
 class PasswordResetToken(models.Model):
     auth_user = models.ForeignKey(User, on_delete=models.RESTRICT)

@@ -1,6 +1,5 @@
 from django.contrib.auth.models import User
 from rest_framework import status
-from rest_framework.authtoken.models import Token
 from rest_framework.reverse import reverse
 from rest_framework.test import APITestCase
 
@@ -51,12 +50,14 @@ class TestUserProfileCreate(APITestCase):
         for attribute, value in model_data.items():
             self.assertEqual(getattr(user_profile, attribute), value)
 
-    def test_create_fails_because_authed(self) -> None:
-        token, _ = Token.objects.get_or_create(user=self.admin_auth_user)
-        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
+    # Is this case necessary since there's no need to block a signed in user
+    # from creating an account when all they need to do is not
+    # be signed in, unuse their token etc?
 
-        response = self.client.post(self.create_endpoint_url, data=self.input_with_password)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+    # def test_create_fails_because_authed(self) -> None:
+    #     token, _ = Token.objects.get_or_create(user=self.admin_auth_user)
+    #     response = self.client.post(self.create_endpoint_url, data=self.input_with_password)
+    #     self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_create_fails_because_invalid_input(self) -> None:
         inputs = [

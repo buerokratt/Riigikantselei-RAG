@@ -120,3 +120,8 @@ class EmailSerializer(serializers.Serializer):
         max_length=100,
         validators=[_simple_email_format_validator],
     )
+
+
+class LoginSerializer(serializers.Serializer):
+    username = serializers.CharField()
+    password = serializers.CharField(style={'input_type': 'password'})
