@@ -19,8 +19,8 @@ class TestElasticCore(APITestCase):
         self.index_name = 'test_ci_rk_vectors'
         self.vector_field_name = 'vector'
 
-        # We wipe out all indices that have been created for the purpose of the test because
-        # improper shutdowns etc may not reach tearDown and can cause stragglers.
+        # We wipe out all previous indices that have been created for the purpose of the test
+        # because improper shutdowns etc may not reach tearDown and can cause stragglers.
         self.elastic_core = ElasticCore()
         self.elastic_core.elasticsearch.indices.delete(index=self.index_name, ignore=[404])
 

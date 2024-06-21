@@ -1,3 +1,4 @@
+from copy import deepcopy
 from typing import Any, Dict
 from unittest import mock
 
@@ -5,6 +6,9 @@ from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.test import APITestCase
 
 from api.utilities.gpt import (
+    MOCK_HEADERS,
+    MOCK_RESPONSE_DICT,
+    MOCK_STATUS_CODE,
     ChatGPT,
     ContentFilteredException,
     construct_messages_for_testing,
@@ -13,68 +17,12 @@ from api.utilities.gpt import (
 
 class ChatGPTTestCase(APITestCase):
     def setUp(self) -> None:  # pylint: disable=invalid-name
-        self.api_response: Dict[str, Any] = {
-            'id': 'chatcmpl-9WkWmu5OQwhsYRJvFArNzDwlBuhAa',
-            'choices': [
-                {
-                    'finish_reason': 'stop',
-                    'index': 0,
-                    'logprobs': None,
-                    'message': {
-                        'content': 'Hello! How can I assist you today?',
-                        'role': 'assistant',
-                    },
-                }
-            ],
-            'created': 1717592376,
-            'model': 'gpt-4o-2024-05-13',
-            'object': 'chat.completion',
-            'system_fingerprint': 'fp_319be4768e',
-            'usage': {'completion_tokens': 9, 'prompt_tokens': 20, 'total_tokens': 29},
-        }
-        self.api_response_headers = {
-            'date': 'Wed, 05 Jun 2024 12:59:36 GMT',
-            'content-type': 'application/json',
-            'transfer-encoding': 'chunked',
-            'connection': 'keep-alive',
-            'openai-organization': 'texta-o',
-            'openai-processing-ms': '500',
-            'openai-version': '2020-10-01',
-            'strict-transport-security': 'max-age=15724800; includeSubDomains',
-            'x-ratelimit-limit-requests': '500',
-            'x-ratelimit-limit-tokens': '30000',
-            'x-ratelimit-remaining-requests': '499',
-            'x-ratelimit-remaining-tokens': '29972',
-            'x-ratelimit-reset-requests': '120ms',
-            'x-ratelimit-reset-tokens': '56ms',
-            'x-request-id': 'req_b74e6ad94b04367098b39f1c3acf54b2',
-            'cf-cache-status': 'DYNAMIC',
-            'set-cookie': (
-                '__cf_bm=LDZOZXQfvCDzOrqomiWkkMMZ4eqrPsvPSpM2M9NYKZs-1717592376-1.0.1.1-60MKAcfYU'
-                'o50.hDcIfIfgz8zR4psKcCnGCMwGyOBWwJv1OgmRUHEuL4puwiuUb_2JeMy3d_fn0fvmKsxKxXmbA; '
-                'path=/; '
-                'expires=Wed, 05-Jun-24 13:29:36 GMT; '
-                'domain=.api.openai.com; '
-                'HttpOnly; '
-                'Secure; '
-                'SameSite=None, '
-                '_cfuvid=_9iq19utMBYd3JjR8OQZ2OVFHI16qkFU4GPF6FLNSRo-1717592376822-0.0.1.1-'
-                '604800000; '
-                'path=/; '
-                'domain=.api.openai.com; '
-                'HttpOnly; '
-                'Secure; '
-                'SameSite=None'
-            ),
-            'server': 'cloudflare',
-            'cf-ray': '88f0573e1a507125-TLL',
-            'content-encoding': 'gzip',
-            'alt-svc': 'h3=":443"; ma=86400',
-        }
+        self.api_response_headers = MOCK_HEADERS
+        self.api_response: Dict[str, Any] = MOCK_RESPONSE_DICT
+        self.api_status_code = MOCK_STATUS_CODE
 
-        self.api_status_code = 200
         self.messages = construct_messages_for_testing(
-            'You are an helpful assistant', 'hello there'
+            'You are a helpful assistant.', 'hello there'
         )
 
     def test_simple_chat_completion(self) -> None:
@@ -83,7 +31,7 @@ class ChatGPTTestCase(APITestCase):
             gpt = ChatGPT(api_key='None')
             llm_result = gpt.chat(messages=self.messages)
 
-            # Asser the model is the full name instead of the simple gpt-4o we give in.
+            # Assert the model is the full name instead of the simple gpt-4o we give in.
             self.assertEqual(llm_result.model, 'gpt-4o-2024-05-13')
 
             self.assertEqual(llm_result.input_tokens, 20)
@@ -105,9 +53,10 @@ class ChatGPTTestCase(APITestCase):
             _ = gpt.chat(messages=self.messages)
 
     def test_exceptions_being_triggered_on_content_filter(self) -> None:
-        self.api_response['choices'][0]['finish_reason'] = 'content_filter'
+        api_response = deepcopy(self.api_response)
+        api_response['choices'][0]['finish_reason'] = 'content_filter'
         with self.assertRaises(ContentFilteredException):
-            return_values = (self.api_response_headers, self.api_response, self.api_status_code)
+            return_values = (self.api_response_headers, api_response, self.api_status_code)
             with mock.patch('api.utilities.gpt.ChatGPT._commit_api', return_value=return_values):
                 gpt = ChatGPT(api_key='None')
                 _ = gpt.chat(messages=self.messages)

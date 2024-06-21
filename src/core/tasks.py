@@ -139,7 +139,7 @@ def call_openai_api(
     # the TextSearchQueryResult is created in the view.
     query_result_parameters = {
         'conversation': conversation_id,
-        'celery_task_id': self.id,
+        'celery_task_id': self.request.id,
         'model': llm_response.model,
         'min_year': min_year,
         'max_year': max_year,

@@ -32,12 +32,16 @@ env = environ.Env()
 #  Does anything other than default usage limit or cost need to be here?
 PROTECTED_CORE_KEYS = ('SECRET', 'KEY', 'PASSWORD')
 CORE_SETTINGS = {
+    #
     # Elasticearch
     'ELASTICSEARCH_URL': env('RK_ELASTICSEARCH_URL', default='http://localhost:9200'),
     'ELASTICSEARCH_TIMEOUT': env('RK_ELASTICSEARCH_TIMEOUT', default=10),
     'ELASTICSEARCH_VECTOR_FIELD': env('RK_ELASTICSEARCH_VECTOR_FIELD', default='vector'),
     'ELASTICSEARCH_TEXT_CONTENT_FIELD': env('RK_ELASTICSEARCH_TEXT_CONTENT_FIELD', default='text'),
+    'ELASTICSEARCH_YEAR_FIELD': env('RK_ELASTICSEARCH_YEAR_FIELD', default='year'),
+    #
     # OpenAI integration
+    # TODO: obtain key
     'OPENAI_API_KEY': env('RK_OPENAI_API_KEY', default=None),
     'OPENAI_SYSTEM_MESSAGE': env.str(
         'RK_OPENAI_SYSTEM_MESSAGE', default='You are a helpful assistant.'
@@ -45,6 +49,7 @@ CORE_SETTINGS = {
     'OPENAI_API_TIMEOUT': env.int('RK_OPENAI_API_TIMEOUT', default=10),
     'OPENAI_API_MAX_RETRIES': env.int('RK_OPENAI_API_MAX_RETRIES', default=5),
     'OPENAI_API_CHAT_MODEL': env.int('RK_OPENAI_API_CHAT_MODEL', default='gpt-4o'),
+    #
     # Other
     'DEFAULT_USAGE_LIMIT_EUROS': env.float('RK_DEFAULT_USAGE_LIMIT_EUROS', default=10.0),
     # defaults from https://openai.com/api/pricing/ GPT-4o
@@ -347,6 +352,7 @@ EMAIL_BACKEND = 'django.core.mail.backends.dummy.EmailBackend'
 SERVICE_NAME = 'Riigikantselei semantiline tekstiotsing'
 BASE_URL = env('RK_BASE_URL', default='http://localhost')
 
+# TODO: populate based on how documents get inserted into the real elasticsearch
 DOCUMENT_CATEGORY_TO_INDICES_MAP = {
     'a': ['a_1', 'a_2'],
     'b': ['b'],

@@ -22,20 +22,33 @@ conda run -n riigikantselei pre-commit install
 make makemigrations migrate
 ```
 
+## Preparations
+
+To run tests or the app, you need supporting services up:
+
+```
+make up
+```
+
+You also have to run a Celery workers process in a __separate terminal window__:
+
+```
+make celery
+```
+
 ## Checks and tests
+
+Requires "Migrations" and "Preparations".
 
 ```
 make check
-# OR
-conda run -n riigikantselei pre-commit run --all-files
 ```
 
 ## Execution
 
-1. Ensure you have all the services up and running through ```docker-compose up```
-1. Ensure you have run the migrations.
-1. Run the Celery workers for asynchronous tasks with ```conda run -n riigikantselei celery -A api.celery_handler worker -l debug```
-1. Run the development web server with ```make run```.
+Requires "Migrations" and "Preparations".
+
+```make run```
 
 ### Known issues ###
 
