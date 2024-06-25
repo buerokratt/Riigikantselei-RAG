@@ -1,12 +1,10 @@
 from time import sleep
-from unittest import SimpleTestCase
-from django.test import override_settings
+from unittest import TestCase
 
 from api.celery_handler import debug_task
 
 
-@override_settings(CELERY_ALWAYS_EAGER=True)
-class TestCelery(SimpleTestCase):
+class TestCelery(TestCase):
     def test_celery_connection(self) -> None:
         debug_task.delay()
 
