@@ -1,5 +1,8 @@
 image: continuumio/miniconda3:latest
 
+services:
+  - name: redis
+
 variables:
   RK_ELASTICSEARCH_URL: http://elastic-dev.texta.ee:9200
 
