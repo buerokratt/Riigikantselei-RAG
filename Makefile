@@ -34,3 +34,10 @@ up: build
 
 down:
 	docker compose down
+
+logs:
+	docker compose logs
+
+
+celery:
+	cd src && celery -A api.celery_handler worker -l DEBUG

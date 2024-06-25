@@ -19,8 +19,8 @@ class TestElasticCore(APITestCase):
         self.index_name = 'test_ci_rk_vectors'
         self.vector_field_name = 'vector'
 
-        # We wipe out all indices that have been created for the purpose of the test because
-        # improper shutdowns etc may not reach tearDown and can cause stragglers.
+        # We wipe out all previous indices that have been created for the purpose of the test
+        # because improper shutdowns etc may not reach tearDown and can cause stragglers.
         self.elastic_core = ElasticCore()
         self.elastic_core.elasticsearch.indices.delete(index=self.index_name, ignore=[404])
 
@@ -58,7 +58,7 @@ class TestElasticCore(APITestCase):
             set_core_setting('ELASTICSEARCH_URL', f'http://{uuid.uuid4().hex}:8888')
             ElasticCore().create_index(self.index_name, shards=3, replicas=1)
         except APIException as exception:
-            self.assertEquals(ELASTIC_CONNECTION_ERROR_MESSAGE, str(exception))
+            self.assertEqual(ELASTIC_CONNECTION_ERROR_MESSAGE, str(exception))
 
     def test_timeout_setting_being_respected(self) -> None:
         try:
@@ -85,7 +85,7 @@ class TestElasticCore(APITestCase):
 
         self._index_document_and_add_vector('See on ainult lihas haav', vectorizer)
         self._index_document_and_add_vector(
-            'Mingi märg eit kes loobib mõõku ei ole korralik alus valistuse loomiseks!', vectorizer
+            'Mingi märg eit kes loobib mõõku ei ole korralik alus valitsuse loomiseks!', vectorizer
         )
 
         search_vector = vectorizer.vectorize(['Miks sa tahad öelda, et kookosed migreeruvad'])[

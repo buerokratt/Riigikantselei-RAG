@@ -1,10 +1,9 @@
 import logging
 import os
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import django
 import openai
-from openai import OpenAI
 from rest_framework.exceptions import (
     APIException,
     AuthenticationFailed,
@@ -18,8 +17,70 @@ from api.utilities.core_settings import get_core_setting
 logger = logging.getLogger(__name__)
 
 
-# TODO Maybe replace this with an actual DB model later on
-#  but for now it's a good enough abstraction for GPT responses.
+MOCK_RESPONSE = 'Hello! How can I assist you today?'
+
+
+MOCK_HEADERS = {
+    'date': 'Wed, 05 Jun 2024 12:59:36 GMT',
+    'content-type': 'application/json',
+    'transfer-encoding': 'chunked',
+    'connection': 'keep-alive',
+    'openai-organization': 'texta-o',
+    'openai-processing-ms': '500',
+    'openai-version': '2020-10-01',
+    'strict-transport-security': 'max-age=15724800; includeSubDomains',
+    'x-ratelimit-limit-requests': '500',
+    'x-ratelimit-limit-tokens': '30000',
+    'x-ratelimit-remaining-requests': '499',
+    'x-ratelimit-remaining-tokens': '29972',
+    'x-ratelimit-reset-requests': '120ms',
+    'x-ratelimit-reset-tokens': '56ms',
+    'x-request-id': 'req_b74e6ad94b04367098b39f1c3acf54b2',
+    'cf-cache-status': 'DYNAMIC',
+    'set-cookie': (
+        '__cf_bm=LDZOZXQfvCDzOrqomiWkkMMZ4eqrPsvPSpM2M9NYKZs-1717592376-1.0.1.1-60MKAcfYU'
+        'o50.hDcIfIfgz8zR4psKcCnGCMwGyOBWwJv1OgmRUHEuL4puwiuUb_2JeMy3d_fn0fvmKsxKxXmbA; '
+        'path=/; '
+        'expires=Wed, 05-Jun-24 13:29:36 GMT; '
+        'domain=.api.openai.com; '
+        'HttpOnly; '
+        'Secure; '
+        'SameSite=None, '
+        '_cfuvid=_9iq19utMBYd3JjR8OQZ2OVFHI16qkFU4GPF6FLNSRo-1717592376822-0.0.1.1-'
+        '604800000; '
+        'path=/; '
+        'domain=.api.openai.com; '
+        'HttpOnly; '
+        'Secure; '
+        'SameSite=None'
+    ),
+    'server': 'cloudflare',
+    'cf-ray': '88f0573e1a507125-TLL',
+    'content-encoding': 'gzip',
+    'alt-svc': 'h3=":443"; ma=86400',
+}
+MOCK_RESPONSE_DICT: Dict[str, Any] = {
+    'id': 'chatcmpl-9WkWmu5OQwhsYRJvFArNzDwlBuhAa',
+    'choices': [
+        {
+            'finish_reason': 'stop',
+            'index': 0,
+            'logprobs': None,
+            'message': {
+                'content': MOCK_RESPONSE,
+                'role': 'assistant',
+            },
+        }
+    ],
+    'created': 1717592376,
+    'model': 'gpt-4o-2024-05-13',
+    'object': 'chat.completion',
+    'system_fingerprint': 'fp_319be4768e',
+    'usage': {'completion_tokens': 9, 'prompt_tokens': 20, 'total_tokens': 29},
+}
+MOCK_STATUS_CODE = 200
+
+
 class LLMResponse:
     def __init__(
         self,
@@ -66,12 +127,46 @@ class LLMResponse:
     def total_tokens(self) -> int:
         return self.input_tokens + self.response_tokens
 
+    @property
+    def total_cost(self) -> float:
+        return self.input_tokens * get_core_setting(
+            'EURO_COST_PER_INPUT_TOKEN'
+        ) + self.response_tokens * get_core_setting('EURO_COST_PER_OUTPUT_TOKEN')
+
     def __str__(self) -> str:
         return f'{self.message} / {self.total_tokens} tokens used'
 
 
 class ContentFilteredException(Exception):
     pass
+
+
+def _parse_message(response: dict, user_input: str) -> str:
+    # This will be stop if the model hit a natural stop point or a provided stop sequence,
+    # length if the maximum number of tokens specified in the request was reached,
+    # content_filter if content was omitted due to a flag from our content filters
+    message = None
+
+    for choice in response.get('choices', []):
+        finish_reason = choice.get('finish_reason', 'N/A')
+        if finish_reason == 'content_filter':
+            message = f'Input {user_input} was filtered by OpenAI API!'
+            raise ContentFilteredException(message)
+
+        if finish_reason == 'stop':
+            message = choice.get('message', {}).get('content', None)
+
+    if message is None:
+        raise RuntimeError
+
+    return message
+
+
+def construct_messages_for_testing(system_input: str, user_input: str) -> List[dict]:
+    return [
+        {'role': 'system', 'content': system_input},
+        {'role': 'user', 'content': user_input},
+    ]
 
 
 class ChatGPT:
@@ -82,55 +177,43 @@ class ChatGPT:
         timeout: Optional[int] = None,
         max_retries: Optional[int] = None,
     ):
-        self.api_key = api_key or get_core_setting('OPENAI_API_KEY')
-        self.timeout = timeout or get_core_setting('OPENAI_API_TIMEOUT')
-        self.max_retries = max_retries or get_core_setting('OPENAI_API_MAX_RETRIES')
+        api_key = api_key or get_core_setting('OPENAI_API_KEY')
+        timeout = timeout or get_core_setting('OPENAI_API_TIMEOUT')
+        max_retries = max_retries or get_core_setting('OPENAI_API_MAX_RETRIES')
 
         self.model = model or get_core_setting('OPENAI_API_CHAT_MODEL')
-        self.gpt = OpenAI(api_key=self.api_key, timeout=self.timeout, max_retries=self.max_retries)
 
-    def _parse_message(self, response: dict, user_input: str) -> str:
-        # This will be stop if the model hit a natural stop point or a provided stop sequence,
-        # length if the maximum number of tokens specified in the request was reached,
-        # content_filter if content was omitted due to a flag from our content filters
-        message = None
+        if api_key is not None:
+            self.gpt = openai.OpenAI(api_key=api_key, timeout=timeout, max_retries=max_retries)
+        else:
+            logger.warning('No OpenAI API key found, using mocked API connection to allow testing!')
+            self.gpt = None
 
-        for choice in response.get('choices', []):
-            finish_reason = choice.get('finish_reason', 'N/A')
-            if finish_reason == 'content_filter':
-                message = f'Input {user_input} was filtered by OpenAI API!'
-                raise ContentFilteredException(message)
-
-            if finish_reason == 'stop':
-                message = choice.get('message', {}).get('content', None)
-
-        if message is None:
-            raise RuntimeError
-
-        return message
-
-    def parse_results(self, user_input: str, response: dict, headers: dict) -> LLMResponse:
-        message = self._parse_message(response, user_input)
+    def _parse_results(self, user_input: str, response: dict, headers: dict) -> LLMResponse:
+        message = _parse_message(response, user_input)
 
         return LLMResponse(
             message=message,
-            user_input=user_input,
             model=response.get('model', self.model),
+            user_input=user_input,
             input_tokens=response.get('usage', {}).get('prompt_tokens'),
             response_tokens=response.get('usage', {}).get('completion_tokens'),
             headers=headers,
         )
 
-    def commit_api(self, messages: List[dict]) -> Tuple[dict, dict, int]:
+    def _commit_api(self, messages: List[dict]) -> Tuple[dict, dict, int]:
+        if self.gpt is None:
+            return MOCK_HEADERS, MOCK_RESPONSE_DICT, MOCK_STATUS_CODE
+
         try:
             response = self.gpt.chat.completions.with_raw_response.create(
                 model=self.model, stream=False, messages=messages
             )
 
             headers = dict(response.headers)
-            response = response.parse().to_dict()
+            response_dict = response.parse().to_dict()
             status_code = response.status_code
-            return headers, response, status_code
+            return headers, response_dict, status_code
 
         except openai.AuthenticationError as exception:
             raise AuthenticationFailed("Couldn't authenticate with OpenAI API!") from exception
@@ -174,17 +257,10 @@ class ChatGPT:
         except Exception as exception:
             raise APIException("Couldn't connect to the OpenAI API!") from exception
 
-    @staticmethod
-    def construct_messages(system_input: str, user_input: str) -> List[dict]:
-        return [
-            {'role': 'system', 'content': system_input},
-            {'role': 'user', 'content': user_input},
-        ]
-
     def chat(self, messages: List[dict]) -> LLMResponse:
         user_input = messages[-1]['content']
-        headers, response, _ = self.commit_api(messages)
-        llm_result = self.parse_results(user_input=user_input, response=response, headers=headers)
+        headers, response, _ = self._commit_api(messages)
+        llm_result = self._parse_results(user_input=user_input, response=response, headers=headers)
         return llm_result
 
 

@@ -45,6 +45,8 @@ class TestUserProfileRetrieveAndList(APITestCase):
                 'is_accepted': True,
                 'is_allowed_to_spend_resources': True,
                 'custom_usage_limit_euros': None,
+                'usage_limit': 10.0,
+                'used_cost': 0.0,
             }
             self.assertEqual(response.data, expected_data)
 
@@ -71,7 +73,7 @@ class TestUserProfileRetrieveAndList(APITestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
         response = self.client.get(self.retrieve_endpoint_url_manager)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_retrieve_fails_because_not_exists(self) -> None:
         token, _ = Token.objects.get_or_create(user=self.manager_auth_user)
@@ -100,6 +102,8 @@ class TestUserProfileRetrieveAndList(APITestCase):
                 'is_accepted': True,
                 'is_allowed_to_spend_resources': True,
                 'custom_usage_limit_euros': None,
+                'usage_limit': 10.0,
+                'used_cost': 0.0,
             },
             {
                 'username': 'tester',
@@ -112,6 +116,8 @@ class TestUserProfileRetrieveAndList(APITestCase):
                 'is_accepted': True,
                 'is_allowed_to_spend_resources': True,
                 'custom_usage_limit_euros': None,
+                'usage_limit': 10.0,
+                'used_cost': 0.0,
             },
         ]
         self.assertEqual(response.data, expected_data)

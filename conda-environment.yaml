@@ -20,4 +20,5 @@ dependencies:
       - pytest
       - pre-commit
       - openai
-      - numpy==1.*
+      # Breaking changes, some other packages did not take into account
+      - numpy<2

@@ -18,7 +18,11 @@ from django.contrib import admin
 from django.urls import include, path
 from rest_framework import routers
 
-from core.views import AsyncResultView, CoreVariableViewSet, GPTConversationViewset
+from core.views import (
+    AsyncResultView,
+    CoreVariableViewSet,
+    TextSearchConversationViewset,
+)
 from user_profile.views import GetTokenView, LogOutView, UserProfileViewSet
 
 PREFIX = 'api'
@@ -28,12 +32,16 @@ LOG_OUT_VIEW_URL = f'{PREFIX}/log_out'
 router = routers.DefaultRouter()
 router.register(f'{PREFIX}/core_settings', CoreVariableViewSet, basename='core_settings')
 router.register(f'{PREFIX}/user_profile', UserProfileViewSet, basename='user_profile')
-router.register(f'{PREFIX}/gpt', GPTConversationViewset, basename='chat_gpt')
+router.register(f'{PREFIX}/text_search', TextSearchConversationViewset, basename='text_search')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include(router.urls)),
     path(GET_TOKEN_VIEW_URL, GetTokenView.as_view(), name='get_token'),
     path(LOG_OUT_VIEW_URL, LogOutView.as_view(), name='log_out'),
-    path(f'{PREFIX}/async-result/<str:task_id>/', AsyncResultView.as_view(), name='async_result'),
+    path(
+        f'{PREFIX}/async_result/<str:celery_task_id>/',
+        AsyncResultView.as_view(),
+        name='async_result',
+    ),
 ]

@@ -12,80 +12,52 @@ class CoreVariable(models.Model):
         return f'{self.name} - {self.value}'
 
 
-# Necessary since the previous lambda based implementation for the callable default created
-# errors within makemigrations.
-def indices_default() -> list[str]:
-    return ['*']
+class TextSearchConversation(models.Model):
+    auth_user = models.ForeignKey(User, on_delete=models.RESTRICT)
+    system_input = models.TextField()
+    title = models.CharField(max_length=100)
 
-
-class ChatGPTConversation(models.Model):
-    system_input = models.TextField(null=True)
-    indices = models.JSONField(default=indices_default)
-
-    author = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     @property
     def messages(self) -> List[dict]:
         container = [{'role': 'system', 'content': self.system_input}]
-
-        conversations = self.llmresult_set.all()
-        for conversation in conversations:
-            container.extend(conversation.message)
-
+        if self.query_results.exists():
+            for query_result in self.query_results.order_by('created_at'):
+                container.extend(query_result.messages)
         return container
 
 
-class LLMResult(models.Model):
-    conversation = models.ForeignKey(ChatGPTConversation, on_delete=models.CASCADE)
+class TextSearchQueryResult(models.Model):
+    conversation = models.ForeignKey(
+        TextSearchConversation, on_delete=models.CASCADE, related_name='query_results'
+    )
     celery_task_id = models.TextField()
 
-    response = models.TextField()
-    user_input = models.TextField()
-
     model = models.CharField(max_length=100)
+
+    min_year = models.IntegerField()
+    max_year = models.IntegerField()
+    document_types_string = models.TextField()
+
+    user_input = models.TextField()
+    response = models.TextField()
+
     input_tokens = models.IntegerField()
     output_tokens = models.IntegerField()
-    headers = models.JSONField()
+    total_cost = models.FloatField()
+
+    response_headers = models.JSONField()
 
     created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     @property
-    def message(self) -> List[dict]:
+    def messages(self) -> List[dict]:
         return [
             {'role': 'user', 'content': self.user_input},
             {'role': 'assistant', 'content': self.response},
         ]
 
     @property
-    def ratelimit_requests(self) -> int:
-        return int(self.headers.get('x-ratelimit-limit-requests'))
-
-    @property
-    def ratelimit_tokens(self) -> int:
-        return int(self.headers.get('x-ratelimit-limit-tokens'))
-
-    @property
-    def remaining_requests(self) -> int:
-        return int(self.headers.get('x-ratelimit-remaining-requests'))
-
-    @property
-    def remaining_tokens(self) -> int:
-        return int(self.headers.get('x-ratelimit-remaining-tokens'))
-
-    @property
-    def reset_requests_at_ms(self) -> str:
-        return self.headers.get('x-ratelimit-reset-requests')
-
-    @property
-    def reset_tokens_at_ms(self) -> str:
-        return self.headers.get('x-ratelimit-reset-tokens')
-
-    @property
-    def total_tokens(self) -> int:
-        return self.input_tokens + self.output_tokens
-
-    def __str__(self) -> str:
-        return f'{self.response} / {self.total_tokens} tokens used'
+    def document_types(self) -> List[str]:
+        return self.document_types_string.split(',')

@@ -3,18 +3,11 @@ import re
 from django.contrib.auth.models import User
 from rest_framework import serializers
 
+from api.utilities.serializers import reasonable_character_without_spaces_validator
 from user_profile.models import UserProfile
 
-# Prevent using bad characters like various whitespace
-_REASONABLE_CHARACTER_PATTERN = re.compile(r'[\w<>|,;.:\-_~+!"#¤%&/()=?@£€${\[\]}\\§\'*]*')
 # Real email matching is incredibly complex, but this checks for the main structure
 _SIMPLE_EMAIL_PATTERN = re.compile(r'[^\s@]+@[^\s@]+\.[^\s@]+')
-
-
-def _reasonable_character_validator(string: str) -> str:
-    if not _REASONABLE_CHARACTER_PATTERN.fullmatch(string):
-        raise serializers.ValidationError('The given value contains forbidden characters.')
-    return string
 
 
 def _simple_email_format_validator(email: str) -> str:
@@ -40,10 +33,13 @@ class UserCreateSerializer(serializers.Serializer):
         required=True,
         max_length=100,
         min_length=4,
-        validators=[_reasonable_character_validator, _unique_username_validator],
+        validators=[reasonable_character_without_spaces_validator, _unique_username_validator],
     )
     password = serializers.CharField(
-        required=True, max_length=100, min_length=4, validators=[_reasonable_character_validator]
+        required=True,
+        max_length=100,
+        min_length=4,
+        validators=[reasonable_character_without_spaces_validator],
     )
     email = serializers.CharField(
         required=True,
@@ -53,16 +49,19 @@ class UserCreateSerializer(serializers.Serializer):
     first_name = serializers.CharField(required=True, max_length=100)
     last_name = serializers.CharField(required=True, max_length=100)
 
+    def create(self, validated_data: dict) -> User:
+        return User.objects.create_user(
+            username=validated_data['username'],
+            password=validated_data['password'],
+            email=validated_data['email'],
+            first_name=validated_data['first_name'],
+            last_name=validated_data['last_name'],
+        )
+
 
 # Objects are modified only through very specific views,
 # so the serializer is used only for reading
 class UserProfileReadOnlySerializer(serializers.ModelSerializer):
-    is_manager = serializers.BooleanField()
-    is_reviewed = serializers.BooleanField()
-    is_accepted = serializers.BooleanField()
-    is_allowed_to_spend_resources = serializers.BooleanField()
-    custom_usage_limit_euros = serializers.FloatField()
-
     def to_representation(self, instance: UserProfile) -> dict:
         data = super().to_representation(instance)
 
@@ -84,6 +83,8 @@ class UserProfileReadOnlySerializer(serializers.ModelSerializer):
             'is_accepted',
             'is_allowed_to_spend_resources',
             'custom_usage_limit_euros',
+            'usage_limit',
+            'used_cost',
         )
         read_only_fields = ('__all__',)
 
@@ -94,13 +95,19 @@ class LimitSerializer(serializers.Serializer):
 
 class PasswordSerializer(serializers.Serializer):
     password = serializers.CharField(
-        required=True, max_length=100, min_length=4, validators=[_reasonable_character_validator]
+        required=True,
+        max_length=100,
+        min_length=4,
+        validators=[reasonable_character_without_spaces_validator],
     )
 
 
 class PasswordResetSerializer(serializers.Serializer):
     password = serializers.CharField(
-        required=True, max_length=100, min_length=4, validators=[_reasonable_character_validator]
+        required=True,
+        max_length=100,
+        min_length=4,
+        validators=[reasonable_character_without_spaces_validator],
     )
     token = serializers.CharField(required=True)
 

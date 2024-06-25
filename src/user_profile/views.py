@@ -34,9 +34,11 @@ class GetTokenView(APIView):
 
     def post(self, request: Request) -> Response:
         serializer = LoginSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        username = serializer.data['username']
-        password = serializer.data['password']
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        username = serializer.validated_data['username']
+        password = serializer.validated_data['password']
 
         if authenticate(request=request, username=username, password=password):
             user = User.objects.get(username=username)
@@ -71,22 +73,21 @@ class UserProfileViewSet(viewsets.ViewSet):
         if not request_serializer.is_valid():
             return Response(request_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        auth_user = User.objects.create_user(
-            username=request_serializer.validated_data['username'],
-            password=request_serializer.validated_data['password'],
-            email=request_serializer.validated_data['email'],
-            first_name=request_serializer.validated_data['first_name'],
-            last_name=request_serializer.validated_data['last_name'],
-        )
+        auth_user = request_serializer.save()
 
         response_serializer = UserProfileReadOnlySerializer(auth_user.user_profile)
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
 
     def retrieve(self, request: Request, pk: int) -> Response:
-        auth_user = get_object_or_404(User.objects.all(), pk=pk)
-        user_profile = auth_user.user_profile
+        # Prevent non-manager user from accessing other users' data.
+        # We do it here, not self.check_object_permissions, because we want to return 404, not 403,
+        # because 403 implies that the resource exists and a non-manager should not know even that.
+        queryset = User.objects.all()
+        if not request.user.user_profile.is_manager:
+            queryset = User.objects.filter(id=request.user.id)
 
-        self.check_object_permissions(request, user_profile)
+        auth_user = get_object_or_404(queryset, id=pk)
+        user_profile = auth_user.user_profile
 
         serializer = UserProfileReadOnlySerializer(user_profile)
         return Response(serializer.data)
@@ -107,7 +108,7 @@ class UserProfileViewSet(viewsets.ViewSet):
 
     @action(detail=True, methods=['post'])
     def ban(self, request: Request, pk: int) -> Response:
-        auth_user = get_object_or_404(User.objects.all(), pk=pk)
+        auth_user = get_object_or_404(User.objects.all(), id=pk)
         user_profile = auth_user.user_profile
 
         user_profile.is_allowed_to_spend_resources = False
@@ -121,7 +122,7 @@ class UserProfileViewSet(viewsets.ViewSet):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        auth_user = get_object_or_404(User.objects.all(), pk=pk)
+        auth_user = get_object_or_404(User.objects.all(), id=pk)
         user_profile = auth_user.user_profile
 
         user_profile.custom_usage_limit_euros = serializer.validated_data['limit']
@@ -205,7 +206,7 @@ class UserProfileViewSet(viewsets.ViewSet):
 
 # pylint: disable=invalid-name
 def _set_acceptance(pk: int, to_accept: bool) -> Response:
-    auth_user = get_object_or_404(User.objects.all(), pk=pk)
+    auth_user = get_object_or_404(User.objects.all(), id=pk)
     user_profile = auth_user.user_profile
 
     if user_profile.is_reviewed:
