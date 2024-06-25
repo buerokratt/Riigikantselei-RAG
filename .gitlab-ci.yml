@@ -4,6 +4,7 @@ variables:
   RK_ELASTICSEARCH_URL: http://elastic-dev.texta.ee:9200
   RK_CELERY_BROKER_URL: redis://redis:6379
   RK_CELERY_RESULT_BACKEND: redis://redis:6379
+  RK_CELERY_TASK_ALWAYS_EAGER: "true"
 
 services:
   - name: redis:6
