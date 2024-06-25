@@ -1,10 +1,12 @@
 image: continuumio/miniconda3:latest
 
-services:
-  - name: redis
-
 variables:
   RK_ELASTICSEARCH_URL: http://elastic-dev.texta.ee:9200
+  RK_CELERY_BROKER_URL: redis://redis:6379/
+  RK_CELERY_RESULT_BACKEND: redis://redis:6379/
+
+services:
+  - name: redis
 
 stages:
   - test-api
