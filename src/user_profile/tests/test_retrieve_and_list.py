@@ -54,7 +54,7 @@ class TestUserProfileRetrieveAndList(APITestCase):
         response = self.client.get(self.retrieve_endpoint_url_manager)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    def test_retrieve_fails_because_not_accepted(self) -> None:
+    def test_retrieve_without_user_being_accepted_is_allowed(self) -> None:
         non_accepted_auth_user = create_test_user_with_user_profile(
             self, 'tester2', 'tester2@email.com', 'password', is_manager=False
         )
@@ -65,8 +65,9 @@ class TestUserProfileRetrieveAndList(APITestCase):
         token, _ = Token.objects.get_or_create(user=non_accepted_auth_user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
-        response = self.client.get(self.retrieve_endpoint_url_manager)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        url = reverse('user_profile-detail', kwargs={'pk': non_accepted_auth_user.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_retrieve_fails_because_non_manager_user_asking_other_user(self) -> None:
         token, _ = Token.objects.get_or_create(user=self.non_manager_auth_user)

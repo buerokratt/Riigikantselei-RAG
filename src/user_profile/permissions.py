@@ -20,7 +20,7 @@ class UserProfilePermission(permissions.BasePermission):
         if view.action in _LOGGED_OUT_ONLY_ACTIONS:
             return not request.user.is_authenticated
         if view.action in _LOGGED_IN_ONLY_ACTIONS:
-            return request.user.is_authenticated and request.user.user_profile.is_accepted
+            return request.user.is_authenticated
         if view.action in _MANAGER_ONLY_ACTIONS:
             return request.user.is_authenticated and request.user.user_profile.is_manager
 
