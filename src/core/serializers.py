@@ -1,13 +1,21 @@
+import datetime
 from typing import Any
 
 from django.conf import settings
+from django.db import transaction
 from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 from rest_framework.validators import UniqueValidator
 
 from api.utilities.core_settings import get_core_setting
 from api.utilities.serializers import reasonable_character_with_spaces_validator
 from core.choices import CORE_VARIABLE_CHOICES
-from core.models import CoreVariable, TextSearchConversation, TextSearchQueryResult
+from core.models import (
+    CoreVariable,
+    Task,
+    TextSearchConversation,
+    TextSearchQueryResult,
+)
 from core.tasks import async_call_celery_task_chain
 
 
@@ -59,14 +67,16 @@ class TextSearchConversationCreateSerializer(serializers.Serializer):
         return conversation
 
 
+class TaskSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Task
+        fields = ('status', 'error', 'created_at', 'modified_at')
+        read_only_fields = ('__all__',)
+
+
 # Objects are never modified, so the serializer is used only for reading
 class TextSearchQueryResultReadOnlySerializer(serializers.ModelSerializer):
-    def to_representation(self, instance: TextSearchQueryResult) -> dict:
-        data = super().to_representation(instance)
-        # This is a list, so is saved in the database as a string,
-        # but we should still return it as a list
-        data['document_types'] = instance.document_types
-        return data
+    celery_task = TaskSerializer(read_only=True, many=False)
 
     class Meta:
         model = TextSearchQueryResult
@@ -77,6 +87,7 @@ class TextSearchQueryResultReadOnlySerializer(serializers.ModelSerializer):
             'response',
             'total_cost',
             'created_at',
+            'celery_task',
         )
         read_only_fields = ('__all__',)
 
@@ -103,8 +114,8 @@ class ConversationSetTitleSerializer(serializers.Serializer):
 
 
 class TextSearchQuerySubmitSerializer(serializers.Serializer):
-    min_year = serializers.IntegerField(required=True, min_value=1900, max_value=2024)
-    max_year = serializers.IntegerField(required=True, min_value=1900, max_value=2024)
+    min_year = serializers.IntegerField(required=True, min_value=1900)
+    max_year = serializers.IntegerField(required=True, min_value=1900)
     document_types = serializers.ListField(
         required=True,
         child=serializers.ChoiceField(
@@ -113,6 +124,18 @@ class TextSearchQuerySubmitSerializer(serializers.Serializer):
     )
 
     user_input = serializers.CharField()
+
+    def validate(self, data: dict) -> dict:
+        if data['min_year'] > datetime.datetime.now().year:
+            raise ValidationError('min_year must be lesser than currently running year!')
+
+        if data['max_year'] > datetime.datetime.now().year:
+            raise ValidationError('max_year must be lesser than currently running year!')
+
+        if data['min_year'] > data['max_year']:
+            raise ValidationError('min_year must be lesser than max_year!')
+
+        return data
 
     def save(self, conversation_id: int) -> dict:
         min_year = self.validated_data['min_year']
@@ -124,7 +147,25 @@ class TextSearchQuerySubmitSerializer(serializers.Serializer):
         for document_type in self.validated_data['document_types']:
             document_indices.extend(settings.DOCUMENT_CATEGORY_TO_INDICES_MAP[document_type])
 
-        async_result = async_call_celery_task_chain(
-            min_year, max_year, user_input, document_indices, conversation_id, document_types_string
-        )
-        return {'celery_task_id': async_result.task_id}
+        instance = TextSearchConversation.objects.get(pk=conversation_id)
+
+        # TODO: Maybe auto-create the task through a signal or by rewriting
+        #  results .save() function in the model?
+        result = TextSearchQueryResult.objects.create(conversation=instance)
+        Task.objects.create(result=result)
+
+        with transaction.atomic():
+            # We need to ensure that the data is nicely in the database
+            # before Celery starts working on it since it being quicker is a common occurrence.
+            transaction.on_commit(
+                lambda: async_call_celery_task_chain(
+                    min_year,
+                    max_year,
+                    user_input,
+                    document_indices,
+                    conversation_id,
+                    document_types_string,
+                )
+            )
+
+            return TextSearchConversationReadOnlySerializer(instance).data

@@ -164,6 +164,7 @@ if DEBUG is True:
     # TODO: remove once browsable API is no longer needed
     REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'] = (
         # For authenticating requests with the Token
+        'rest_framework.authentication.BasicAuthentication',
         'rest_framework.authentication.TokenAuthentication',
         # For the Browsable API Renderer
         'rest_framework.authentication.SessionAuthentication',

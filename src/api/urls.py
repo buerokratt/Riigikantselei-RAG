@@ -18,11 +18,7 @@ from django.contrib import admin
 from django.urls import include, path
 from rest_framework import routers
 
-from core.views import (
-    AsyncResultView,
-    CoreVariableViewSet,
-    TextSearchConversationViewset,
-)
+from core.views import CoreVariableViewSet, TextSearchConversationViewset
 from user_profile.views import GetTokenView, LogOutView, UserProfileViewSet
 
 PREFIX = 'api'
@@ -39,9 +35,4 @@ urlpatterns = [
     path('', include(router.urls)),
     path(GET_TOKEN_VIEW_URL, GetTokenView.as_view(), name='get_token'),
     path(LOG_OUT_VIEW_URL, LogOutView.as_view(), name='log_out'),
-    path(
-        f'{PREFIX}/async_result/<str:celery_task_id>/',
-        AsyncResultView.as_view(),
-        name='async_result',
-    ),
 ]
