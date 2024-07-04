@@ -1,8 +1,8 @@
+import logging
 from typing import List
 
 import openai
 from celery import Task
-from celery.result import AsyncResult
 from django.conf import settings
 
 from api.celery_handler import app
@@ -10,7 +10,9 @@ from api.utilities.core_settings import get_core_setting
 from api.utilities.elastic import ElasticCore
 from api.utilities.gpt import ChatGPT
 from api.utilities.vectorizer import Vectorizer
-from core.models import TextSearchConversation
+from core.models import TextSearchConversation, TextSearchQueryResult
+
+from .models import Task as TaskModel
 
 # pylint: disable=unused-argument,too-many-arguments
 
@@ -20,6 +22,14 @@ from core.models import TextSearchConversation
 # TODO: add real RAG logic to the tasks when it is ready and unit test them
 
 
+OPENAI_EXCEPTIONS = (
+    openai.InternalServerError,
+    openai.RateLimitError,
+    openai.UnprocessableEntityError,
+    openai.APITimeoutError,
+)
+
+
 def async_call_celery_task_chain(
     min_year: int,
     max_year: int,
@@ -27,21 +37,25 @@ def async_call_celery_task_chain(
     document_indices: List[str],
     conversation_id: int,
     document_types_string: str,
-) -> AsyncResult:
-    task_chain = query_and_format_rag_context.s(
-        min_year=min_year,
-        max_year=max_year,
-        user_input=user_input,
-        document_indices=document_indices,
-    ) | call_openai_api.s(
-        conversation_id=conversation_id,
-        min_year=min_year,
-        max_year=max_year,
-        document_types_string=document_types_string,
-        user_input=user_input,
+) -> None:
+    task_chain = (
+        query_and_format_rag_context.s(
+            min_year=min_year,
+            max_year=max_year,
+            user_input=user_input,
+            document_indices=document_indices,
+        )
+        | call_openai_api.s(
+            conversation_id=conversation_id,
+            min_year=min_year,
+            max_year=max_year,
+            document_types_string=document_types_string,
+            user_input=user_input,
+        )
+        | save_openai_results.s(conversation_id)
     )
 
-    return task_chain.apply_async()
+    task_chain.apply_async()
 
 
 @app.task(name='query_and_format_rag_context', max_retries=5, bind=True)
@@ -97,13 +111,8 @@ def query_and_format_rag_context(
 # Using bind sets the Celery Task object to the first argument, in this case self.
 @app.task(
     name='call_openai_api',
-    autoretry_for=(
-        openai.InternalServerError,
-        openai.RateLimitError,
-        openai.UnprocessableEntityError,
-        openai.APITimeoutError,
-    ),
-    max_retries=5,
+    autoretry_for=OPENAI_EXCEPTIONS,
+    max_retries=10,
     bind=True,
 )
 def call_openai_api(
@@ -127,29 +136,64 @@ def call_openai_api(
     :param user_input: User sent input to send to the LLM.
     :return: Dict needed to build a TextSearchQueryResult.
     """
+
+    try:
+        conversation = TextSearchConversation.objects.get(id=conversation_id)
+        result: TextSearchQueryResult = conversation.query_results.last()
+        task: TaskModel = result.celery_task
+
+        task.set_started()
+
+        messages = conversation.messages + [{'role': 'user', 'content': user_input_with_context}]
+
+        chat_gpt = ChatGPT()
+        llm_response = chat_gpt.chat(messages=messages)
+
+        # The output is a dict of all the input data needed to create a TextSearchQueryResult.
+        # To separate testing of view and model logic from testing of RAG logic,
+        # the TextSearchQueryResult is created in the view.
+        return {
+            'model': llm_response.model,
+            'min_year': min_year,
+            'max_year': max_year,
+            'document_types_string': document_types_string,
+            'user_input': user_input,
+            'response': llm_response.message,
+            'input_tokens': llm_response.input_tokens,
+            'output_tokens': llm_response.response_tokens,
+            'total_cost': llm_response.total_cost,
+            'response_headers': llm_response.headers,
+        }
+
+    # Reraise these since they'd be necessary for a retry.
+    except OPENAI_EXCEPTIONS as exception:
+        raise exception
+
+    except Exception as exception:
+        logging.getLogger(settings.ERROR_LOGGER).exception('Failed to connect to OpenAI API!')
+        conversation = TextSearchConversation.objects.get(id=conversation_id)
+        query_result: TextSearchQueryResult = conversation.query_results.last()
+        celery_task: TaskModel = query_result.celery_task
+        celery_task.set_failed(str(exception))
+        raise exception
+
+
+@app.task(name='save_openai_results', bind=True, ignore_results=True)
+def save_openai_results(self: Task, results: dict, conversation_id: int) -> None:
     conversation = TextSearchConversation.objects.get(id=conversation_id)
+    result: TextSearchQueryResult = conversation.query_results.last()
+    task: TaskModel = result.celery_task
 
-    messages = conversation.messages + [{'role': 'user', 'content': user_input_with_context}]
+    result.model = results['model']
+    result.min_year = results['min_year']
+    result.max_year = results['max_year']
+    result.document_types_string = results['document_types_string']
+    result.user_input = results['user_input']
+    result.response = results['response']
+    result.input_tokens = results['input_tokens']
+    result.output_tokens = results['output_tokens']
+    result.total_cost = results['total_cost']
+    result.response_headers = results['response_headers']
+    result.save()
 
-    chat_gpt = ChatGPT()
-    llm_response = chat_gpt.chat(messages=messages)
-
-    # The output is a dict of all the input data needed to create a TextSearchQueryResult.
-    # To separate testing of view and model logic from testing of RAG logic,
-    # the TextSearchQueryResult is created in the view.
-    query_result_parameters = {
-        'conversation': conversation_id,
-        'celery_task_id': self.request.id,
-        'model': llm_response.model,
-        'min_year': min_year,
-        'max_year': max_year,
-        'document_types_string': document_types_string,
-        'user_input': user_input,
-        'response': llm_response.message,
-        'input_tokens': llm_response.input_tokens,
-        'output_tokens': llm_response.response_tokens,
-        'total_cost': llm_response.total_cost,
-        'response_headers': llm_response.headers,
-    }
-
-    return query_result_parameters
+    task.set_success()

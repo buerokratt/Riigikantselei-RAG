@@ -1,12 +1,11 @@
-from celery.result import AsyncResult
 from django.db.models import QuerySet
-from rest_framework import status, views, viewsets
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
 from rest_framework.request import Request
 from rest_framework.response import Response
 
-from core.models import CoreVariable, TextSearchConversation, TextSearchQueryResult
+from core.models import CoreVariable, TextSearchConversation
 from core.serializers import (
     ConversationSetTitleSerializer,
     CoreVariableSerializer,
@@ -30,51 +29,9 @@ class CoreVariableViewSet(viewsets.ModelViewSet):
         return CoreVariable.objects.all()
 
 
-class AsyncResultView(views.APIView):
-    permission_classes = (CanSpendResourcesPermission,)
-
-    # pylint: disable=unused-argument
-
-    # Since checking on others' async results is not harmful on a prototype level,
-    # we don't bother checking if celery_task_id refers to the user's own task
-    def get(self, request: Request, celery_task_id: str) -> Response:
-        async_result = AsyncResult(celery_task_id)
-
-        response = {'status': async_result.status}
-
-        if async_result.status == 'FAILURE':
-            # During errors the result of the task will be a Python exception
-            # so to make it JSON serializable as an output we convert it to a string.
-            response['result'] = str(async_result.result)
-            response['error_type'] = type(async_result.result).__name__
-            # TODO: should we display failed queries in the frontend "chat history"
-            #  on later visits as well? If yes, we should save a TextSearchQueryResult here.
-            #  If yes, also, should we prevent them from being sent to the LLM?
-            return Response(response)
-
-        response['error_type'] = None
-
-        if async_result.status == 'SUCCESS':
-            # On success the result of the task will be the output of the Celery task chain.
-            # The output is a dict of all the input data needed to create a TextSearchQueryResult.
-            # To separate testing of view and model logic from testing of RAG logic,
-            # the TextSearchQueryResult is created here.
-            query_result_parameters = async_result.result
-            query_result_parameters['conversation'] = TextSearchConversation.objects.get(
-                id=query_result_parameters['conversation']
-            )
-
-            query_result = TextSearchQueryResult.objects.create(**query_result_parameters)
-            response['result'] = query_result.response
-
-        else:
-            response['result'] = None
-
-        return Response(response)
-
-
 class TextSearchConversationViewset(viewsets.ViewSet):
     permission_classes = (IsAcceptedPermission,)
+    serializer_class = TextSearchConversationCreateSerializer
 
     # pylint: disable=unused-argument,invalid-name
 
@@ -120,7 +77,12 @@ class TextSearchConversationViewset(viewsets.ViewSet):
 
         return Response()
 
-    @action(detail=True, methods=['post'], permission_classes=(CanSpendResourcesPermission,))
+    @action(
+        detail=True,
+        methods=['post'],
+        permission_classes=(CanSpendResourcesPermission,),
+        serializer_class=TextSearchQuerySubmitSerializer,
+    )
     def chat(self, request: Request, pk: int) -> Response:
         # Prevent anyone from changing other users' data.
         # We do it here, not self.check_object_permissions, because we want to return 404, not 403,
@@ -132,5 +94,9 @@ class TextSearchConversationViewset(viewsets.ViewSet):
         if not request_serializer.is_valid():
             return Response(request_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        response = request_serializer.save(conversation_id=pk)
-        return Response(response)
+        request_serializer.save(conversation_id=pk)
+
+        # Mostly needed for tests but helpful to fetch a more updated task instance.
+        conversation = TextSearchConversation.objects.get(pk=pk)
+        data = TextSearchConversationReadOnlySerializer(conversation).data
+        return Response(data)

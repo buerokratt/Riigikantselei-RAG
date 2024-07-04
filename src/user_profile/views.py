@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.contrib.auth import authenticate
+from django.contrib.auth import authenticate, login
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
@@ -43,6 +43,10 @@ class GetTokenView(APIView):
         if authenticate(request=request, username=username, password=password):
             user = User.objects.get(username=username)
             token, _ = Token.objects.get_or_create(user=user)
+
+            # TODO: Remove this later.
+            if settings.DEBUG:
+                login(request, user)
 
             response = {
                 'id': user.id,

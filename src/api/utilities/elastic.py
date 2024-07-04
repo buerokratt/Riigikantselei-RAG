@@ -13,7 +13,7 @@ from api.utilities.core_settings import get_core_setting
 logger = logging.getLogger(__name__)
 
 MATCH_ALL_QUERY: Dict[str, Dict[str, dict]] = {'query': {'match_all': {}}}
-ELASTIC_NOT_FOUND_MESSAGE = 'Could not find specified data!'
+ELASTIC_NOT_FOUND_MESSAGE = 'Could not find specified data from Elasticsearch!'
 ELASTIC_REQUEST_ERROR_MESSAGE = 'Could not connect to Elasticsearch!'
 ELASTIC_CONNECTION_TIMEOUT_MESSAGE = (
     'Connection to Elasticsearch took too long, please try again later!'
@@ -51,7 +51,14 @@ def _elastic_connection(func: Callable) -> Callable:
                 # but we'd like to treat timing out separately
                 raise APIException(ELASTIC_CONNECTION_TIMEOUT_MESSAGE) from exception
 
-            raise APIException(ELASTIC_CONNECTION_ERROR_MESSAGE) from exception
+            connection_pool = getattr(exception.info, 'pool', None)
+            uri = f'{connection_pool.host}:{connection_pool.port}' if connection_pool else None
+            message = (
+                f'{ELASTIC_CONNECTION_ERROR_MESSAGE} ({uri})'
+                if uri
+                else ELASTIC_CONNECTION_ERROR_MESSAGE
+            )
+            raise APIException(message) from exception
 
         except Exception as exception:
             raise APIException(
