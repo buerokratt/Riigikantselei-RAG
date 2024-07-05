@@ -61,7 +61,7 @@ def async_call_celery_task_chain(
 @app.task(name='query_and_format_rag_context', max_retries=5, bind=True)
 def query_and_format_rag_context(
     self: Task, min_year: int, max_year: int, user_input: str, document_indices: List[str]
-) -> str:
+) -> dict:
     """
     Task for fetching the RAG context from pre-processed vectors in ElasticSearch.
 
@@ -90,14 +90,26 @@ def query_and_format_rag_context(
         comparison_field=get_core_setting('ELASTICSEARCH_VECTOR_FIELD'),
     )
 
+    # Currently I made the fields dynamic since I don't have a proper dataset to play with
+    # but in all honestly I don't think its worth the hassle anymore when its mostly
+    # a static POC anyway...
     content_field = get_core_setting('ELASTICSEARCH_TEXT_CONTENT_FIELD')
+    uri_field = 'url'
+    title_field = 'title'
     context_documents_contents = []
     for hit in matching_documents['hits']['hits']:
-        content = hit['_source'].get(content_field, None)
+        content = hit['_source'].get(content_field, '')
+        reference = {
+            'content': content,
+            'elastic_id': hit['_id'],
+            'index': hit['_index'],
+            'title': hit['_source'].get(title_field, ''),
+            'url': hit['_source'].get(uri_field, ''),
+        }
         if content:
-            context_documents_contents.append(content)
+            context_documents_contents.append(reference)
 
-    context = '\n\n'.join(context_documents_contents)
+    context = '\n\n'.join([document['content'] for document in context_documents_contents])
     query_with_context = (
         'Answer the following question using the provided context from below! '
         f'Question: ```{user_input}```'
@@ -105,7 +117,7 @@ def query_and_format_rag_context(
         f'Context: ```{context}```'
     )
 
-    return query_with_context
+    return {'context': query_with_context, 'references': context_documents_contents}
 
 
 # Using bind sets the Celery Task object to the first argument, in this case self.
@@ -117,7 +129,7 @@ def query_and_format_rag_context(
 )
 def call_openai_api(
     self: Task,
-    user_input_with_context: str,
+    context_and_references: dict,
     conversation_id: int,
     min_year: int,
     max_year: int,
@@ -127,8 +139,8 @@ def call_openai_api(
     """
     Task for fetching the RAG context from pre-processed vectors in ElasticSearch.
 
+    :param context_and_references: Text containing user input and relevant context documents.
     :param self: Contains access to the Celery Task instance.
-    :param user_input_with_context: Text containing user input and relevant context documents.
     :param conversation_id: ID of the conversation this API call is a part of.
     :param min_year: Earliest year to consider documents from.
     :param max_year: Latest year to consider documents from.
@@ -143,6 +155,14 @@ def call_openai_api(
         task: TaskModel = result.celery_task
 
         task.set_started()
+
+        user_input_with_context = context_and_references['context']
+        references = context_and_references['references']
+
+        # Remove content from the references since we don't
+        # want to keep all that text in the database.
+        for reference in references:
+            reference.pop('content')
 
         messages = conversation.messages + [{'role': 'user', 'content': user_input_with_context}]
 
@@ -163,6 +183,7 @@ def call_openai_api(
             'output_tokens': llm_response.response_tokens,
             'total_cost': llm_response.total_cost,
             'response_headers': llm_response.headers,
+            'references': references,
         }
 
     # Reraise these since they'd be necessary for a retry.
@@ -194,6 +215,7 @@ def save_openai_results(self: Task, results: dict, conversation_id: int) -> None
     result.output_tokens = results['output_tokens']
     result.total_cost = results['total_cost']
     result.response_headers = results['response_headers']
+    result.references = results['references']
     result.save()
 
     task.set_success()
