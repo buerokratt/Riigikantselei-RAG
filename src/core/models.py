@@ -19,6 +19,10 @@ class TextSearchConversation(models.Model):
     system_input = models.TextField()
     title = models.CharField(max_length=100)
 
+    min_year = models.IntegerField(null=True, default=None)
+    max_year = models.IntegerField(null=True, default=None)
+    document_types_string = models.TextField(null=True, default=None)
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     @property
@@ -34,6 +38,13 @@ class TextSearchConversation(models.Model):
                 container.extend(query_result.messages)
         return container
 
+    @property
+    def document_types(self) -> Optional[List[str]]:
+        if self.document_types_string:
+            return self.document_types_string.split(',')
+
+        return None
+
 
 class TextSearchQueryResult(models.Model):
     conversation = models.ForeignKey(
@@ -41,10 +52,6 @@ class TextSearchQueryResult(models.Model):
     )
 
     model = models.CharField(max_length=100, null=True, default=None)
-
-    min_year = models.IntegerField(null=True, default=None)
-    max_year = models.IntegerField(null=True, default=None)
-    document_types_string = models.TextField(null=True, default=None)
 
     user_input = models.TextField(null=True, default=None)
     response = models.TextField(null=True, default=None)
@@ -63,13 +70,6 @@ class TextSearchQueryResult(models.Model):
             {'role': 'user', 'content': self.user_input},
             {'role': 'assistant', 'content': self.response},
         ]
-
-    @property
-    def document_types(self) -> Optional[List[str]]:
-        if self.document_types_string:
-            return self.document_types_string.split(',')
-
-        return None
 
     def __str__(self) -> str:
         return f"'{self.conversation.title.title()}' @ {self.conversation.auth_user.username}"

@@ -16,6 +16,9 @@ class TestTextSearchNonChat(APITestCase):
         cls.list_endpoint_url = reverse('text_search-list')
         cls.base_create_input = {
             'user_input': 'input question',
+            'min_year': 2000,
+            'max_year': 2024,
+            'document_types': ['a'],
         }
         cls.base_set_title_input = {
             'title': 'Asking about a topic',
@@ -42,14 +45,12 @@ class TestTextSearchNonChat(APITestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
         # List (empty)
-
         response = self.client.get(self.list_endpoint_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         self.assertEqual(response.data, [])
 
         # Create
-
         response = self.client.post(self.create_endpoint_url, data=self.base_create_input)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertIn('id', response.data)
@@ -59,6 +60,9 @@ class TestTextSearchNonChat(APITestCase):
             'id': conversation_id,
             'title': self.base_create_input['user_input'],
             'created_at': IsString(),
+            'min_year': self.base_create_input['min_year'],
+            'max_year': self.base_create_input['max_year'],
+            'document_types': self.base_create_input['document_types'],
         }
         response_only_expected_data = {'query_results': []}  # type: ignore
         model_only_expected_data = {
@@ -78,7 +82,6 @@ class TestTextSearchNonChat(APITestCase):
             self.assertEqual(getattr(conversation, attribute), value)
 
         # Retrieve
-
         retrieve_endpoint_url = reverse('text_search-detail', kwargs={'pk': conversation_id})
 
         response = self.client.get(retrieve_endpoint_url)
@@ -87,7 +90,6 @@ class TestTextSearchNonChat(APITestCase):
         self.assertEqual(response.data, response_expected_data)
 
         # List
-
         response = self.client.get(self.list_endpoint_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -106,7 +108,6 @@ class TestTextSearchNonChat(APITestCase):
         conversation_id = response.data['id']
 
         # Set
-
         set_title_endpoint_url = reverse('text_search-set-title', kwargs={'pk': conversation_id})
 
         response = self.client.post(set_title_endpoint_url, data=self.base_set_title_input)
@@ -168,7 +169,6 @@ class TestTextSearchNonChat(APITestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
         # Create
-
         response = self.client.post(self.create_endpoint_url, data=self.base_create_input)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
@@ -229,20 +229,16 @@ class TestTextSearchNonChat(APITestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
         # Create
-
         response = self.client.post(self.create_endpoint_url, data=self.base_create_input)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-
         self.assertIn('id', response.data)
         conversation_id = response.data['id']
 
         # Set title
-
         token, _ = Token.objects.get_or_create(user=self.accepted_auth_user_2)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
         set_title_endpoint_url = reverse('text_search-set-title', kwargs={'pk': conversation_id})
-
         response = self.client.post(set_title_endpoint_url, data=self.base_set_title_input)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
@@ -251,18 +247,13 @@ class TestTextSearchNonChat(APITestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
         # Create
-
         response = self.client.post(self.create_endpoint_url, data=self.base_create_input)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-
         self.assertIn('id', response.data)
         conversation_id = response.data['id']
 
         # Set title
-
         set_title_endpoint_url = reverse('text_search-set-title', kwargs={'pk': conversation_id})
-
         data = {'title': 'asdf\0'}
-
         response = self.client.post(set_title_endpoint_url, data=data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

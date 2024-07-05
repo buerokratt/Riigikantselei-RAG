@@ -57,11 +57,43 @@ class CoreVariableSerializer(serializers.ModelSerializer):
 class TextSearchConversationCreateSerializer(serializers.Serializer):
     user_input = serializers.CharField()
 
+    min_year = serializers.IntegerField(required=True, min_value=1900)
+    max_year = serializers.IntegerField(required=True, min_value=1900)
+    document_types = serializers.ListField(
+        required=True,
+        child=serializers.ChoiceField(
+            choices=list(settings.DOCUMENT_CATEGORY_TO_INDICES_MAP.keys())
+        ),
+    )
+
+    def validate(self, data: dict) -> dict:
+        if data['min_year'] > datetime.datetime.now().year:
+            raise ValidationError('min_year must be lesser than currently running year!')
+
+        if data['max_year'] > datetime.datetime.now().year:
+            raise ValidationError('max_year must be lesser than currently running year!')
+
+        if data['min_year'] > data['max_year']:
+            raise ValidationError('min_year must be lesser than max_year!')
+
+        return data
+
     def create(self, validated_data: dict) -> TextSearchConversation:
+        min_year = self.validated_data['min_year']
+        max_year = self.validated_data['max_year']
+        document_types_string = ','.join(self.validated_data['document_types'])
+
+        document_indices = []
+        for document_type in self.validated_data['document_types']:
+            document_indices.extend(settings.DOCUMENT_CATEGORY_TO_INDICES_MAP[document_type])
+
         conversation = TextSearchConversation.objects.create(
             auth_user=validated_data['auth_user'],
             system_input=get_core_setting('OPENAI_SYSTEM_MESSAGE'),
             title=validated_data['user_input'],
+            document_types_string=document_types_string,
+            min_year=min_year,
+            max_year=max_year,
         )
         conversation.save()
         return conversation
@@ -81,8 +113,6 @@ class TextSearchQueryResultReadOnlySerializer(serializers.ModelSerializer):
     class Meta:
         model = TextSearchQueryResult
         fields = (
-            'min_year',
-            'max_year',
             'user_input',
             'response',
             'total_cost',
@@ -101,6 +131,9 @@ class TextSearchConversationReadOnlySerializer(serializers.ModelSerializer):
         fields = (
             'id',
             'title',
+            'min_year',
+            'max_year',
+            'document_types',
             'created_at',
             'query_results',
         )
@@ -114,40 +147,16 @@ class ConversationSetTitleSerializer(serializers.Serializer):
 
 
 class TextSearchQuerySubmitSerializer(serializers.Serializer):
-    min_year = serializers.IntegerField(required=True, min_value=1900)
-    max_year = serializers.IntegerField(required=True, min_value=1900)
-    document_types = serializers.ListField(
-        required=True,
-        child=serializers.ChoiceField(
-            choices=list(settings.DOCUMENT_CATEGORY_TO_INDICES_MAP.keys())
-        ),
-    )
-
     user_input = serializers.CharField()
 
-    def validate(self, data: dict) -> dict:
-        if data['min_year'] > datetime.datetime.now().year:
-            raise ValidationError('min_year must be lesser than currently running year!')
-
-        if data['max_year'] > datetime.datetime.now().year:
-            raise ValidationError('max_year must be lesser than currently running year!')
-
-        if data['min_year'] > data['max_year']:
-            raise ValidationError('min_year must be lesser than max_year!')
-
-        return data
-
     def save(self, conversation_id: int) -> dict:
-        min_year = self.validated_data['min_year']
-        max_year = self.validated_data['max_year']
-        document_types_string = ','.join(self.validated_data['document_types'])
         user_input = self.validated_data['user_input']
 
-        document_indices = []
-        for document_type in self.validated_data['document_types']:
-            document_indices.extend(settings.DOCUMENT_CATEGORY_TO_INDICES_MAP[document_type])
-
         instance = TextSearchConversation.objects.get(pk=conversation_id)
+
+        document_indices = []
+        for document_type in instance.document_types:
+            document_indices.extend(settings.DOCUMENT_CATEGORY_TO_INDICES_MAP[document_type])
 
         # TODO: Maybe auto-create the task through a signal or by rewriting
         #  results .save() function in the model?
@@ -159,12 +168,12 @@ class TextSearchQuerySubmitSerializer(serializers.Serializer):
             # before Celery starts working on it since it being quicker is a common occurrence.
             transaction.on_commit(
                 lambda: async_call_celery_task_chain(
-                    min_year,
-                    max_year,
+                    instance.min_year,
+                    instance.max_year,
                     user_input,
                     document_indices,
                     conversation_id,
-                    document_types_string,
+                    instance.document_types_string,
                 )
             )
 
