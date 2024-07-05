@@ -155,39 +155,29 @@ class TestTextSearchChat(APITransactionTestCase):
         self.assertEqual(messages[2]['content'], response_message)
         self.assertEqual(messages[2]['role'], 'assistant')
 
-    def test_that_the_max_years_above_current_year_are_not_allowed_as_inputs(self) -> None:
+    def test_that_min_and_max_year_validations_prevent_faulty_values(self) -> None:
         token, _ = Token.objects.get_or_create(user=self.allowed_auth_user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
+        # Test normal creation.
         conversation_response = self.client.post(self.create_endpoint_url, data=BASE_CREATE_INPUT)
         self.assertEqual(conversation_response.status_code, status.HTTP_201_CREATED)
 
-        self.assertIn('id', conversation_response.data)
-        conversation_id = conversation_response.data['id']
-        chat_endpoint_url = reverse('text_search-chat', kwargs={'pk': conversation_id})
-
         # Check validation for max_year
-        response = self.client.post(chat_endpoint_url, data=INVALID_MAX_YEAR_INPUT)
+        response = self.client.post(self.create_endpoint_url, data=INVALID_MAX_YEAR_INPUT)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
         # Check validation for min_year
-        response = self.client.post(chat_endpoint_url, data=INVALID_MIN_YEAR_INPUT)
+        response = self.client.post(self.create_endpoint_url, data=INVALID_MIN_YEAR_INPUT)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
         # Check validation for min_year being bigger than max_year
-        response = self.client.post(chat_endpoint_url, data=INVALID_YEAR_DIFFERENCE_INPUT)
+        response = self.client.post(self.create_endpoint_url, data=INVALID_YEAR_DIFFERENCE_INPUT)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-        with mock.patch(
-            'core.tasks.ChatGPT.chat', return_value=FirstChatInConversationMockResults()
-        ):
-            with mock.patch(
-                'core.tasks.Vectorizer.vectorize',
-                return_value={'vectors': [[[0.0352351, 0.3141515, 0.12541241]]]},
-            ):
-                # Just check equal values being respected.
-                response = self.client.post(chat_endpoint_url, data=EQUAL_DATES_INPUT)
-                self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Check that equal dates go through normally.
+        response = self.client.post(self.create_endpoint_url, data=EQUAL_DATES_INPUT)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_chat_fails_because_not_authed(self) -> None:
         chat_endpoint_url = reverse('text_search-chat', kwargs={'pk': 1})
@@ -238,28 +228,18 @@ class TestTextSearchChat(APITransactionTestCase):
         response = self.client.post(chat_endpoint_url, data=FIRST_CONVERSATION_START_INPUT)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
-    def test_chat_fails_because_bad_document_types(self) -> None:
+    def test_conversation_fails_because_bad_document_types(self) -> None:
         token, _ = Token.objects.get_or_create(user=self.allowed_auth_user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
         # Create
-
-        response = self.client.post(self.create_endpoint_url, data=BASE_CREATE_INPUT)
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-
-        self.assertIn('id', response.data)
-        conversation_id = response.data['id']
-
-        # Set title
-
-        chat_endpoint_url = reverse('text_search-chat', kwargs={'pk': conversation_id})
-
-        data = {
-            'min_year': 2020,
-            'max_year': 2024,
-            'document_types': ['a', 'c', 'xyz'],
-            'user_input': 'Asking about a topic',
-        }
-
-        response = self.client.post(chat_endpoint_url, data=data)
+        response = self.client.post(
+            self.create_endpoint_url,
+            data={
+                'user_input': 'How does the jam get into the candy?',
+                'min_year': 2000,
+                'max_year': 2024,
+                'document_types': ['test_xyz'],
+            },
+        )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

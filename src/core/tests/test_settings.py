@@ -5,12 +5,12 @@ from api.utilities.core_settings import get_core_setting
 
 BASE_CREATE_INPUT = {
     'user_input': 'Eesti iseseisvus',
-}
-
-FIRST_CONVERSATION_START_INPUT = {
     'min_year': 2020,
     'max_year': 2024,
     'document_types': ['a', 'c'],
+}
+
+FIRST_CONVERSATION_START_INPUT = {
     'user_input': 'Kuidas sai Eesti iseseivuse?',
 }
 
