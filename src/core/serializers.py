@@ -115,6 +115,7 @@ class TextSearchQueryResultReadOnlySerializer(serializers.ModelSerializer):
         fields = (
             'user_input',
             'response',
+            'references',
             'total_cost',
             'created_at',
             'celery_task',

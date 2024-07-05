@@ -1,6 +1,7 @@
 from typing import List
 from unittest import mock
 
+from django.conf import settings
 from django.test import override_settings
 from rest_framework import status
 from rest_framework.authtoken.models import Token
@@ -9,6 +10,7 @@ from rest_framework.test import APITransactionTestCase
 
 from api.utilities.core_settings import get_core_setting
 from api.utilities.elastic import ElasticCore
+from api.utilities.vectorizer import Vectorizer
 from core.choices import TaskStatus
 from core.models import Task, TextSearchConversation, TextSearchQueryResult
 from core.tests.test_settings import (
@@ -211,7 +213,6 @@ class TestTextSearchChat(APITransactionTestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
         # Create
-
         response = self.client.post(self.create_endpoint_url, data=BASE_CREATE_INPUT)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
@@ -219,7 +220,6 @@ class TestTextSearchChat(APITransactionTestCase):
         conversation_id = response.data['id']
 
         # Set title
-
         token, _ = Token.objects.get_or_create(user=self.allowed_auth_user_2)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
@@ -243,3 +243,67 @@ class TestTextSearchChat(APITransactionTestCase):
             },
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def _create_vector_data(self) -> None:
+        ec = ElasticCore()
+        index_scheduled_for_cleaning = self.indices[0]
+        ec.add_vector_mapping(index=index_scheduled_for_cleaning, field='vector')
+
+        vector = Vectorizer(
+            model_name=settings.VECTORIZATION_MODEL_NAME,
+            system_configuration=settings.BGEM3_SYSTEM_CONFIGURATION,
+            inference_configuration=settings.BGEM3_INFERENCE_CONFIGURATION,
+            model_directory=settings.MODEL_DIRECTORY,
+        )
+
+        text = 'Sega kõik kokku ja elu on hea noh!'
+        vectors = vector.vectorize([text])['vectors'][0]
+        ec.elasticsearch.index(
+            index=index_scheduled_for_cleaning,
+            document={
+                'text': text,
+                'vector': vectors,
+                'url': 'http://eesti.ee',
+                'title': 'Eesti iseseivuse saladused!',
+            },
+        )
+
+    @override_settings(CELERY_TASK_ALWAYS_EAGER=True)
+    def test_references_being_stored_inside_results_for_successful_rag(self) -> None:
+        self._create_vector_data()
+
+        token, _ = Token.objects.get_or_create(user=self.allowed_auth_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
+
+        conversation = self.client.post(self.create_endpoint_url, data=BASE_CREATE_INPUT)
+        self.assertEqual(conversation.status_code, status.HTTP_201_CREATED)
+
+        chat_endpoint_url = reverse('text_search-chat', kwargs={'pk': conversation.data['id']})
+
+        index_category, _ = self.indices[0].split('_')
+
+        openai_mock_response = FirstChatInConversationMockResults()
+        with mock.patch('core.tasks.ChatGPT.chat', return_value=openai_mock_response):
+            response = self.client.post(
+                chat_endpoint_url,
+                data={
+                    'user_input': 'Millal Eesti iseseivus?',
+                    'min_year': 2024,
+                    'max_year': 2024,
+                    'document_types': [index_category],
+                },
+            )
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            references = response.data['query_results'][0]['references']
+            self.assertEqual(len(references), 1)
+
+            fields = ['url', 'title', 'elastic_id', 'index']
+            reference = references[0]
+            for field in fields:
+                self.assertIn(field, reference)
+                self.assertIsNotNone(reference.get(field, None))
+
+            # Check that the reference to a document in elasticsearch is correct.
+            ec = ElasticCore()
+            hit = ec.elasticsearch.get(index=reference['index'], id=reference['elastic_id'])
+            self.assertEqual(hit['_id'], reference['elastic_id'])

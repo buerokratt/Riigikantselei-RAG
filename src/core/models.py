@@ -61,6 +61,7 @@ class TextSearchQueryResult(models.Model):
     total_cost = models.FloatField(null=True, default=None)
 
     response_headers = models.JSONField(null=True, default=None)
+    references = models.JSONField(null=True, default=None)
 
     created_at = models.DateTimeField(auto_now_add=True)
 
