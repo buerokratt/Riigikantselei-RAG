@@ -50,6 +50,13 @@ CONTINUE_CONVERSATION_INPUT = {
     'user_input': 'Ok, aga anna siis infot Läti iseseivuse kohta.',
 }
 
+MIN_AND_MAX_YEAR_FUNCTIONALITY_INPUTS = {
+    'user_input': 'Fruit migration',
+    'min_year': 2021,
+    'max_year': 2024,
+    'document_types': ['a'],
+}
+
 
 class FirstChatInConversationMockResults:
     RESPONSE: Dict[str, object] = {

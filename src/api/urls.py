@@ -18,7 +18,11 @@ from django.contrib import admin
 from django.urls import include, path
 from rest_framework import routers
 
-from core.views import CoreVariableViewSet, TextSearchConversationViewset
+from core.views import (
+    CoreVariableViewSet,
+    ElasticDocumentDetailView,
+    TextSearchConversationViewset,
+)
 from user_profile.views import GetTokenView, LogOutView, UserProfileViewSet
 
 PREFIX = 'api'
@@ -33,6 +37,11 @@ router.register(f'{PREFIX}/text_search', TextSearchConversationViewset, basename
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include(router.urls)),
+    path(
+        f'{PREFIX}/elastic/<str:index>/<str:document_id>/',
+        ElasticDocumentDetailView.as_view(),
+        name='document_detail',
+    ),
     path(GET_TOKEN_VIEW_URL, GetTokenView.as_view(), name='get_token'),
     path(LOG_OUT_VIEW_URL, LogOutView.as_view(), name='log_out'),
 ]
