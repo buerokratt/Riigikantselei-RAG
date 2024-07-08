@@ -34,12 +34,13 @@ class TestTextSearchChat(APITransactionTestCase):
     def _create_test_indices(self, indices: List[str]) -> None:
         core = ElasticCore()
         for index in indices:
-            core.elasticsearch.indices.create(index=index, ignore=[400, 404])
+            core.create_index(index)
+            core.add_vector_mapping(index, 'vector')
 
     def _clear_indices(self, indices: List[str]) -> None:
         core = ElasticCore()
         for index in indices:
-            core.elasticsearch.indices.delete(index, ignore=[400, 404])
+            core.elasticsearch.indices.delete(index=index, ignore=[400, 404])
 
     def setUp(self) -> None:  # pylint: disable=invalid-name
         self.create_endpoint_url = reverse('text_search-list')

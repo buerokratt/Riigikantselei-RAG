@@ -9,6 +9,7 @@ from api.utilities.elastic import (
     ELASTIC_CONNECTION_ERROR_MESSAGE,
     ELASTIC_CONNECTION_TIMEOUT_MESSAGE,
     ElasticCore,
+    ElasticKNN,
 )
 from api.utilities.testing import set_core_setting
 from api.utilities.vectorizer import Vectorizer
@@ -83,19 +84,22 @@ class TestElasticCore(APITestCase):
 
         self._check_document_integrity(document_id, text)
 
-        self._index_document_and_add_vector('See on ainult lihas haav', vectorizer)
-        self._index_document_and_add_vector(
-            'Mingi märg eit kes loobib mõõku ei ole korralik alus valitsuse loomiseks!', vectorizer
-        )
+        texts = [
+            'See on ainult lihashaav ja ortograafia on oluline!',
+            'Mingi märg eit kes loobib mõõku ei ole korralik alus valitsuse loomiseks!',
+        ]
 
-        search_vector = vectorizer.vectorize(['Miks sa tahad öelda, et kookosed migreeruvad'])[
-            'vectors'
-        ][0]
-        search_response = self.elastic_core.search_vector(
-            indices=self.index_name,
+        for text in texts:
+            self._index_document_and_add_vector(text, vectorizer)
+
+        text = 'Miks sa tahad öelda, et kookosed migreeruvad'
+        search_vector = vectorizer.vectorize([text])['vectors'][0]
+
+        elastic_knn = ElasticKNN(self.index_name)
+
+        search_response = elastic_knn.search_vector(
             search_query={'query': {'match': {'text': 'kookosed'}}},
             vector=search_vector,
-            comparison_field=self.vector_field_name,
         )
 
         # Assert we only get a single hit with the query.
@@ -103,9 +107,7 @@ class TestElasticCore(APITestCase):
         self.assertTrue(len(hits) == 1)
 
         # Integrity check that without the query limitation we get more.
-        search_response = self.elastic_core.search_vector(
-            indices=self.index_name, vector=search_vector, comparison_field=self.vector_field_name
-        )
+        search_response = elastic_knn.search_vector(vector=search_vector)
         hits = search_response['hits']['hits']
         self.assertTrue(len(hits) > 1)
 
@@ -125,12 +127,11 @@ class TestElasticCore(APITestCase):
 
         self._check_document_integrity(document_id, text)
 
-        search_vector = vectorizer.vectorize(['Miks sa tahad öelda, et kookosed migreeruvad'])[
-            'vectors'
-        ][0]
-        search_response = self.elastic_core.search_vector(
-            indices=self.index_name, vector=search_vector, comparison_field=self.vector_field_name
-        )
+        text = 'Miks sa tahad öelda, et kookosed migreeruvad'
+        search_vector = vectorizer.vectorize([text])['vectors'][0]
+
+        elastic_knn = ElasticKNN(self.index_name)
+        search_response = elastic_knn.search_vector(vector=search_vector)
 
         hits = search_response['hits']['hits']
         self.assertTrue(len(hits) > 0)

@@ -5,6 +5,7 @@ from typing import Any, Callable, Dict, List, Optional
 from elasticsearch import AuthenticationException
 from elasticsearch import ConnectionError as ElasticsearchConnectionError
 from elasticsearch import ConnectionTimeout, Elasticsearch, NotFoundError, RequestError
+from elasticsearch_dsl import Search
 from rest_framework import status
 from rest_framework.exceptions import APIException, AuthenticationFailed, NotFound
 
@@ -14,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 MATCH_ALL_QUERY: Dict[str, Dict[str, dict]] = {'query': {'match_all': {}}}
 ELASTIC_NOT_FOUND_MESSAGE = 'Could not find specified data from Elasticsearch!'
-ELASTIC_REQUEST_ERROR_MESSAGE = 'Could not connect to Elasticsearch!'
+ELASTIC_REQUEST_ERROR_MESSAGE = 'Error executing Elasticsearch query! Bad query?'
 ELASTIC_CONNECTION_TIMEOUT_MESSAGE = (
     'Connection to Elasticsearch took too long, please try again later!'
 )
@@ -51,14 +52,18 @@ def _elastic_connection(func: Callable) -> Callable:
                 # but we'd like to treat timing out separately
                 raise APIException(ELASTIC_CONNECTION_TIMEOUT_MESSAGE) from exception
 
-            connection_pool = getattr(exception.info, 'pool', None)
-            uri = f'{connection_pool.host}:{connection_pool.port}' if connection_pool else None
-            message = (
-                f'{ELASTIC_CONNECTION_ERROR_MESSAGE} ({uri})'
-                if uri
-                else ELASTIC_CONNECTION_ERROR_MESSAGE
-            )
-            raise APIException(message) from exception
+            # Following section is currently commented out due to changes in ConnectionError
+            # structure in Elasticsearch 8 package.
+            # Is this really required tho?
+
+            # connection_pool = getattr(exception.info, 'pool', None)
+            # uri = f'{connection_pool.host}:{connection_pool.port}' if connection_pool else None
+            # message = (
+            #    f'{ELASTIC_CONNECTION_ERROR_MESSAGE} ({uri})'
+            #    if uri
+            #    else ELASTIC_CONNECTION_ERROR_MESSAGE
+            # )
+            raise APIException(ELASTIC_CONNECTION_ERROR_MESSAGE) from exception
 
         except Exception as exception:
             raise APIException(
@@ -97,32 +102,41 @@ class ElasticCore:
             index=index, id=document_id, body={'doc': {field: vector}}, refresh='wait_for'
         )
 
+    def __str__(self) -> str:
+        return self.elasticsearch_url
+
+
+class ElasticKNN:
+    def __init__(
+        self,
+        indices: str,
+        elasticsearch_url: Optional[str] = None,
+        timeout: Optional[int] = None,
+        field: Optional[str] = None,
+    ):
+        self.indices = indices
+        self.timeout = timeout or get_core_setting('ELASTICSEARCH_TIMEOUT')
+        self.field = field or get_core_setting('ELASTICSEARCH_VECTOR_FIELD')
+        self.elasticsearch_url = elasticsearch_url or get_core_setting('ELASTICSEARCH_URL')
+        self.elasticsearch = Elasticsearch(self.elasticsearch_url, timeout=self.timeout)
+
     @_elastic_connection
     def search_vector(
         self,
-        indices: str,
         vector: List[float],
-        comparison_field: str,
         search_query: Optional[dict] = None,
+        k: Optional[int] = 5,
+        num_candidates: Optional[int] = 25,
     ) -> Dict:
-        if search_query is None:
-            search_query = MATCH_ALL_QUERY
-
-        query = {
-            'query': {
-                'script_score': {
-                    **search_query,
-                    'script': {
-                        'source': (
-                            f"cosineSimilarity(params.query_vector, '{comparison_field}')" ' + 1.0'
-                        ),
-                        'params': {'query_vector': vector},
-                    },
-                }
-            }
-        }
-
-        response = self.elasticsearch.search(body=query, index=indices)
+        # Define search interface
+        search = Search(using=self.elasticsearch, index=self.indices)
+        # Add search query to limit results if not None
+        if search_query:
+            search.update_from_dict(search_query)
+        # Define kNN query
+        search.knn(field=self.field, k=k, num_candidates=num_candidates, query_vector=vector)
+        # Execute the query
+        response = search.execute()
         return response
 
     def __str__(self) -> str:

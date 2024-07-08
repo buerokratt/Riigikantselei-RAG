@@ -7,7 +7,7 @@ from django.conf import settings
 
 from api.celery_handler import app
 from api.utilities.core_settings import get_core_setting
-from api.utilities.elastic import ElasticCore
+from api.utilities.elastic import ElasticKNN
 from api.utilities.gpt import ChatGPT
 from api.utilities.vectorizer import Vectorizer
 from core.models import TextSearchConversation, TextSearchQueryResult
@@ -18,8 +18,6 @@ from .models import Task as TaskModel
 
 # TODO: Revisit the retry parameters, or do it by hand,
 #   probably using the headers information about timeout expirations would be useful.
-
-# TODO: add real RAG logic to the tasks when it is ready and unit test them
 
 
 OPENAI_EXCEPTIONS = (
@@ -72,44 +70,46 @@ def query_and_format_rag_context(
     :param document_indices: Which indices to search from Elasticsearch.
     :return: Text containing user input and relevant context documents.
     """
+    # Load important variables
+    data_url_key = get_core_setting('ELASTICSEARCH_URL_FIELD')
+    data_title_key = get_core_setting('ELASTICSEARCH_TITLE_FIELD')
+    data_index_key = get_core_setting('ELASTICSEARCH_INDEX_FIELD')
+    data_content_key = get_core_setting('ELASTICSEARCH_TEXT_CONTENT_FIELD')
+    data_id_key = get_core_setting('ELASTICSEARCH_ID_FIELD')
+
     vectorizer = Vectorizer(
         model_name=settings.VECTORIZATION_MODEL_NAME,
         system_configuration=settings.BGEM3_SYSTEM_CONFIGURATION,
         inference_configuration=settings.BGEM3_INFERENCE_CONFIGURATION,
         model_directory=settings.MODEL_DIRECTORY,
     )
-    input_vectors = vectorizer.vectorize([user_input])['vectors'][0]
+    input_vector = vectorizer.vectorize([user_input])['vectors'][0]
 
-    elastic_core = ElasticCore()
     indices_string = ','.join(document_indices)
+    elastic_knn = ElasticKNN(indices=indices_string)
+
     # TODO here: use year range to filter documents
     # TODO here: unit test index and year filtering
-    matching_documents = elastic_core.search_vector(
-        indices=indices_string,
-        vector=input_vectors,
-        comparison_field=get_core_setting('ELASTICSEARCH_VECTOR_FIELD'),
-    )
+    matching_documents = elastic_knn.search_vector(vector=input_vector)
 
     # Currently I made the fields dynamic since I don't have a proper dataset to play with
     # but in all honestly I don't think its worth the hassle anymore when its mostly
     # a static POC anyway...
-    content_field = get_core_setting('ELASTICSEARCH_TEXT_CONTENT_FIELD')
-    uri_field = 'url'
-    title_field = 'title'
     context_documents_contents = []
     for hit in matching_documents['hits']['hits']:
-        content = hit['_source'].get(content_field, '')
+        source = hit['_source'].to_dict()
+        content = source.get(data_content_key, '')
         reference = {
-            'content': content,
-            'elastic_id': hit['_id'],
-            'index': hit['_index'],
-            'title': hit['_source'].get(title_field, ''),
-            'url': hit['_source'].get(uri_field, ''),
+            data_content_key: content,
+            data_id_key: hit['_id'],
+            data_index_key: hit['_index'],
+            data_title_key: source.get(data_title_key, ''),
+            data_url_key: source.get(data_url_key, ''),
         }
         if content:
             context_documents_contents.append(reference)
 
-    context = '\n\n'.join([document['content'] for document in context_documents_contents])
+    context = '\n\n'.join([document[data_content_key] for document in context_documents_contents])
     query_with_context = (
         'Answer the following question using the provided context from below! '
         f'Question: ```{user_input}```'
@@ -148,8 +148,9 @@ def call_openai_api(
     :param user_input: User sent input to send to the LLM.
     :return: Dict needed to build a TextSearchQueryResult.
     """
-
     try:
+        data_content_key = get_core_setting('ELASTICSEARCH_TEXT_CONTENT_FIELD')
+
         conversation = TextSearchConversation.objects.get(id=conversation_id)
         result: TextSearchQueryResult = conversation.query_results.last()
         task: TaskModel = result.celery_task
@@ -162,7 +163,7 @@ def call_openai_api(
         # Remove content from the references since we don't
         # want to keep all that text in the database.
         for reference in references:
-            reference.pop('content')
+            reference.pop(data_content_key)
 
         messages = conversation.messages + [{'role': 'user', 'content': user_input_with_context}]
 
