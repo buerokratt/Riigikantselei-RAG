@@ -88,13 +88,13 @@ def query_and_format_rag_context(
     indices_string = ','.join(document_indices)
     elastic_knn = ElasticKNN(indices=indices_string)
 
-    # TODO here: use year range to filter documents
-    # TODO here: unit test index and year filtering
-    matching_documents = elastic_knn.search_vector(vector=input_vector)
+    search_query = (
+        {'search_query': ElasticKNN.create_date_query(min_year=min_year, max_year=max_year)}
+        if min_year and max_year
+        else {}
+    )
+    matching_documents = elastic_knn.search_vector(vector=input_vector, **search_query)
 
-    # Currently I made the fields dynamic since I don't have a proper dataset to play with
-    # but in all honestly I don't think its worth the hassle anymore when its mostly
-    # a static POC anyway...
     context_documents_contents = []
     for hit in matching_documents['hits']['hits']:
         source = hit['_source'].to_dict()

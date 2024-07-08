@@ -1,10 +1,11 @@
 from django.db.models import QuerySet
-from rest_framework import status, viewsets
+from rest_framework import status, views, viewsets
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from api.utilities.elastic import ElasticCore
 from core.models import CoreVariable, TextSearchConversation
 from core.serializers import (
     ConversationSetTitleSerializer,
@@ -18,6 +19,17 @@ from user_profile.permissions import (  # type: ignore
     IsAcceptedPermission,
     IsManagerPermission,
 )
+
+
+class ElasticDocumentDetailView(views.APIView):
+    permission_classes = (IsAcceptedPermission,)
+
+    def get(
+        self, request: Request, index: str, document_id: str  # pylint: disable=unused-argument
+    ) -> Response:
+        elastic_core = ElasticCore()
+        text = elastic_core.get_document_content(index, document_id)
+        return Response({'text': text})
 
 
 class CoreVariableViewSet(viewsets.ModelViewSet):

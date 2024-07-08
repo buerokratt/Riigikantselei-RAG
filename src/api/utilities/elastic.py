@@ -1,7 +1,8 @@
 import functools
 import logging
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
+import elasticsearch_dsl
 from elasticsearch import AuthenticationException
 from elasticsearch import ConnectionError as ElasticsearchConnectionError
 from elasticsearch import ConnectionTimeout, Elasticsearch, NotFoundError, RequestError
@@ -52,17 +53,6 @@ def _elastic_connection(func: Callable) -> Callable:
                 # but we'd like to treat timing out separately
                 raise APIException(ELASTIC_CONNECTION_TIMEOUT_MESSAGE) from exception
 
-            # Following section is currently commented out due to changes in ConnectionError
-            # structure in Elasticsearch 8 package.
-            # Is this really required tho?
-
-            # connection_pool = getattr(exception.info, 'pool', None)
-            # uri = f'{connection_pool.host}:{connection_pool.port}' if connection_pool else None
-            # message = (
-            #    f'{ELASTIC_CONNECTION_ERROR_MESSAGE} ({uri})'
-            #    if uri
-            #    else ELASTIC_CONNECTION_ERROR_MESSAGE
-            # )
             raise APIException(ELASTIC_CONNECTION_ERROR_MESSAGE) from exception
 
         except Exception as exception:
@@ -81,13 +71,18 @@ class ElasticCore:
 
     @_elastic_connection
     def create_index(
-        self, index_name: str, shards: int = 3, replicas: int = 1, settings: Optional[dict] = None
+        self,
+        index_name: str,
+        shards: int = 3,
+        replicas: int = 1,
+        settings: Optional[dict] = None,
+        ignore: Tuple[int] = (400,),
     ) -> Dict:
         body = settings or {
             'number_of_shards': shards,
             'number_of_replicas': replicas,
         }
-        return self.elasticsearch.indices.create(index=index_name, settings=body, ignore=[400])
+        return self.elasticsearch.indices.create(index=index_name, settings=body, ignore=ignore)
 
     @_elastic_connection
     def add_vector_mapping(
@@ -101,6 +96,13 @@ class ElasticCore:
         return self.elasticsearch.update(
             index=index, id=document_id, body={'doc': {field: vector}}, refresh='wait_for'
         )
+
+    @_elastic_connection
+    def get_document_content(self, index: str, document_id: str) -> Dict:
+        document = self.elasticsearch.get(index=index, id=document_id)
+        text_field = get_core_setting('ELASTICSEARCH_TEXT_CONTENT_FIELD')
+        text = document.body['_source'].get(text_field, '')
+        return text
 
     def __str__(self) -> str:
         return self.elasticsearch_url
@@ -119,6 +121,13 @@ class ElasticKNN:
         self.field = field or get_core_setting('ELASTICSEARCH_VECTOR_FIELD')
         self.elasticsearch_url = elasticsearch_url or get_core_setting('ELASTICSEARCH_URL')
         self.elasticsearch = Elasticsearch(self.elasticsearch_url, timeout=self.timeout)
+
+    @staticmethod
+    def create_date_query(min_year: int, max_year: int) -> Dict:
+        search = elasticsearch_dsl.Search()
+        date_field = get_core_setting('ELASTICSEARCH_YEAR_FIELD')
+        search = search.query('range', **{date_field: {'gte': min_year, 'lte': max_year}})
+        return search.to_dict()
 
     @_elastic_connection
     def search_vector(

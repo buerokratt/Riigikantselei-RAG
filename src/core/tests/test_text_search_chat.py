@@ -21,6 +21,7 @@ from core.tests.test_settings import (
     INVALID_MAX_YEAR_INPUT,
     INVALID_MIN_YEAR_INPUT,
     INVALID_YEAR_DIFFERENCE_INPUT,
+    MIN_AND_MAX_YEAR_FUNCTIONALITY_INPUTS,
     FirstChatInConversationMockResults,
     SecondChatInConversationMockResults,
 )
@@ -266,6 +267,7 @@ class TestTextSearchChat(APITransactionTestCase):
                 'vector': vectors,
                 'url': 'http://eesti.ee',
                 'title': 'Eesti iseseivuse saladused!',
+                'year': 2024,
             },
         )
 
@@ -308,3 +310,45 @@ class TestTextSearchChat(APITransactionTestCase):
             ec = ElasticCore()
             hit = ec.elasticsearch.get(index=reference['index'], id=reference['elastic_id'])
             self.assertEqual(hit['_id'], reference['elastic_id'])
+
+    @override_settings(CELERY_TASK_ALWAYS_EAGER=True)
+    def test_that_min_year_and_max_year_values_filter_output_results(self) -> None:
+        token, _ = Token.objects.get_or_create(user=self.allowed_auth_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
+
+        conversation = self.client.post(self.create_endpoint_url, data=BASE_CREATE_INPUT)
+        self.assertEqual(conversation.status_code, status.HTTP_201_CREATED)
+
+        chat_endpoint_url = reverse('text_search-chat', kwargs={'pk': conversation.data['id']})
+        index = self.indices[0]
+
+        ec = ElasticCore()
+        ec.add_vector_mapping(index=index, field='vector')
+        matching_year = 2024
+        ec.elasticsearch.index(
+            index=index,
+            document={
+                'year': matching_year,
+                'text': 'Migreerivad kookused',
+                'vector': [0.111111111] * 1024,
+            },
+        )
+        ec.elasticsearch.index(
+            index=index,
+            document={'year': 1800, 'text': 'Migreerivad apelsinid', 'vector': [0.33333333] * 1024},
+        )
+
+        openai_mock_response = FirstChatInConversationMockResults()
+        with mock.patch('core.tasks.ChatGPT.chat', return_value=openai_mock_response):
+            response = self.client.post(
+                chat_endpoint_url, data=MIN_AND_MAX_YEAR_FUNCTIONALITY_INPUTS
+            )
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            query_results = response.data['query_results']
+            references = query_results[0]['references']
+            self.assertEqual(len(references), 1)
+
+            reference = references[0]
+            document = ec.elasticsearch.get(index=reference['index'], id=reference['elastic_id'])
+            year_field = get_core_setting('ELASTICSEARCH_YEAR_FIELD')
+            self.assertEqual(document.body['_source'][year_field], matching_year)
