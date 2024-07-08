@@ -30,7 +30,7 @@ class TextSearchConversation(models.Model):
         container = [{'role': 'system', 'content': self.system_input}]
         query = (
             self.query_results.filter(celery_task__status=TaskStatus.SUCCESS)
-            .exclude(user_input=None)
+            .exclude(response=None)
             .order_by('created_at')
         )
         if query.exists():

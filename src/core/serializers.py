@@ -161,7 +161,7 @@ class TextSearchQuerySubmitSerializer(serializers.Serializer):
 
         # TODO: Maybe auto-create the task through a signal or by rewriting
         #  results .save() function in the model?
-        result = TextSearchQueryResult.objects.create(conversation=instance)
+        result = TextSearchQueryResult.objects.create(conversation=instance, user_input=user_input)
         Task.objects.create(result=result)
 
         with transaction.atomic():
