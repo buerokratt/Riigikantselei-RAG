@@ -33,13 +33,17 @@ env = environ.Env()
 PROTECTED_CORE_KEYS = ('SECRET', 'KEY', 'PASSWORD')
 CORE_SETTINGS = {
     #
-    # Elasticearch
+    # Elasticearch general
     'ELASTICSEARCH_URL': env('RK_ELASTICSEARCH_URL', default='http://localhost:9200'),
     'ELASTICSEARCH_TIMEOUT': env('RK_ELASTICSEARCH_TIMEOUT', default=10),
+    # Elastic fields
     'ELASTICSEARCH_VECTOR_FIELD': env('RK_ELASTICSEARCH_VECTOR_FIELD', default='vector'),
     'ELASTICSEARCH_TEXT_CONTENT_FIELD': env('RK_ELASTICSEARCH_TEXT_CONTENT_FIELD', default='text'),
     'ELASTICSEARCH_YEAR_FIELD': env('RK_ELASTICSEARCH_YEAR_FIELD', default='year'),
-    #
+    'ELASTICSEARCH_URL_FIELD': env('ELASTICSEARCH_URL_FIELD', default='url'),
+    'ELASTICSEARCH_TITLE_FIELD': env('ELASTICSEARCH_TITLE_FIELD', default='title'),
+    'ELASTICSEARCH_INDEX_FIELD': env('ELASTICSEARCH_INDEX_FIELD', default='index'),
+    'ELASTICSEARCH_ID_FIELD': env('ELASTICSEARCH_ID_FIELD', default='elastic_id'),
     # OpenAI integration
     # TODO: obtain key
     'OPENAI_API_KEY': env('RK_OPENAI_API_KEY', default=None),
@@ -61,6 +65,9 @@ CORE_SETTINGS = {
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# DATA DIRECTORY
+DATA_DIR = Path(env.str('RK_DATA_DIR', default=Path(BASE_DIR).parent / 'data'))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
@@ -195,11 +202,8 @@ AUTH_PASSWORD_VALIDATORS = [
 # https://docs.djangoproject.com/en/5.0/topics/i18n/
 
 LANGUAGE_CODE = 'en-us'
-
 TIME_ZONE = env.str('RK_TIME_ZONE', default='Europe/Tallinn')
-
 USE_I18N = True
-
 USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
@@ -211,8 +215,6 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-DATA_DIR = Path(env.str('RK_DATA_DIR', default=Path(BASE_DIR).parent / 'data'))
 
 # TODO: Added initial configuration for logging, revisit it somewhere in the future.
 INFO_LOGGER = 'info_logger'
@@ -338,9 +340,7 @@ CELERY_WORKER_PREFETCH_MULTIPLIER = env.int('RK_CELERY_PREFETCH_MULTIPLIER', def
 
 MODEL_DIRECTORY = DATA_DIR / 'models'
 VECTORIZATION_MODEL_NAME = 'BAAI/bge-m3'
-
 BGEM3_SYSTEM_CONFIGURATION = {'use_fp16': True, 'device': None, 'normalize_embeddings': True}
-
 BGEM3_INFERENCE_CONFIGURATION = {'batch_size': 12, 'return_dense': True, 'max_length': 8192}
 
 # DOWNLOAD MODEL DEPENDENCIES
