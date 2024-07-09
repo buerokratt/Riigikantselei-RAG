@@ -1,12 +1,12 @@
 image: continuumio/miniconda3:latest
 
 variables:
-  RK_ELASTICSEARCH_URL: http://ci-elastic:9200
+  RK_ELASTICSEARCH_URL: http://dev.texta.ee:9200
 
-services:
-  - name: docker.elastic.co/elasticsearch/elasticsearch:8.14.2
-    alias: ci-elastic
-    command: [ "bin/elasticsearch", "-Ediscovery.type=single-node", "-Expack.security.enabled=false", "-Expack.security.enrollment.enabled=false"]
+#services:
+#  - name: docker.elastic.co/elasticsearch/elasticsearch:8.14.2
+#    alias: ci-elastic
+#    command: [ "bin/elasticsearch", "-Ediscovery.type=single-node", "-Expack.security.enabled=false", "-Expack.security.enrollment.enabled=false"]
 
 stages:
   - test-api
