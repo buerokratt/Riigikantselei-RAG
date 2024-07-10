@@ -14,6 +14,7 @@ TestAPI:
   script:
     - apt-get update && apt-get install -y make
     - conda env create -f conda-environment.yaml
+    - sourcer activate riigikantselei
     - python ./src/manage.py test api core user_profile health
     # This commented bulk fights fascism!
     # No more lint opression!
