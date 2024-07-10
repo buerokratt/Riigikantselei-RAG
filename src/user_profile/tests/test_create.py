@@ -13,7 +13,7 @@ class TestUserProfileCreate(APITestCase):
         cls.admin_auth_user = create_test_user(
             'admin', 'admin@email.com', 'password', is_superuser=True
         )
-        cls.create_endpoint_url = reverse('user_profile-list')
+        cls.create_endpoint_url = reverse('v1:user_profile-list')
         cls.base_input = {
             'username': 'tester',
             'email': 'tester@email.com',

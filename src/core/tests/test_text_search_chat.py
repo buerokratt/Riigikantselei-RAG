@@ -35,7 +35,7 @@ class TestTextSearchChat(APITransactionTestCase):
     def _create_test_indices(self, indices: List[str]) -> None:
         core = ElasticCore()
         for index in indices:
-            core.create_index(index)
+            core.create_index(index, shards=1, replicas=1)
             core.add_vector_mapping(index, 'vector')
 
     def _clear_indices(self, indices: List[str]) -> None:
@@ -44,7 +44,7 @@ class TestTextSearchChat(APITransactionTestCase):
             core.elasticsearch.indices.delete(index=index, ignore=[400, 404])
 
     def setUp(self) -> None:  # pylint: disable=invalid-name
-        self.create_endpoint_url = reverse('text_search-list')
+        self.create_endpoint_url = reverse('v1:text_search-list')
 
         self.allowed_auth_user = create_test_user_with_user_profile(
             self, 'tester', 'tester@email.com', 'password', is_manager=False
@@ -83,7 +83,7 @@ class TestTextSearchChat(APITransactionTestCase):
 
         self.assertIn('id', response.data)
         conversation_id = response.data['id']
-        chat_endpoint_url = reverse('text_search-chat', kwargs={'pk': conversation_id})
+        chat_endpoint_url = reverse('v1:text_search-chat', kwargs={'pk': conversation_id})
 
         # Assert used cost is solidly at 0.
         self.assertEqual(self.allowed_auth_user.user_profile.used_cost, 0.0)
@@ -109,7 +109,7 @@ class TestTextSearchChat(APITransactionTestCase):
             self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         # Retrieve the conversation instance.
-        retrieve_endpoint_url = reverse('text_search-detail', kwargs={'pk': conversation_id})
+        retrieve_endpoint_url = reverse('v1:text_search-detail', kwargs={'pk': conversation_id})
         response = self.client.get(retrieve_endpoint_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -184,7 +184,7 @@ class TestTextSearchChat(APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_chat_fails_because_not_authed(self) -> None:
-        chat_endpoint_url = reverse('text_search-chat', kwargs={'pk': 1})
+        chat_endpoint_url = reverse('v1:text_search-chat', kwargs={'pk': 1})
 
         response = self.client.post(chat_endpoint_url, data=FIRST_CONVERSATION_START_INPUT)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
@@ -196,7 +196,7 @@ class TestTextSearchChat(APITransactionTestCase):
         response = self.client.post(self.create_endpoint_url, data=BASE_CREATE_INPUT)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-        chat_endpoint_url = reverse('text_search-chat', kwargs={'pk': 1})
+        chat_endpoint_url = reverse('v1:text_search-chat', kwargs={'pk': 1})
 
         response = self.client.post(chat_endpoint_url, data=FIRST_CONVERSATION_START_INPUT)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
@@ -205,7 +205,7 @@ class TestTextSearchChat(APITransactionTestCase):
         token, _ = Token.objects.get_or_create(user=self.allowed_auth_user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
-        chat_endpoint_url = reverse('text_search-chat', kwargs={'pk': 999})
+        chat_endpoint_url = reverse('v1:text_search-chat', kwargs={'pk': 999})
 
         response = self.client.post(chat_endpoint_url, data=FIRST_CONVERSATION_START_INPUT)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
@@ -225,7 +225,7 @@ class TestTextSearchChat(APITransactionTestCase):
         token, _ = Token.objects.get_or_create(user=self.allowed_auth_user_2)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
-        chat_endpoint_url = reverse('text_search-chat', kwargs={'pk': conversation_id})
+        chat_endpoint_url = reverse('v1:text_search-chat', kwargs={'pk': conversation_id})
 
         response = self.client.post(chat_endpoint_url, data=FIRST_CONVERSATION_START_INPUT)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
@@ -255,7 +255,7 @@ class TestTextSearchChat(APITransactionTestCase):
             model_name=settings.VECTORIZATION_MODEL_NAME,
             system_configuration=settings.BGEM3_SYSTEM_CONFIGURATION,
             inference_configuration=settings.BGEM3_INFERENCE_CONFIGURATION,
-            model_directory=settings.MODEL_DIRECTORY,
+            model_directory=settings.DATA_DIR,
         )
 
         text = 'Sega kõik kokku ja elu on hea noh!'
@@ -281,7 +281,7 @@ class TestTextSearchChat(APITransactionTestCase):
         conversation = self.client.post(self.create_endpoint_url, data=BASE_CREATE_INPUT)
         self.assertEqual(conversation.status_code, status.HTTP_201_CREATED)
 
-        chat_endpoint_url = reverse('text_search-chat', kwargs={'pk': conversation.data['id']})
+        chat_endpoint_url = reverse('v1:text_search-chat', kwargs={'pk': conversation.data['id']})
 
         index_category, _ = self.indices[0].split('_')
 
@@ -319,7 +319,7 @@ class TestTextSearchChat(APITransactionTestCase):
         conversation = self.client.post(self.create_endpoint_url, data=BASE_CREATE_INPUT)
         self.assertEqual(conversation.status_code, status.HTTP_201_CREATED)
 
-        chat_endpoint_url = reverse('text_search-chat', kwargs={'pk': conversation.data['id']})
+        chat_endpoint_url = reverse('v1:text_search-chat', kwargs={'pk': conversation.data['id']})
         index = self.indices[0]
 
         ec = ElasticCore()
@@ -358,7 +358,7 @@ class TestTextSearchChat(APITransactionTestCase):
         response = self.client.post(uri, data=data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         conversation_id = response.data['id']
-        chat_endpoint_url = reverse('text_search-chat', kwargs={'pk': conversation_id})
+        chat_endpoint_url = reverse('v1:text_search-chat', kwargs={'pk': conversation_id})
         return conversation_id, chat_endpoint_url
 
     @override_settings(CELERY_TASK_ALWAYS_EAGER=True)
