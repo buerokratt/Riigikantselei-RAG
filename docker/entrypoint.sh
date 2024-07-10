@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Worker concurrency.
+# Worker concurrency defaults.
 export RK_WORKERS="${RK_WORKERS:-2}"
 
 echo "Setting application permissions..."
