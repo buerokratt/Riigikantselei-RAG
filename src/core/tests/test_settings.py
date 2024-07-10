@@ -10,6 +10,20 @@ BASE_CREATE_INPUT = {
     'document_types': ['a', 'c'],
 }
 
+MIN_YEAR_WITHOUT_MAX_INPUT = {
+    'user_input': 'How does the jam get into the candy?',
+    'min_year': 2000,
+}
+
+MAX_YEAR_WITHOUT_MAX_INPUT = {
+    'user_input': 'How does the jam get into the candy?',
+    'max_year': 2000,
+}
+
+NO_DATE_RANGE_INPUT = {
+    'user_input': 'How does the jam get into the candy?',
+}
+
 FIRST_CONVERSATION_START_INPUT = {
     'user_input': 'Kuidas sai Eesti iseseivuse?',
 }

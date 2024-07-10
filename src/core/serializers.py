@@ -57,23 +57,26 @@ class CoreVariableSerializer(serializers.ModelSerializer):
 class TextSearchConversationCreateSerializer(serializers.Serializer):
     user_input = serializers.CharField()
 
-    min_year = serializers.IntegerField(required=True, min_value=1900)
-    max_year = serializers.IntegerField(required=True, min_value=1900)
+    min_year = serializers.IntegerField(default=None, min_value=1700)
+    max_year = serializers.IntegerField(default=None, min_value=1700)
     document_types = serializers.ListField(
-        required=True,
+        # By default include all indices.
+        default=list(settings.DOCUMENT_CATEGORY_TO_INDICES_MAP.keys()),
         child=serializers.ChoiceField(
             choices=list(settings.DOCUMENT_CATEGORY_TO_INDICES_MAP.keys())
         ),
     )
 
     def validate(self, data: dict) -> dict:
-        if data['min_year'] > datetime.datetime.now().year:
+        min_year = data['min_year']
+        if min_year and min_year > datetime.datetime.now().year:
             raise ValidationError('min_year must be lesser than currently running year!')
 
-        if data['max_year'] > datetime.datetime.now().year:
+        max_year = data['max_year']
+        if max_year and max_year > datetime.datetime.now().year:
             raise ValidationError('max_year must be lesser than currently running year!')
 
-        if data['min_year'] > data['max_year']:
+        if min_year and max_year and min_year > max_year:
             raise ValidationError('min_year must be lesser than max_year!')
 
         return data

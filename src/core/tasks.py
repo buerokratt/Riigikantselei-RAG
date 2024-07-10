@@ -86,11 +86,8 @@ def query_and_format_rag_context(
     indices_string = ','.join(document_indices)
     elastic_knn = ElasticKNN(indices=indices_string)
 
-    search_query = (
-        {'search_query': ElasticKNN.create_date_query(min_year=min_year, max_year=max_year)}
-        if min_year and max_year
-        else {}
-    )
+    search_query = ElasticKNN.create_date_query(min_year=min_year, max_year=max_year)
+    search_query = {'search_query': search_query} if search_query else {}
     matching_documents = elastic_knn.search_vector(vector=input_vector, **search_query)
 
     context_documents_contents = []

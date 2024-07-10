@@ -5,6 +5,7 @@ from django.conf import settings
 from django.test import override_settings
 from rest_framework import status
 from rest_framework.authtoken.models import Token
+from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.test import APITransactionTestCase
 
@@ -21,11 +22,13 @@ from core.tests.test_settings import (
     INVALID_MAX_YEAR_INPUT,
     INVALID_MIN_YEAR_INPUT,
     INVALID_YEAR_DIFFERENCE_INPUT,
-    MIN_AND_MAX_YEAR_FUNCTIONALITY_INPUTS,
+    MAX_YEAR_WITHOUT_MAX_INPUT,
+    MIN_YEAR_WITHOUT_MAX_INPUT,
     FirstChatInConversationMockResults,
     SecondChatInConversationMockResults,
 )
 from user_profile.utilities import create_test_user_with_user_profile
+
 
 # pylint: disable=invalid-name
 
@@ -42,6 +45,47 @@ class TestTextSearchChat(APITransactionTestCase):
         core = ElasticCore()
         for index in indices:
             core.elasticsearch.indices.delete(index=index, ignore=[400, 404])
+
+    def _create_chat_with_mock_gpt(self, chat_endpoint_url: str, data: dict) -> Response:
+        """
+        Helper for when you want to create TextSearchResults but without any of the time-consuming tasks,
+        helpful for checking the formating of references, cost etc.
+
+        NB! Originally this function included a mock for the vector but it ended up having a race condition
+        with no reference hitting the result for some reason.
+
+        :param chat_endpoint_url: Which conversation instance to chat with.
+        :param data: What payload (user_input) to send to the endpoint.
+        :return: Response of the web-request sent using the test request factory.
+        """
+        first_response = FirstChatInConversationMockResults()
+        with mock.patch('core.tasks.ChatGPT.chat', return_value=first_response):
+            # Mock the vectorization part too to save on time.
+            response = self.client.post(chat_endpoint_url, data=data)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertEqual(
+                response.data['query_results'][0]['celery_task']['status'], TaskStatus.SUCCESS
+            )
+            return response
+
+    def _create_vector_data(self, text: str, index: str, body: dict) -> None:
+        ec = ElasticCore()
+        ec.add_vector_mapping(index=index, field='vector')
+
+        vector = Vectorizer(
+            model_name=settings.VECTORIZATION_MODEL_NAME,
+            system_configuration=settings.BGEM3_SYSTEM_CONFIGURATION,
+            inference_configuration=settings.BGEM3_INFERENCE_CONFIGURATION,
+            model_directory=settings.MODEL_DIRECTORY,
+        )
+
+        vector = vector.vectorize([text])['vectors'][0]
+        body['vector'] = vector
+        body['text'] = text
+        ec.elasticsearch.index(
+            index=index,
+            document=body,
+        )
 
     def setUp(self) -> None:  # pylint: disable=invalid-name
         self.create_endpoint_url = reverse('text_search-list')
@@ -67,13 +111,14 @@ class TestTextSearchChat(APITransactionTestCase):
             'c_1',
             'c_2',
         ]
-        self._create_test_indices(indices=self.indices)
 
     def tearDown(self) -> None:
         self._clear_indices(self.indices)
 
     @override_settings(CELERY_TASK_ALWAYS_EAGER=True)
     def test_chat_and_used_cost_and_usage_permission(self) -> None:
+        self._create_test_indices([index for index in self.indices])
+
         token, _ = Token.objects.get_or_create(user=self.allowed_auth_user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
@@ -246,34 +291,19 @@ class TestTextSearchChat(APITransactionTestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def _create_vector_data(self) -> None:
-        ec = ElasticCore()
-        index_scheduled_for_cleaning = self.indices[0]
-        ec.add_vector_mapping(index=index_scheduled_for_cleaning, field='vector')
 
-        vector = Vectorizer(
-            model_name=settings.VECTORIZATION_MODEL_NAME,
-            system_configuration=settings.BGEM3_SYSTEM_CONFIGURATION,
-            inference_configuration=settings.BGEM3_INFERENCE_CONFIGURATION,
-            model_directory=settings.MODEL_DIRECTORY,
-        )
-
-        text = 'Sega kõik kokku ja elu on hea noh!'
-        vectors = vector.vectorize([text])['vectors'][0]
-        ec.elasticsearch.index(
-            index=index_scheduled_for_cleaning,
-            document={
-                'text': text,
-                'vector': vectors,
+    @override_settings(CELERY_TASK_ALWAYS_EAGER=True)
+    def test_references_being_stored_inside_results_for_successful_rag(self) -> None:
+        self._create_test_indices([index for index in self.indices])
+        self._create_vector_data(
+            text='Sega kõik kokku ja elu on hea noh!',
+            index=self.indices[0],
+            body={
                 'url': 'http://eesti.ee',
                 'title': 'Eesti iseseivuse saladused!',
                 'year': 2024,
             },
         )
-
-    @override_settings(CELERY_TASK_ALWAYS_EAGER=True)
-    def test_references_being_stored_inside_results_for_successful_rag(self) -> None:
-        self._create_vector_data()
 
         token, _ = Token.objects.get_or_create(user=self.allowed_auth_user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
@@ -311,47 +341,80 @@ class TestTextSearchChat(APITransactionTestCase):
             hit = ec.elasticsearch.get(index=reference['index'], id=reference['elastic_id'])
             self.assertEqual(hit['_id'], reference['elastic_id'])
 
-    @override_settings(CELERY_TASK_ALWAYS_EAGER=True)
-    def test_that_min_year_and_max_year_values_filter_output_results(self) -> None:
+    def test_only_min_year_value_filters(self) -> None:
+        self._create_test_indices([index for index in self.indices])
+
         token, _ = Token.objects.get_or_create(user=self.allowed_auth_user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
-
-        conversation = self.client.post(self.create_endpoint_url, data=BASE_CREATE_INPUT)
-        self.assertEqual(conversation.status_code, status.HTTP_201_CREATED)
-
-        chat_endpoint_url = reverse('text_search-chat', kwargs={'pk': conversation.data['id']})
-        index = self.indices[0]
-
         ec = ElasticCore()
-        ec.add_vector_mapping(index=index, field='vector')
-        matching_year = 2024
+        index = self.indices[0]
+        matching_year = 2012
+
         ec.elasticsearch.index(
             index=index,
-            document={
+            body={
                 'year': matching_year,
-                'text': 'Migreerivad kookused',
-                'vector': [0.111111111] * 1024,
+                'title': 'Kookus',
+                'url': 'http://kookus.ee',
+                'text': 'lorem',
             },
         )
         ec.elasticsearch.index(
             index=index,
-            document={'year': 1800, 'text': 'Migreerivad apelsinid', 'vector': [0.33333333] * 1024},
+            body={'year': 1995, 'title': 'Orange', 'url': 'http://orange.com', 'text': 'lorem'},
         )
 
-        openai_mock_response = FirstChatInConversationMockResults()
-        with mock.patch('core.tasks.ChatGPT.chat', return_value=openai_mock_response):
-            response = self.client.post(
-                chat_endpoint_url, data=MIN_AND_MAX_YEAR_FUNCTIONALITY_INPUTS
-            )
-            self.assertEqual(response.status_code, status.HTTP_200_OK)
-            query_results = response.data['query_results']
-            references = query_results[0]['references']
-            self.assertEqual(len(references), 1)
+        conversation_id, chat_endpoint_url = self._create_conversation(
+            uri=self.create_endpoint_url, data=MIN_YEAR_WITHOUT_MAX_INPUT
+        )
+        data = {'user_input': 'Kuidas sai Eesti iseseivuse?'}
+        response = self._create_chat_with_mock_gpt(chat_endpoint_url, data=data)
 
-            reference = references[0]
-            document = ec.elasticsearch.get(index=reference['index'], id=reference['elastic_id'])
-            year_field = get_core_setting('ELASTICSEARCH_YEAR_FIELD')
-            self.assertEqual(document.body['_source'][year_field], matching_year)
+        references = response.data['query_results'][0]['references']
+        self.assertEqual(len(references), 1)
+        index = references[0]['index']
+        elastic_id = references[0]['elastic_id']
+        document = ec.elasticsearch.get(index=index, id=elastic_id)
+        self.assertEqual(document['_source']['year'], matching_year)
+
+    def test_only_max_year_value_filters(self) -> None:
+        self._create_test_indices([index for index in self.indices])
+
+        token, _ = Token.objects.get_or_create(user=self.allowed_auth_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
+        ec = ElasticCore()
+        index = self.indices[0]
+        matching_year = 1995
+
+        # Index the faux data.
+        ec.elasticsearch.index(
+            index=index,
+            body={'year': 2012, 'title': 'Kookus', 'url': 'http://kookus.ee', 'text': 'lorem'},
+        )
+        ec.elasticsearch.index(
+            index=index,
+            body={
+                'year': matching_year,
+                'title': 'Orange',
+                'url': 'http://orange.com',
+                'text': 'lorem',
+            },
+        )
+
+        # Create the conversation.
+        conversation_id, chat_endpoint_url = self._create_conversation(
+            uri=self.create_endpoint_url, data=MAX_YEAR_WITHOUT_MAX_INPUT
+        )
+        data = {'user_input': 'Kuidas sai Eesti iseseivuse?'}
+        response = self._create_chat_with_mock_gpt(chat_endpoint_url, data=data)
+
+        # Check the references for their integrity.
+        references = response.data['query_results'][0]['references']
+        self.assertEqual(len(references), 1)
+        index = references[0]['index']
+        elastic_id = references[0]['elastic_id']
+        document = ec.elasticsearch.get(index=index, id=elastic_id)
+        self.assertEqual(document['_source']['year'], matching_year)
 
     def _create_conversation(self, uri: str, data: dict) -> Tuple[str, str]:
         # Create conversation to start chatting.
@@ -363,6 +426,7 @@ class TestTextSearchChat(APITransactionTestCase):
 
     @override_settings(CELERY_TASK_ALWAYS_EAGER=True)
     def test_deleting_conversations_with_results(self) -> None:
+        self._create_test_indices([index for index in self.indices])
         token, _ = Token.objects.get_or_create(user=self.allowed_auth_user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
@@ -370,19 +434,14 @@ class TestTextSearchChat(APITransactionTestCase):
             uri=self.create_endpoint_url, data=BASE_CREATE_INPUT
         )
 
-        first_response = FirstChatInConversationMockResults()
-        faux_vector = [[0.0000001] * 1024]
-        with mock.patch('core.tasks.ChatGPT.chat', return_value=first_response):
-            # Mock the vectorization part too to save on time.
-            with mock.patch(
-                'core.tasks.Vectorizer.vectorize', return_value={'vectors': faux_vector}
-            ):
-                response = self.client.post(chat_endpoint_url, data=FIRST_CONVERSATION_START_INPUT)
-                results = response.data['query_results']
-                first_celery_status = results[-1]['celery_task']['status']
-                self.assertEqual(len(results), 1)
-                self.assertEqual(first_celery_status, TaskStatus.SUCCESS)
-                self.assertEqual(response.status_code, status.HTTP_200_OK)
+        response = self._create_chat_with_mock_gpt(
+            chat_endpoint_url, FIRST_CONVERSATION_START_INPUT
+        )
+        results = response.data['query_results']
+        first_celery_status = results[-1]['celery_task']['status']
+        self.assertEqual(len(results), 1)
+        self.assertEqual(first_celery_status, TaskStatus.SUCCESS)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         # Delete and assert nothing remains.
         delete_uri = reverse('text_search-bulk-destroy')
@@ -411,9 +470,8 @@ class TestTextSearchChat(APITransactionTestCase):
 
         # Delete and assert that only one of them has been destroyed.
         delete_uri = reverse('text_search-bulk-destroy')
-        response = self.client.delete(
-            delete_uri, data={'ids': [protected_conversation_id, to_delete_conversation_id]}
-        )
+        data = {'ids': [protected_conversation_id, to_delete_conversation_id]}
+        response = self.client.delete(delete_uri, data=data)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(
             TextSearchConversation.objects.filter(pk=to_delete_conversation_id).exists()
