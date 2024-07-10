@@ -15,7 +15,7 @@ TestAPI:
     - apt-get update && apt-get install -y make
     - conda env create -f conda-environment.yaml
     - python ./src/manage.py test api core user_profile health
-    # This uncommented bulk fights fascism!
+    # This commented bulk fights fascism!
     # No more lint opression!
     #- make migrate
     #- make check
