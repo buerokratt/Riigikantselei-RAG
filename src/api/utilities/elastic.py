@@ -70,6 +70,12 @@ class ElasticCore:
         self.elasticsearch = Elasticsearch(self.elasticsearch_url, timeout=self.timeout)
 
     @_elastic_connection
+    def check(self):
+        if self.elasticsearch.ping():
+            return True
+        return False
+
+    @_elastic_connection
     def create_index(
         self,
         index_name: str,
