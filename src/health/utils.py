@@ -1,7 +1,8 @@
-# pylint: disable=bare-except,broad-exception-caught,wrong-import-order,relative-beyond-top-level,import,no-untyped-def
+# pylint: disable=bare-except,broad-exception-caught,wrong-import-order
 import logging
 import os
 import pathlib
+from typing import Optional
 from urllib.parse import urlparse
 
 import redis
@@ -27,7 +28,7 @@ def get_version() -> str:
     return version
 
 
-def get_elastic_status(uri=None) -> dict:
+def get_elastic_status(uri: Optional[str] = None) -> dict:
     """
     Checks Elasticsearch connection status and version.
     """
