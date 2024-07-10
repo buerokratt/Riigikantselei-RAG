@@ -64,7 +64,9 @@ class TextSearchConversationViewset(viewsets.ViewSet):
     # argument it's better to make deletion through an extra action as you can do
     # single and multiple deletes in one go.
     @action(
-        detail=False, methods=['POST'], serializer_class=TextSearchConversationBulkDeleteSerializer
+        detail=False,
+        methods=['DELETE'],
+        serializer_class=TextSearchConversationBulkDeleteSerializer,
     )
     def bulk_destroy(self, request: Request) -> Response:
         serializer = TextSearchConversationBulkDeleteSerializer(data=request.data)

@@ -386,7 +386,7 @@ class TestTextSearchChat(APITransactionTestCase):
 
         # Delete and assert nothing remains.
         delete_uri = reverse('text_search-bulk-destroy')
-        response = self.client.post(delete_uri, data={'ids': [conversation_id]})
+        response = self.client.delete(delete_uri, data={'ids': [conversation_id]})
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
         self.assertFalse(TextSearchConversation.objects.filter(pk=conversation_id).exists())
@@ -411,7 +411,7 @@ class TestTextSearchChat(APITransactionTestCase):
 
         # Delete and assert that only one of them has been destroyed.
         delete_uri = reverse('text_search-bulk-destroy')
-        response = self.client.post(
+        response = self.client.delete(
             delete_uri, data={'ids': [protected_conversation_id, to_delete_conversation_id]}
         )
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
