@@ -95,6 +95,7 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'corsheaders',
     'core',
+    'health',
     'user_profile.apps.UserProfileConfig',
 ]
 

@@ -70,7 +70,7 @@ class ElasticCore:
         self.elasticsearch = Elasticsearch(self.elasticsearch_url, timeout=self.timeout)
 
     @_elastic_connection
-    def check(self):
+    def check(self) -> bool:
         if self.elasticsearch.ping():
             return True
         return False
