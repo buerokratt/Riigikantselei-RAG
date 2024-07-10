@@ -9,7 +9,7 @@ from user_profile.utilities import create_test_user_with_user_profile
 class TestUserProfileRetrieveAndList(APITestCase):
     @classmethod
     def setUpTestData(cls) -> None:  # pylint: disable=invalid-name
-        cls.list_endpoint_url = reverse('user_profile-list')
+        cls.list_endpoint_url = reverse('v1:user_profile-list')
 
     def setUp(self) -> None:  # pylint: disable=invalid-name
         self.manager_auth_user = create_test_user_with_user_profile(
@@ -19,10 +19,10 @@ class TestUserProfileRetrieveAndList(APITestCase):
             self, 'tester', 'tester@email.com', 'password', is_manager=False
         )
         self.retrieve_endpoint_url_manager = reverse(
-            'user_profile-detail', kwargs={'pk': self.manager_auth_user.id}
+            'v1:user_profile-detail', kwargs={'pk': self.manager_auth_user.id}
         )
         self.retrieve_endpoint_url_non_manager = reverse(
-            'user_profile-detail', kwargs={'pk': self.non_manager_auth_user.id}
+            'v1:user_profile-detail', kwargs={'pk': self.non_manager_auth_user.id}
         )
 
     def test_retrieve(self) -> None:
@@ -65,7 +65,7 @@ class TestUserProfileRetrieveAndList(APITestCase):
         token, _ = Token.objects.get_or_create(user=non_accepted_auth_user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
-        url = reverse('user_profile-detail', kwargs={'pk': non_accepted_auth_user.id})
+        url = reverse('v1:user_profile-detail', kwargs={'pk': non_accepted_auth_user.id})
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -79,7 +79,7 @@ class TestUserProfileRetrieveAndList(APITestCase):
     def test_retrieve_fails_because_not_exists(self) -> None:
         token, _ = Token.objects.get_or_create(user=self.manager_auth_user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
-        retrieve_endpoint_url = reverse('user_profile-detail', kwargs={'pk': 999})
+        retrieve_endpoint_url = reverse('v1:user_profile-detail', kwargs={'pk': 999})
 
         response = self.client.get(retrieve_endpoint_url)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)

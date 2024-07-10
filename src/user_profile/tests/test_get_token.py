@@ -13,8 +13,8 @@ class TestGetToken(APITestCase):
         self.manager_auth_user = create_test_user_with_user_profile(
             self, self.username, 'manager@email.com', self.password, is_manager=True
         )
-        self.token_endpoint_url = reverse('get_token')
-        self.logout_endpoint_url = reverse('log_out')
+        self.token_endpoint_url = reverse('v1:get_token')
+        self.logout_endpoint_url = reverse('v1:log_out')
 
     def test_get_existing_token(self) -> None:
         manager_token, created = Token.objects.get_or_create(user=self.manager_auth_user)

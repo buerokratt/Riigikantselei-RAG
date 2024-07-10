@@ -28,23 +28,23 @@ class TestUserProfileEdit(APITestCase):
         non_manager_unreviewed_user_profile.save()
 
         self.accept_reviewed_endpoint_url = reverse(
-            'user_profile-accept', kwargs={'pk': self.non_manager_reviewed_auth_user.id}
+            'v1:user_profile-accept', kwargs={'pk': self.non_manager_reviewed_auth_user.id}
         )
         self.accept_unreviewed_endpoint_url = reverse(
-            'user_profile-accept', kwargs={'pk': self.non_manager_unreviewed_auth_user.id}
+            'v1:user_profile-accept', kwargs={'pk': self.non_manager_unreviewed_auth_user.id}
         )
         self.decline_reviewed_endpoint_url = reverse(
-            'user_profile-decline', kwargs={'pk': self.non_manager_reviewed_auth_user.id}
+            'v1:user_profile-decline', kwargs={'pk': self.non_manager_reviewed_auth_user.id}
         )
         self.decline_unreviewed_endpoint_url = reverse(
-            'user_profile-decline', kwargs={'pk': self.non_manager_unreviewed_auth_user.id}
+            'v1:user_profile-decline', kwargs={'pk': self.non_manager_unreviewed_auth_user.id}
         )
 
         self.ban_endpoint_url = reverse(
-            'user_profile-ban', kwargs={'pk': self.non_manager_reviewed_auth_user.id}
+            'v1:user_profile-ban', kwargs={'pk': self.non_manager_reviewed_auth_user.id}
         )
         self.set_limit_endpoint_url = reverse(
-            'user_profile-set-limit', kwargs={'pk': self.non_manager_reviewed_auth_user.id}
+            'v1:user_profile-set-limit', kwargs={'pk': self.non_manager_reviewed_auth_user.id}
         )
 
         self.new_limit = 20.123
@@ -79,7 +79,7 @@ class TestUserProfileEdit(APITestCase):
         token, _ = Token.objects.get_or_create(user=self.manager_auth_user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
-        accept_endpoint_url = reverse('user_profile-accept', kwargs={'pk': 999})
+        accept_endpoint_url = reverse('v1:user_profile-accept', kwargs={'pk': 999})
 
         response = self.client.post(accept_endpoint_url)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
@@ -120,7 +120,7 @@ class TestUserProfileEdit(APITestCase):
         token, _ = Token.objects.get_or_create(user=self.manager_auth_user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
-        decline_endpoint_url = reverse('user_profile-decline', kwargs={'pk': 999})
+        decline_endpoint_url = reverse('v1:user_profile-decline', kwargs={'pk': 999})
 
         response = self.client.post(decline_endpoint_url)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
@@ -160,7 +160,7 @@ class TestUserProfileEdit(APITestCase):
         token, _ = Token.objects.get_or_create(user=self.manager_auth_user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
-        ban_endpoint_url = reverse('user_profile-ban', kwargs={'pk': 999})
+        ban_endpoint_url = reverse('v1:user_profile-ban', kwargs={'pk': 999})
 
         response = self.client.post(ban_endpoint_url)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
@@ -199,7 +199,7 @@ class TestUserProfileEdit(APITestCase):
         token, _ = Token.objects.get_or_create(user=self.manager_auth_user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
-        set_limit_endpoint_url = reverse('user_profile-set-limit', kwargs={'pk': 999})
+        set_limit_endpoint_url = reverse('v1:user_profile-set-limit', kwargs={'pk': 999})
 
         response = self.client.post(set_limit_endpoint_url, data=self.input_data)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)

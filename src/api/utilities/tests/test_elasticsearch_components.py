@@ -26,7 +26,7 @@ class TestElasticCore(APITestCase):
         self.elastic_core.elasticsearch.indices.delete(index=self.index_name, ignore=[404])
 
     def test_creating_index(self) -> None:
-        response = self.elastic_core.create_index(self.index_name, shards=3, replicas=1)
+        response = self.elastic_core.create_index(self.index_name, shards=1, replicas=1)
         self.assertEqual(response['acknowledged'], True)
         self.assertEqual(response['index'], self.index_name)
 
@@ -57,14 +57,14 @@ class TestElasticCore(APITestCase):
     def test_errors_being_handled(self) -> None:
         try:
             set_core_setting('ELASTICSEARCH_URL', f'http://{uuid.uuid4().hex}:8888')
-            ElasticCore().create_index(self.index_name, shards=3, replicas=1)
+            ElasticCore().create_index(self.index_name, shards=1, replicas=1)
         except APIException as exception:
             self.assertTrue(ELASTIC_CONNECTION_ERROR_MESSAGE in str(exception))
 
     def test_timeout_setting_being_respected(self) -> None:
         try:
             set_core_setting('ELASTICSEARCH_TIMEOUT', 0.001)
-            ElasticCore().create_index(self.index_name, shards=3, replicas=1)
+            ElasticCore().create_index(self.index_name, shards=1, replicas=1)
         except APIException as exception:
             self.assertEqual(ELASTIC_CONNECTION_TIMEOUT_MESSAGE, str(exception))
 
@@ -75,7 +75,7 @@ class TestElasticCore(APITestCase):
             model_name=settings.VECTORIZATION_MODEL_NAME,
             system_configuration=settings.BGEM3_SYSTEM_CONFIGURATION,
             inference_configuration=settings.BGEM3_INFERENCE_CONFIGURATION,
-            model_directory=settings.MODEL_DIRECTORY,
+            model_directory=settings.DATA_DIR,
         )
 
         # Add a document that we could search.
@@ -118,7 +118,7 @@ class TestElasticCore(APITestCase):
             model_name=settings.VECTORIZATION_MODEL_NAME,
             system_configuration=settings.BGEM3_SYSTEM_CONFIGURATION,
             inference_configuration=settings.BGEM3_INFERENCE_CONFIGURATION,
-            model_directory=settings.MODEL_DIRECTORY,
+            model_directory=settings.DATA_DIR,
         )
 
         # Add a document that we could search.

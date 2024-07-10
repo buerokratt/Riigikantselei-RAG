@@ -13,7 +13,7 @@ class TestElasticDetailView(APITestCase):
     def setUp(self) -> None:  # pylint: disable=invalid-name
         self.test_index = 'test_riigikantselei_elastic_detail_view'
         self.elastic_core = ElasticCore()
-        self.elastic_core.create_index(self.test_index)
+        self.elastic_core.create_index(self.test_index, shards=1, replicas=1)
 
         self.user = create_test_user_with_user_profile(
             self, 'user', 'user@email.com', 'Par@@l1234', is_manager=False
@@ -37,7 +37,7 @@ class TestElasticDetailView(APITestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
         detail_uri = reverse(
-            'document_detail', kwargs={'document_id': self.document_id, 'index': self.test_index}
+            'v1:document_detail', kwargs={'document_id': self.document_id, 'index': self.test_index}
         )
         response = self.client.get(detail_uri)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -48,7 +48,7 @@ class TestElasticDetailView(APITestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
         detail_uri = reverse(
-            'document_detail',
+            'v1:document_detail',
             kwargs={'document_id': self.document_id, 'index': self.test_index[:-1]},
         )
         response = self.client.get(detail_uri)
@@ -60,7 +60,7 @@ class TestElasticDetailView(APITestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
         detail_uri = reverse(
-            'document_detail',
+            'v1:document_detail',
             kwargs={'document_id': self.document_id[:-1], 'index': self.test_index},
         )
         response = self.client.get(detail_uri)

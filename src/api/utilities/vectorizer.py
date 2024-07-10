@@ -51,6 +51,11 @@ class Vectorizer:
             model_name = self.model_name
 
         if not _model_exists(self.model_directory, model_name):
+            logger.info(f'Downloading model (this takes a long time): {model_name}')
+
+            # TODO: add better process/status information-
+            # Currently just blanks and seems frozen in first Docker startup...
+
             # This method is used within FlagEmbedding to download the model.
             snapshot_download(
                 repo_id=model_name,

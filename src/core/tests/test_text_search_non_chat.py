@@ -12,8 +12,8 @@ from user_profile.utilities import create_test_user_with_user_profile
 class TestTextSearchNonChat(APITestCase):
     @classmethod
     def setUpTestData(cls) -> None:  # pylint: disable=invalid-name
-        cls.create_endpoint_url = reverse('text_search-list')
-        cls.list_endpoint_url = reverse('text_search-list')
+        cls.create_endpoint_url = reverse('v1:text_search-list')
+        cls.list_endpoint_url = reverse('v1:text_search-list')
         cls.base_create_input = {
             'user_input': 'input question',
             'min_year': 2000,
@@ -82,7 +82,7 @@ class TestTextSearchNonChat(APITestCase):
             self.assertEqual(getattr(conversation, attribute), value)
 
         # Retrieve
-        retrieve_endpoint_url = reverse('text_search-detail', kwargs={'pk': conversation_id})
+        retrieve_endpoint_url = reverse('v1:text_search-detail', kwargs={'pk': conversation_id})
 
         response = self.client.get(retrieve_endpoint_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -108,7 +108,7 @@ class TestTextSearchNonChat(APITestCase):
         conversation_id = response.data['id']
 
         # Set
-        set_title_endpoint_url = reverse('text_search-set-title', kwargs={'pk': conversation_id})
+        set_title_endpoint_url = reverse('v1:text_search-set-title', kwargs={'pk': conversation_id})
 
         response = self.client.post(set_title_endpoint_url, data=self.base_set_title_input)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -118,7 +118,7 @@ class TestTextSearchNonChat(APITestCase):
 
         # Retrieve
 
-        retrieve_endpoint_url = reverse('text_search-detail', kwargs={'pk': conversation_id})
+        retrieve_endpoint_url = reverse('v1:text_search-detail', kwargs={'pk': conversation_id})
 
         response = self.client.get(retrieve_endpoint_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -141,7 +141,7 @@ class TestTextSearchNonChat(APITestCase):
     # retrieve fails
 
     def test_retrieve_fails_because_not_authed(self) -> None:
-        retrieve_endpoint_url = reverse('text_search-detail', kwargs={'pk': 1})
+        retrieve_endpoint_url = reverse('v1:text_search-detail', kwargs={'pk': 1})
 
         response = self.client.get(retrieve_endpoint_url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
@@ -150,7 +150,7 @@ class TestTextSearchNonChat(APITestCase):
         token, _ = Token.objects.get_or_create(user=self.not_accepted_auth_user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
-        retrieve_endpoint_url = reverse('text_search-detail', kwargs={'pk': 1})
+        retrieve_endpoint_url = reverse('v1:text_search-detail', kwargs={'pk': 1})
 
         response = self.client.get(retrieve_endpoint_url)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
@@ -159,7 +159,7 @@ class TestTextSearchNonChat(APITestCase):
         token, _ = Token.objects.get_or_create(user=self.accepted_auth_user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
-        retrieve_endpoint_url = reverse('text_search-detail', kwargs={'pk': 999})
+        retrieve_endpoint_url = reverse('v1:text_search-detail', kwargs={'pk': 999})
 
         response = self.client.get(retrieve_endpoint_url)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
@@ -180,7 +180,7 @@ class TestTextSearchNonChat(APITestCase):
         token, _ = Token.objects.get_or_create(user=self.accepted_auth_user_2)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
-        retrieve_endpoint_url = reverse('text_search-detail', kwargs={'pk': conversation_id})
+        retrieve_endpoint_url = reverse('v1:text_search-detail', kwargs={'pk': conversation_id})
 
         response = self.client.get(retrieve_endpoint_url)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
@@ -201,7 +201,7 @@ class TestTextSearchNonChat(APITestCase):
     # set title fails
 
     def test_set_title_fails_because_not_authed(self) -> None:
-        set_title_endpoint_url = reverse('text_search-set-title', kwargs={'pk': 1})
+        set_title_endpoint_url = reverse('v1:text_search-set-title', kwargs={'pk': 1})
 
         response = self.client.post(set_title_endpoint_url, data=self.base_set_title_input)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
@@ -210,7 +210,7 @@ class TestTextSearchNonChat(APITestCase):
         token, _ = Token.objects.get_or_create(user=self.not_accepted_auth_user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
-        set_title_endpoint_url = reverse('text_search-set-title', kwargs={'pk': 1})
+        set_title_endpoint_url = reverse('v1:text_search-set-title', kwargs={'pk': 1})
 
         response = self.client.post(set_title_endpoint_url, data=self.base_set_title_input)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
@@ -219,7 +219,7 @@ class TestTextSearchNonChat(APITestCase):
         token, _ = Token.objects.get_or_create(user=self.accepted_auth_user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
-        set_title_endpoint_url = reverse('text_search-set-title', kwargs={'pk': 999})
+        set_title_endpoint_url = reverse('v1:text_search-set-title', kwargs={'pk': 999})
 
         response = self.client.post(set_title_endpoint_url, data=self.base_set_title_input)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
@@ -238,7 +238,7 @@ class TestTextSearchNonChat(APITestCase):
         token, _ = Token.objects.get_or_create(user=self.accepted_auth_user_2)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
-        set_title_endpoint_url = reverse('text_search-set-title', kwargs={'pk': conversation_id})
+        set_title_endpoint_url = reverse('v1:text_search-set-title', kwargs={'pk': conversation_id})
         response = self.client.post(set_title_endpoint_url, data=self.base_set_title_input)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
@@ -253,7 +253,7 @@ class TestTextSearchNonChat(APITestCase):
         conversation_id = response.data['id']
 
         # Set title
-        set_title_endpoint_url = reverse('text_search-set-title', kwargs={'pk': conversation_id})
+        set_title_endpoint_url = reverse('v1:text_search-set-title', kwargs={'pk': conversation_id})
         data = {'title': 'asdf\0'}
         response = self.client.post(set_title_endpoint_url, data=data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

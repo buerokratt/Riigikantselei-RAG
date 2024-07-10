@@ -3,9 +3,12 @@ channels:
   - defaults
 dependencies:
   # Put to 3.11 since 3.12 causes conflict errors with mysqlclient for some reason.
-  - python=3.11
+  - python=3.10
   - pip
   - mysqlclient
+  - uwsgi
+  - nginx
+  - supervisor
   - pip:
       - requests
       - FlagEmbedding

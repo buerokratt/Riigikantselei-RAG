@@ -79,7 +79,7 @@ def query_and_format_rag_context(
         model_name=settings.VECTORIZATION_MODEL_NAME,
         system_configuration=settings.BGEM3_SYSTEM_CONFIGURATION,
         inference_configuration=settings.BGEM3_INFERENCE_CONFIGURATION,
-        model_directory=settings.MODEL_DIRECTORY,
+        model_directory=settings.DATA_DIR,
     )
     input_vector = vectorizer.vectorize([user_input])['vectors'][0]
 

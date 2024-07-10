@@ -207,7 +207,9 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
@@ -334,16 +336,22 @@ CELERY_ACCEPT_CONTENT = ['application/json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_WORKER_PREFETCH_MULTIPLIER = env.int('RK_CELERY_PREFETCH_MULTIPLIER', default=1)
+CELERY_DEFAULT_QUEUE = env.str('RK_WORKER_QUEUE', default='celery')
+CELERY_DEFAULT_EXCHANGE = CELERY_DEFAULT_QUEUE
+CELERY_DEFAULT_ROUTING_KEY = CELERY_DEFAULT_QUEUE
+
 
 #### VECTORIZATION CONFIGURATIONS ####
-
-MODEL_DIRECTORY = DATA_DIR / 'models'
 VECTORIZATION_MODEL_NAME = 'BAAI/bge-m3'
 BGEM3_SYSTEM_CONFIGURATION = {'use_fp16': True, 'device': None, 'normalize_embeddings': True}
 BGEM3_INFERENCE_CONFIGURATION = {'batch_size': 12, 'return_dense': True, 'max_length': 8192}
 
 # DOWNLOAD MODEL DEPENDENCIES
-download_vectorization_resources(VECTORIZATION_MODEL_NAME, MODEL_DIRECTORY)
+
+DOWNLOAD_RESOURCES = env('RK_DOWNLOAD_DATA', default=True)
+
+if DOWNLOAD_RESOURCES:
+    download_vectorization_resources(VECTORIZATION_MODEL_NAME, DATA_DIR)
 
 #### EMAIL CONFIGURATION ####
 
@@ -366,6 +374,7 @@ BASE_URL = env('RK_BASE_URL', default='http://localhost')
 
 # TODO: populate based on how documents get inserted into the real elasticsearch
 DOCUMENT_CATEGORY_TO_INDICES_MAP = {
+    #'Seadused': ['rk_riigi_teataja_kehtivad_vectorized'],
     'a': ['a_1', 'a_2'],
     'b': ['b'],
     'c': ['c_1', 'c_2'],

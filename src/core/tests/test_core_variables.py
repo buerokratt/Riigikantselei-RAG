@@ -14,7 +14,7 @@ SAMPLE_ES_VALUE = 'http://localhost:920000'
 class TestCoreVariableViews(APITestCase):
     @classmethod
     def setUpTestData(cls) -> None:  # pylint: disable=invalid-name
-        cls.list_url = reverse('core_settings-list')
+        cls.list_url = reverse('v1:core_settings-list')
 
     def setUp(self) -> None:  # pylint: disable=invalid-name
         self.manager_auth_user = create_test_user_with_user_profile(
@@ -92,7 +92,7 @@ class TestCoreVariableViews(APITestCase):
             self.assertEqual(representation, censored_output)
 
         detail_id = list_response.data[0]['id']
-        detail_url = reverse('core_settings-detail', kwargs={'pk': detail_id})
+        detail_url = reverse('v1:core_settings-detail', kwargs={'pk': detail_id})
 
         detail_response = self.client.get(detail_url)
         self.assertEqual(detail_response.status_code, status.HTTP_200_OK)
@@ -110,7 +110,7 @@ class TestCoreVariableViews(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
         setting_id = response.data['id']
-        detail_url = reverse('core_settings-detail', kwargs={'pk': setting_id})
+        detail_url = reverse('v1:core_settings-detail', kwargs={'pk': setting_id})
 
         detail_response = self.client.get(detail_url)
         self.assertEqual(detail_response.status_code, status.HTTP_200_OK)
@@ -128,7 +128,7 @@ class TestCoreVariableViews(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
         setting_id = response.data['id']
-        patch_url = reverse('core_settings-detail', kwargs={'pk': setting_id})
+        patch_url = reverse('v1:core_settings-detail', kwargs={'pk': setting_id})
 
         patch_response = self.client.patch(patch_url, data={'value': new_value})
         self.assertEqual(patch_response.status_code, status.HTTP_200_OK)
@@ -148,7 +148,7 @@ class TestCoreVariableViews(APITestCase):
         self.assertEqual(response.data['value'], key_value)
 
         setting_id = response.data['id']
-        patch_url = reverse('core_settings-detail', kwargs={'pk': setting_id})
+        patch_url = reverse('v1:core_settings-detail', kwargs={'pk': setting_id})
 
         delete_response = self.client.delete(patch_url)
         self.assertEqual(delete_response.status_code, status.HTTP_204_NO_CONTENT)
