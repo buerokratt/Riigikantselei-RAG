@@ -159,7 +159,7 @@ class UserProfileViewSet(viewsets.ViewSet):
         token.save()
 
         password_reset_endpoint = reverse(
-            'user_profile-confirm-password-reset', kwargs={'pk': token.key}
+            'v1:user_profile-confirm-password-reset', kwargs={'pk': token.key}
         )
         password_reset_url = settings.BASE_URL + password_reset_endpoint
         content = render_to_string(

@@ -9,7 +9,7 @@ from rest_framework.test import APITestCase
 def create_test_user_with_user_profile(
     testcase: APITestCase, username: str, email: str, password: str, is_manager: bool = False
 ) -> User:
-    _url = reverse('user_profile-list')
+    _url = reverse('v1:user_profile-list')
     _input = {
         'username': username,
         'email': email,

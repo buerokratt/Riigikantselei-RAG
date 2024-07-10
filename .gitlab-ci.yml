@@ -3,13 +3,9 @@ image: continuumio/miniconda3:latest
 variables:
   RK_ELASTICSEARCH_URL: http://dev.texta.ee:9200
 
-#services:
-#  - name: docker.elastic.co/elasticsearch/elasticsearch:8.14.2
-#    alias: ci-elastic
-#    command: [ "bin/elasticsearch", "-Ediscovery.type=single-node", "-Expack.security.enabled=false", "-Expack.security.enrollment.enabled=false"]
-
 stages:
   - test-api
+  - build
 
 TestAPI:
   stage: test-api
@@ -20,3 +16,16 @@ TestAPI:
     - conda env create -f conda-environment.yaml
     - make migrate
     - make check
+  except:
+    - tags
+
+BuildDocker:
+  stage: build
+  tags:
+    - with-docker
+  script:
+    - docker login -u $CI_DEPLOY_USER -p $CI_DEPLOY_PASSWORD docker.texta.ee
+    - sh ./docker/build_and_push.sh
+    - docker system prune -a -f
+  only:
+    - tags
