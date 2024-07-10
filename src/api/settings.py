@@ -326,6 +326,7 @@ LOGGING = {
 
 # Whether to run Celery tasks in workers or synchronously in the webserver.
 CELERY_TASK_ALWAYS_EAGER = env.bool('RK_CELERY_TASK_ALWAYS_EAGER', default=False)
+CELERY_TASK_EAGER_PROPAGATES = True
 CELERY_BROKER_URL = env.str('RK_CELERY_BROKER_URL', default='redis://localhost:6379/0')
 CELERY_RESULT_BACKEND = env.str('RK_CELERY_RESULT_BACKEND', default='redis://localhost:6379/0')
 CELERY_TIMEZONE = env.str('RK_CELERY_TIMEZONE', default='Europe/Tallinn')

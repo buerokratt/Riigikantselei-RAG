@@ -29,7 +29,6 @@ from core.tests.test_settings import (
 )
 from user_profile.utilities import create_test_user_with_user_profile
 
-
 # pylint: disable=invalid-name
 
 
@@ -48,24 +47,26 @@ class TestTextSearchChat(APITransactionTestCase):
 
     def _create_chat_with_mock_gpt(self, chat_endpoint_url: str, data: dict) -> Response:
         """
-        Helper for when you want to create TextSearchResults but without any of the time-consuming tasks,
+        Helper for when you want to create TextSearchResults but without
+        any of the time-consuming tasks,
         helpful for checking the formating of references, cost etc.
 
-        NB! Originally this function included a mock for the vector but it ended up having a race condition
-        with no reference hitting the result for some reason.
+        Initially wanted to mock both gpt and vectorizer for speed reason
+        but that for some reason just created reace conditions where
+        the references werent stored in the object causing tests to fail.
 
         :param chat_endpoint_url: Which conversation instance to chat with.
         :param data: What payload (user_input) to send to the endpoint.
         :return: Response of the web-request sent using the test request factory.
         """
-        first_response = FirstChatInConversationMockResults()
-        with mock.patch('core.tasks.ChatGPT.chat', return_value=first_response):
-            # Mock the vectorization part too to save on time.
+        mock_output = FirstChatInConversationMockResults()
+        gpt_mock = mock.patch('core.tasks.ChatGPT.chat', return_value=mock_output)
+        with gpt_mock:
             response = self.client.post(chat_endpoint_url, data=data)
+            result = response.data['query_results'][0]
+            response_status = result['celery_task']['status']
             self.assertEqual(response.status_code, status.HTTP_200_OK)
-            self.assertEqual(
-                response.data['query_results'][0]['celery_task']['status'], TaskStatus.SUCCESS
-            )
+            self.assertEqual(response_status, TaskStatus.SUCCESS)
             return response
 
     def _create_vector_data(self, text: str, index: str, body: dict) -> None:
@@ -117,7 +118,7 @@ class TestTextSearchChat(APITransactionTestCase):
 
     @override_settings(CELERY_TASK_ALWAYS_EAGER=True)
     def test_chat_and_used_cost_and_usage_permission(self) -> None:
-        self._create_test_indices([index for index in self.indices])
+        self._create_test_indices(self.indices)
 
         token, _ = Token.objects.get_or_create(user=self.allowed_auth_user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
@@ -291,10 +292,9 @@ class TestTextSearchChat(APITransactionTestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-
     @override_settings(CELERY_TASK_ALWAYS_EAGER=True)
     def test_references_being_stored_inside_results_for_successful_rag(self) -> None:
-        self._create_test_indices([index for index in self.indices])
+        self._create_test_indices(self.indices)
         self._create_vector_data(
             text='Sega kõik kokku ja elu on hea noh!',
             index=self.indices[0],
@@ -341,8 +341,9 @@ class TestTextSearchChat(APITransactionTestCase):
             hit = ec.elasticsearch.get(index=reference['index'], id=reference['elastic_id'])
             self.assertEqual(hit['_id'], reference['elastic_id'])
 
+    @override_settings(CELERY_TASK_ALWAYS_EAGER=True)
     def test_only_min_year_value_filters(self) -> None:
-        self._create_test_indices([index for index in self.indices])
+        self._create_test_indices(self.indices)
 
         token, _ = Token.objects.get_or_create(user=self.allowed_auth_user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
@@ -364,11 +365,12 @@ class TestTextSearchChat(APITransactionTestCase):
             body={'year': 1995, 'title': 'Orange', 'url': 'http://orange.com', 'text': 'lorem'},
         )
 
-        conversation_id, chat_endpoint_url = self._create_conversation(
+        _, chat_endpoint_url = self._create_conversation(
             uri=self.create_endpoint_url, data=MIN_YEAR_WITHOUT_MAX_INPUT
         )
-        data = {'user_input': 'Kuidas sai Eesti iseseivuse?'}
-        response = self._create_chat_with_mock_gpt(chat_endpoint_url, data=data)
+        response = self._create_chat_with_mock_gpt(
+            chat_endpoint_url=chat_endpoint_url, data={'user_input': 'Kuidas sai Eesti iseseivuse?'}
+        )
 
         references = response.data['query_results'][0]['references']
         self.assertEqual(len(references), 1)
@@ -377,8 +379,9 @@ class TestTextSearchChat(APITransactionTestCase):
         document = ec.elasticsearch.get(index=index, id=elastic_id)
         self.assertEqual(document['_source']['year'], matching_year)
 
+    @override_settings(CELERY_TASK_ALWAYS_EAGER=True)
     def test_only_max_year_value_filters(self) -> None:
-        self._create_test_indices([index for index in self.indices])
+        self._create_test_indices(self.indices)
 
         token, _ = Token.objects.get_or_create(user=self.allowed_auth_user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
@@ -402,11 +405,12 @@ class TestTextSearchChat(APITransactionTestCase):
         )
 
         # Create the conversation.
-        conversation_id, chat_endpoint_url = self._create_conversation(
+        _, chat_endpoint_url = self._create_conversation(
             uri=self.create_endpoint_url, data=MAX_YEAR_WITHOUT_MAX_INPUT
         )
-        data = {'user_input': 'Kuidas sai Eesti iseseivuse?'}
-        response = self._create_chat_with_mock_gpt(chat_endpoint_url, data=data)
+        response = self._create_chat_with_mock_gpt(
+            chat_endpoint_url=chat_endpoint_url, data={'user_input': 'Kuidas sai Eesti iseseivuse?'}
+        )
 
         # Check the references for their integrity.
         references = response.data['query_results'][0]['references']
@@ -426,7 +430,7 @@ class TestTextSearchChat(APITransactionTestCase):
 
     @override_settings(CELERY_TASK_ALWAYS_EAGER=True)
     def test_deleting_conversations_with_results(self) -> None:
-        self._create_test_indices([index for index in self.indices])
+        self._create_test_indices(self.indices)
         token, _ = Token.objects.get_or_create(user=self.allowed_auth_user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
@@ -435,7 +439,7 @@ class TestTextSearchChat(APITransactionTestCase):
         )
 
         response = self._create_chat_with_mock_gpt(
-            chat_endpoint_url, FIRST_CONVERSATION_START_INPUT
+            chat_endpoint_url=chat_endpoint_url, data=FIRST_CONVERSATION_START_INPUT
         )
         results = response.data['query_results']
         first_celery_status = results[-1]['celery_task']['status']
