@@ -23,6 +23,7 @@ from core.views import (
     ElasticDocumentDetailView,
     TextSearchConversationViewset,
 )
+from health.views import HealthView
 from user_profile.views import GetTokenView, LogOutView, UserProfileViewSet
 
 router = routers.DefaultRouter()
@@ -40,4 +41,5 @@ urlpatterns = [
     ),
     path('get_token', GetTokenView.as_view(), name='get_token'),
     path('log_out', LogOutView.as_view(), name='log_out'),
+    path('health', HealthView.as_view(), name='health'),
 ]
