@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 from unittest import mock
 
 from django.conf import settings
@@ -352,3 +352,72 @@ class TestTextSearchChat(APITransactionTestCase):
             document = ec.elasticsearch.get(index=reference['index'], id=reference['elastic_id'])
             year_field = get_core_setting('ELASTICSEARCH_YEAR_FIELD')
             self.assertEqual(document.body['_source'][year_field], matching_year)
+
+    def _create_conversation(self, uri: str, data: dict) -> Tuple[str, str]:
+        # Create conversation to start chatting.
+        response = self.client.post(uri, data=data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        conversation_id = response.data['id']
+        chat_endpoint_url = reverse('text_search-chat', kwargs={'pk': conversation_id})
+        return conversation_id, chat_endpoint_url
+
+    @override_settings(CELERY_TASK_ALWAYS_EAGER=True)
+    def test_deleting_conversations_with_results(self) -> None:
+        token, _ = Token.objects.get_or_create(user=self.allowed_auth_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
+
+        conversation_id, chat_endpoint_url = self._create_conversation(
+            uri=self.create_endpoint_url, data=BASE_CREATE_INPUT
+        )
+
+        first_response = FirstChatInConversationMockResults()
+        faux_vector = [[0.0000001] * 1024]
+        with mock.patch('core.tasks.ChatGPT.chat', return_value=first_response):
+            # Mock the vectorization part too to save on time.
+            with mock.patch(
+                'core.tasks.Vectorizer.vectorize', return_value={'vectors': faux_vector}
+            ):
+                response = self.client.post(chat_endpoint_url, data=FIRST_CONVERSATION_START_INPUT)
+                results = response.data['query_results']
+                first_celery_status = results[-1]['celery_task']['status']
+                self.assertEqual(len(results), 1)
+                self.assertEqual(first_celery_status, TaskStatus.SUCCESS)
+                self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Delete and assert nothing remains.
+        delete_uri = reverse('text_search-bulk-destroy')
+        response = self.client.post(delete_uri, data={'ids': [conversation_id]})
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+        self.assertFalse(TextSearchConversation.objects.filter(pk=conversation_id).exists())
+        self.assertFalse(
+            TextSearchQueryResult.objects.filter(conversation__id=conversation_id).exists()
+        )
+
+    def test_not_being_able_to_delete_other_users_conversations(self) -> None:
+        # Create the first conversation which should be protected from deletion.
+        token, _ = Token.objects.get_or_create(user=self.allowed_auth_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
+        protected_conversation_id, _ = self._create_conversation(
+            uri=self.create_endpoint_url, data=BASE_CREATE_INPUT
+        )
+
+        # User making the deletion.
+        token, _ = Token.objects.get_or_create(user=self.allowed_auth_user_2)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
+        to_delete_conversation_id, _ = self._create_conversation(
+            uri=self.create_endpoint_url, data=BASE_CREATE_INPUT
+        )
+
+        # Delete and assert that only one of them has been destroyed.
+        delete_uri = reverse('text_search-bulk-destroy')
+        response = self.client.post(
+            delete_uri, data={'ids': [protected_conversation_id, to_delete_conversation_id]}
+        )
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(
+            TextSearchConversation.objects.filter(pk=to_delete_conversation_id).exists()
+        )
+        self.assertTrue(
+            TextSearchConversation.objects.filter(pk=protected_conversation_id).exists()
+        )

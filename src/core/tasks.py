@@ -73,9 +73,7 @@ def query_and_format_rag_context(
     # Load important variables
     data_url_key = get_core_setting('ELASTICSEARCH_URL_FIELD')
     data_title_key = get_core_setting('ELASTICSEARCH_TITLE_FIELD')
-    data_index_key = get_core_setting('ELASTICSEARCH_INDEX_FIELD')
     data_content_key = get_core_setting('ELASTICSEARCH_TEXT_CONTENT_FIELD')
-    data_id_key = get_core_setting('ELASTICSEARCH_ID_FIELD')
 
     vectorizer = Vectorizer(
         model_name=settings.VECTORIZATION_MODEL_NAME,
@@ -100,11 +98,11 @@ def query_and_format_rag_context(
         source = hit['_source'].to_dict()
         content = source.get(data_content_key, '')
         reference = {
-            data_content_key: content,
-            data_id_key: hit['_id'],
-            data_index_key: hit['_index'],
-            data_title_key: source.get(data_title_key, ''),
-            data_url_key: source.get(data_url_key, ''),
+            'text': content,
+            'elastic_id': hit['_id'],
+            'index': hit['_index'],
+            'title': source.get(data_title_key, ''),
+            'url': source.get(data_url_key, ''),
         }
         if content:
             context_documents_contents.append(reference)

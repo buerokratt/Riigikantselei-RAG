@@ -10,6 +10,7 @@ from core.models import CoreVariable, TextSearchConversation
 from core.serializers import (
     ConversationSetTitleSerializer,
     CoreVariableSerializer,
+    TextSearchConversationBulkDeleteSerializer,
     TextSearchConversationCreateSerializer,
     TextSearchConversationReadOnlySerializer,
     TextSearchQuerySubmitSerializer,
@@ -58,6 +59,21 @@ class TextSearchConversationViewset(viewsets.ViewSet):
 
         response_serializer = TextSearchConversationReadOnlySerializer(conversation)
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+
+    # Since the destroy() function for the viewset only takes a single id for an
+    # argument it's better to make deletion through an extra action as you can do
+    # single and multiple deletes in one go.
+    @action(
+        detail=False, methods=['POST'], serializer_class=TextSearchConversationBulkDeleteSerializer
+    )
+    def bulk_destroy(self, request: Request) -> Response:
+        serializer = TextSearchConversationBulkDeleteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        ids = serializer.validated_data['ids']
+        TextSearchConversation.objects.filter(auth_user=request.user, id__in=ids).delete()
+
+        return Response({'detail': 'Deleted chosen objects!'}, status=status.HTTP_204_NO_CONTENT)
 
     def retrieve(self, request: Request, pk: int) -> Response:
         queryset = TextSearchConversation.objects.filter(auth_user=request.user)
