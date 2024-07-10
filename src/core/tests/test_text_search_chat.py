@@ -77,7 +77,7 @@ class TestTextSearchChat(APITransactionTestCase):
             model_name=settings.VECTORIZATION_MODEL_NAME,
             system_configuration=settings.BGEM3_SYSTEM_CONFIGURATION,
             inference_configuration=settings.BGEM3_INFERENCE_CONFIGURATION,
-            model_directory=settings.MODEL_DIRECTORY,
+            model_directory=settings.DATA_DIR,
         )
 
         vector = vector.vectorize([text])['vectors'][0]
@@ -448,7 +448,7 @@ class TestTextSearchChat(APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         # Delete and assert nothing remains.
-        delete_uri = reverse('text_search-bulk-destroy')
+        delete_uri = reverse('v1:text_search-bulk-destroy')
         response = self.client.delete(delete_uri, data={'ids': [conversation_id]})
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
@@ -473,7 +473,7 @@ class TestTextSearchChat(APITransactionTestCase):
         )
 
         # Delete and assert that only one of them has been destroyed.
-        delete_uri = reverse('text_search-bulk-destroy')
+        delete_uri = reverse('v1:text_search-bulk-destroy')
         data = {'ids': [protected_conversation_id, to_delete_conversation_id]}
         response = self.client.delete(delete_uri, data=data)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
