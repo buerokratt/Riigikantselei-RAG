@@ -129,10 +129,19 @@ class ElasticKNN:
         self.elasticsearch = Elasticsearch(self.elasticsearch_url, timeout=self.timeout)
 
     @staticmethod
-    def create_date_query(min_year: int, max_year: int) -> Dict:
+    def create_date_query(min_year: Optional[int], max_year: Optional[int]) -> Optional[dict]:
         search = elasticsearch_dsl.Search()
         date_field = get_core_setting('ELASTICSEARCH_YEAR_FIELD')
-        search = search.query('range', **{date_field: {'gte': min_year, 'lte': max_year}})
+
+        date_filter = {}
+        if min_year is None and max_year is None:
+            return None
+        if min_year:
+            date_filter['gte'] = min_year
+        if max_year:
+            date_filter['lte'] = max_year
+
+        search = search.query('range', **{date_field: date_filter})
         return search.to_dict()
 
     @_elastic_connection

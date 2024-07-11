@@ -66,6 +66,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # DATA DIRECTORY
 DATA_DIR = Path(env.str('RK_DATA_DIR', default=Path(BASE_DIR).parent / 'data'))
+DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
@@ -211,7 +212,6 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
-
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
@@ -221,14 +221,17 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 INFO_LOGGER = 'info_logger'
 ERROR_LOGGER = 'error_logger'
 LOGGING_SEPARATOR = '-'
+
 LOGS_DIR = env.str('RK_LOGS_DIR', default=DATA_DIR / 'logs')
+Path(LOGS_DIR).mkdir(parents=True, exist_ok=True)
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
         'simple': {
             'format': '\n'
-            + LOGGING_SEPARATOR.join(
+                      + LOGGING_SEPARATOR.join(
                 [
                     '%(levelname)s',
                     '%(module)s',
@@ -256,7 +259,7 @@ LOGGING = {
         },
         'detailed_error': {
             'format': '\n'
-            + LOGGING_SEPARATOR.join(
+                      + LOGGING_SEPARATOR.join(
                 [
                     '%(levelname)s',
                     '%(module)s',
@@ -329,6 +332,7 @@ LOGGING = {
 
 # Whether to run Celery tasks in workers or synchronously in the webserver.
 CELERY_TASK_ALWAYS_EAGER = env.bool('RK_CELERY_TASK_ALWAYS_EAGER', default=False)
+CELERY_TASK_EAGER_PROPAGATES = True
 CELERY_BROKER_URL = env.str('RK_CELERY_BROKER_URL', default='redis://localhost:6379/0')
 CELERY_RESULT_BACKEND = env.str('RK_CELERY_RESULT_BACKEND', default='redis://localhost:6379/0')
 CELERY_TIMEZONE = env.str('RK_CELERY_TIMEZONE', default='Europe/Tallinn')
@@ -339,7 +343,6 @@ CELERY_WORKER_PREFETCH_MULTIPLIER = env.int('RK_CELERY_PREFETCH_MULTIPLIER', def
 CELERY_DEFAULT_QUEUE = env.str('RK_WORKER_QUEUE', default='celery')
 CELERY_DEFAULT_EXCHANGE = CELERY_DEFAULT_QUEUE
 CELERY_DEFAULT_ROUTING_KEY = CELERY_DEFAULT_QUEUE
-
 
 #### VECTORIZATION CONFIGURATIONS ####
 VECTORIZATION_MODEL_NAME = 'BAAI/bge-m3'
@@ -374,7 +377,7 @@ BASE_URL = env('RK_BASE_URL', default='http://localhost')
 
 # TODO: populate based on how documents get inserted into the real elasticsearch
 DOCUMENT_CATEGORY_TO_INDICES_MAP = {
-    #'Seadused': ['rk_riigi_teataja_kehtivad_vectorized'],
+    # 'Seadused': ['rk_riigi_teataja_kehtivad_vectorized'],
     'a': ['a_1', 'a_2'],
     'b': ['b'],
     'c': ['c_1', 'c_2'],
