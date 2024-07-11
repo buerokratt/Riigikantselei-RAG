@@ -4,6 +4,7 @@ from typing import List
 import openai
 from celery import Task
 from django.conf import settings
+from django.db.models import F
 
 from api.celery_handler import app
 from api.utilities.core_settings import get_core_setting
@@ -11,7 +12,6 @@ from api.utilities.elastic import ElasticKNN
 from api.utilities.gpt import ChatGPT
 from api.utilities.vectorizer import Vectorizer
 from core.models import TextSearchConversation, TextSearchQueryResult
-
 from .models import Task as TaskModel
 
 # pylint: disable=unused-argument,too-many-arguments
@@ -29,28 +29,28 @@ OPENAI_EXCEPTIONS = (
 
 
 def async_call_celery_task_chain(
-    min_year: int,
-    max_year: int,
-    user_input: str,
-    document_indices: List[str],
-    conversation_id: int,
-    document_types_string: str,
+        min_year: int,
+        max_year: int,
+        user_input: str,
+        document_indices: List[str],
+        conversation_id: int,
+        document_types_string: str,
 ) -> None:
     task_chain = (
-        query_and_format_rag_context.s(
-            min_year=min_year,
-            max_year=max_year,
-            user_input=user_input,
-            document_indices=document_indices,
-        )
-        | call_openai_api.s(
-            conversation_id=conversation_id,
-            min_year=min_year,
-            max_year=max_year,
-            document_types_string=document_types_string,
-            user_input=user_input,
-        )
-        | save_openai_results.s(conversation_id)
+            query_and_format_rag_context.s(
+                min_year=min_year,
+                max_year=max_year,
+                user_input=user_input,
+                document_indices=document_indices,
+            )
+            | call_openai_api.s(
+        conversation_id=conversation_id,
+        min_year=min_year,
+        max_year=max_year,
+        document_types_string=document_types_string,
+        user_input=user_input,
+    )
+            | save_openai_results.s(conversation_id)
     )
 
     task_chain.apply_async()
@@ -58,7 +58,7 @@ def async_call_celery_task_chain(
 
 @app.task(name='query_and_format_rag_context', max_retries=5, bind=True)
 def query_and_format_rag_context(
-    self: Task, min_year: int, max_year: int, user_input: str, document_indices: List[str]
+        self: Task, min_year: int, max_year: int, user_input: str, document_indices: List[str]
 ) -> dict:
     """
     Task for fetching the RAG context from pre-processed vectors in ElasticSearch.
@@ -123,13 +123,13 @@ def query_and_format_rag_context(
     bind=True,
 )
 def call_openai_api(
-    self: Task,
-    context_and_references: dict,
-    conversation_id: int,
-    min_year: int,
-    max_year: int,
-    document_types_string: str,
-    user_input: str,
+        self: Task,
+        context_and_references: dict,
+        conversation_id: int,
+        min_year: int,
+        max_year: int,
+        document_types_string: str,
+        user_input: str,
 ) -> dict:
     """
     Task for fetching the RAG context from pre-processed vectors in ElasticSearch.
@@ -213,5 +213,11 @@ def save_openai_results(self: Task, results: dict, conversation_id: int) -> None
     result.response_headers = results['response_headers']
     result.references = results['references']
     result.save()
+
+    # Increment the counter for cost in the user profile to prevent
+    # it from lowering when deleting old records. Issue #23
+    user = conversation.auth_user
+    user.user_profile.used_cost = F('used_cost') + results['total_cost']
+    user.user_profile.save(update_fields=['used_cost'])
 
     task.set_success()
