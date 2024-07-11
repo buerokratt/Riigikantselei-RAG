@@ -29,6 +29,7 @@ from core.tests.test_settings import (
 )
 from user_profile.utilities import create_test_user_with_user_profile
 
+
 # pylint: disable=invalid-name
 
 
@@ -161,6 +162,7 @@ class TestTextSearchChat(APITransactionTestCase):
 
         # Used cost after communicating with the OpenAI API.
         expected_used_cost = first_response.total_cost + second_response.total_cost
+        self.allowed_auth_user.user_profile.refresh_from_db()
         self.assertEqual(self.allowed_auth_user.user_profile.used_cost, expected_used_cost)
 
         # Ensure that with lower usage restrictions, an exception is thrown to the user.
