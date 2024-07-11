@@ -182,6 +182,7 @@ class TextSearchQuerySubmitSerializer(serializers.Serializer):
                     document_indices,
                     conversation_id,
                     instance.document_types_string,
+                    result_uuid=result.uuid,
                 )
             )
 

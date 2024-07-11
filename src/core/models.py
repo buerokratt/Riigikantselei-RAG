@@ -1,3 +1,4 @@
+import uuid
 from typing import List, Optional
 
 from django.contrib.auth.models import User
@@ -47,6 +48,8 @@ class TextSearchConversation(models.Model):
 
 
 class TextSearchQueryResult(models.Model):
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False)
+
     conversation = models.ForeignKey(
         TextSearchConversation, on_delete=models.CASCADE, related_name='query_results'
     )

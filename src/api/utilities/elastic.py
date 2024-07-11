@@ -154,11 +154,27 @@ class ElasticKNN:
     ) -> Dict:
         # Define search interface
         search = Search(using=self.elasticsearch, index=self.indices)
+
         # Add search query to limit results if not None
         if search_query:
-            search.update_from_dict(search_query)
-        # Define kNN query
-        search.knn(field=self.field, k=k, num_candidates=num_candidates, query_vector=vector)
+            filter_search = Search(using=self.elasticsearch, index=self.indices)
+            filter_search.update_from_dict(search_query)
+            # Applying some pre-filtering.
+            # https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-knn-query.html#knn-query-filtering
+            pre_knn_filter = filter_search.query.to_dict()
+            search = search.knn(
+                field=self.field,
+                k=k,
+                num_candidates=num_candidates,
+                query_vector=vector,
+                filter=pre_knn_filter,
+            )
+
+        else:
+            search = search.knn(
+                field=self.field, k=k, num_candidates=num_candidates, query_vector=vector
+            )
+
         # Execute the query
         response = search.execute()
         return response

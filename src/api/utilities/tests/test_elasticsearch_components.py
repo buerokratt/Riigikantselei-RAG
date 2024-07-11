@@ -79,10 +79,10 @@ class TestElasticCore(APITestCase):
         )
 
         # Add a document that we could search.
-        text = 'Kas sa tahad öelda, et kookosed migreeruvad'
-        document_id, _ = self._index_document_and_add_vector(text, vectorizer)
+        original_text = 'Kas sa tahad öelda, et kookosed migreeruvad'
+        document_id, _ = self._index_document_and_add_vector(original_text, vectorizer)
 
-        self._check_document_integrity(document_id, text)
+        self._check_document_integrity(document_id, original_text)
 
         texts = [
             'See on ainult lihashaav ja ortograafia on oluline!',
@@ -92,8 +92,8 @@ class TestElasticCore(APITestCase):
         for text in texts:
             self._index_document_and_add_vector(text, vectorizer)
 
-        text = 'Miks sa tahad öelda, et kookosed migreeruvad'
-        search_vector = vectorizer.vectorize([text])['vectors'][0]
+        search_text = 'Miks sa tahad öelda, et kookosed migreeruvad'
+        search_vector = vectorizer.vectorize([search_text])['vectors'][0]
 
         elastic_knn = ElasticKNN(self.index_name)
 
@@ -104,7 +104,7 @@ class TestElasticCore(APITestCase):
 
         # Assert we only get a single hit with the query.
         hits = search_response['hits']['hits']
-        self.assertTrue(len(hits) == 1)
+        self.assertEqual(len(hits), 1)
 
         # Integrity check that without the query limitation we get more.
         search_response = elastic_knn.search_vector(vector=search_vector)
