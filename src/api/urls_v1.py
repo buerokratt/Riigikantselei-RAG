@@ -21,7 +21,7 @@ from rest_framework import routers
 from core.views import (
     CoreVariableViewSet,
     ElasticDocumentDetailView,
-    TextSearchConversationViewset, DocumentSearchConversationViewSet,
+    TextSearchConversationViewset,
 )
 from health.views import HealthView
 from user_profile.views import GetTokenView, LogOutView, UserProfileViewSet
@@ -30,7 +30,6 @@ router = routers.DefaultRouter()
 router.register('core_settings', CoreVariableViewSet, basename='core_settings')
 router.register('user_profile', UserProfileViewSet, basename='user_profile')
 router.register('text_search', TextSearchConversationViewset, basename='text_search')
-router.register('document_search', DocumentSearchConversationViewSet, basename='document_search')
 
 urlpatterns = [
     path('admin/', admin.site.urls),

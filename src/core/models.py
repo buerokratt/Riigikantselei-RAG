@@ -15,19 +15,6 @@ class CoreVariable(models.Model):
         return f'{self.name} - {self.value}'
 
 
-class DocumentSearchConversation(models.Model):
-    auth_user = models.ForeignKey(User, on_delete=models.RESTRICT)
-    user_input = models.TextField()
-
-    indices = models.JSONField(null=True, default=None)
-    aggregations = models.JSONField(null=True, default=None)
-
-    min_year = models.IntegerField(null=True, default=None)
-    max_year = models.IntegerField(null=True, default=None)
-
-    created_at = models.DateTimeField(auto_now_add=True)
-
-
 class TextSearchConversation(models.Model):
     auth_user = models.ForeignKey(User, on_delete=models.RESTRICT)
     system_input = models.TextField()

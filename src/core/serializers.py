@@ -14,7 +14,7 @@ from core.models import (
     CoreVariable,
     Task,
     TextSearchConversation,
-    TextSearchQueryResult, DocumentSearchConversation,
+    TextSearchQueryResult,
 )
 from core.tasks import async_call_celery_task_chain
 
@@ -187,23 +187,3 @@ class TextSearchQuerySubmitSerializer(serializers.Serializer):
             )
 
             return TextSearchConversationReadOnlySerializer(instance).data
-
-
-class DocumentSearchAggregationSerializer(serializers.Serializer):
-    user_input = serializers.CharField()
-    indices = serializers.ListField(child=serializers.CharField())
-
-
-class DocumentSearchConversationSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = DocumentSearchConversation
-        fields = ('id', 'user_input', 'indices', 'aggregations', 'min_year', 'max_year', 'created_at')
-        read_only_fields = ('aggregations', 'created_at')
-
-
-class EmptySerializer(serializers.Serializer):
-    pass
-
-
-class DocumentSearchDocumentTypeSerializer(serializers.Serializer):
-    document_type = serializers.CharField()

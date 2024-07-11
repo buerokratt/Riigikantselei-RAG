@@ -5,18 +5,16 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.request import Request
 from rest_framework.response import Response
 
-from api.utilities.core_settings import get_core_setting
 from api.utilities.elastic import ElasticCore
-from core.models import CoreVariable, TextSearchConversation, DocumentSearchConversation
+from core.models import CoreVariable, TextSearchConversation
 from core.serializers import (
     ConversationSetTitleSerializer,
     CoreVariableSerializer,
     TextSearchConversationBulkDeleteSerializer,
     TextSearchConversationCreateSerializer,
     TextSearchConversationReadOnlySerializer,
-    TextSearchQuerySubmitSerializer, DocumentSearchConversationSerializer, EmptySerializer, DocumentSearchDocumentTypeSerializer,
+    TextSearchQuerySubmitSerializer,
 )
-from core.tasks import vectorize_and_aggregate, generate_doc_search_context
 from user_profile.permissions import (  # type: ignore
     CanSpendResourcesPermission,
     IsAcceptedPermission,
@@ -28,7 +26,7 @@ class ElasticDocumentDetailView(views.APIView):
     permission_classes = (IsAcceptedPermission,)
 
     def get(
-            self, request: Request, index: str, document_id: str  # pylint: disable=unused-argument
+        self, request: Request, index: str, document_id: str  # pylint: disable=unused-argument
     ) -> Response:
         elastic_core = ElasticCore()
         text = elastic_core.get_document_content(index, document_id)
@@ -132,45 +130,3 @@ class TextSearchConversationViewset(viewsets.ViewSet):
         conversation = TextSearchConversation.objects.get(pk=pk)
         data = TextSearchConversationReadOnlySerializer(conversation).data
         return Response(data)
-
-
-class DocumentSearchConversationViewSet(viewsets.ModelViewSet):
-    permission_classes = (IsAcceptedPermission,)
-    serializer_class = DocumentSearchConversationSerializer
-
-    def get_queryset(self):
-        user = self.request.user
-        return DocumentSearchConversation.objects.filter(auth_user=user)
-
-    def perform_create(self, serializer):
-        serializer.save(auth_user=self.request.user)
-
-    @action(detail=True, methods=['POST'], serializer_class=EmptySerializer)
-    def aggregate_documents(self, request: Request, pk: int) -> Response:
-        instance: DocumentSearchConversation = self.get_object()
-
-        document_type_field = get_core_setting('ELASTICSEARCH_DOCUMENT_TYPE_FIELD')
-        year_field = get_core_setting('ELASTICSEARCH_YEAR_FIELD')
-        vector_field = get_core_setting('ELASTICSEARCH_VECTOR_FIELD')
-
-        async_task = vectorize_and_aggregate.s(
-            pk,
-            vector_field,
-            document_type_field,
-            year_field
-        ).apply_async()
-
-        instance.refresh_from_db()
-        return Response(DocumentSearchConversationSerializer(instance).data)
-
-    @action(detail=True, methods=['POST'], permission_classes=(CanSpendResourcesPermission,), serializer_class=DocumentSearchDocumentTypeSerializer)
-    def commit_openai_search(self, request: Request, pk: int) -> Response:
-        serializer = DocumentSearchDocumentTypeSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        document_type = serializer.validated_data['document_type']
-        async_task = generate_doc_search_context.s(pk, document_type).apply_async()
-
-        instance = DocumentSearchConversation.objects.get(pk=pk)
-        response = DocumentSearchConversationSerializer(instance).data
-        return Response(response)
