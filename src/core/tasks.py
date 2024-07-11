@@ -11,9 +11,9 @@ from api.utilities.core_settings import get_core_setting
 from api.utilities.elastic import ElasticKNN
 from api.utilities.gpt import ChatGPT
 from api.utilities.vectorizer import Vectorizer
-from core.models import TextSearchConversation, TextSearchQueryResult
-
+from core.models import TextSearchConversation, TextSearchQueryResult, DocumentSearchConversation
 from .models import Task as TaskModel
+from .utilities import parse_hits_as_references
 
 # pylint: disable=unused-argument,too-many-arguments
 
@@ -30,13 +30,13 @@ OPENAI_EXCEPTIONS = (
 
 
 def async_call_celery_task_chain(
-    min_year: int,
-    max_year: int,
-    user_input: str,
-    document_indices: List[str],
-    conversation_id: int,
-    document_types_string: str,
-    result_uuid: str,
+        min_year: int,
+        max_year: int,
+        user_input: str,
+        document_indices: List[str],
+        conversation_id: int,
+        document_types_string: str,
+        result_uuid: str,
 ) -> None:
     rag_task = query_and_format_rag_context.s(
         min_year=min_year,
@@ -59,7 +59,7 @@ def async_call_celery_task_chain(
 
 @app.task(name='query_and_format_rag_context', max_retries=5, bind=True)
 def query_and_format_rag_context(
-    self: Task, min_year: int, max_year: int, user_input: str, document_indices: List[str]
+        self: Task, min_year: int, max_year: int, user_input: str, document_indices: List[str]
 ) -> dict:
     """
     Task for fetching the RAG context from pre-processed vectors in ElasticSearch.
@@ -91,29 +91,9 @@ def query_and_format_rag_context(
     search_query = {'search_query': search_query} if search_query else {}
     matching_documents = elastic_knn.search_vector(vector=input_vector, **search_query)
 
-    context_documents_contents = []
-    for hit in matching_documents['hits']['hits']:
-        source = hit['_source'].to_dict()
-        content = source.get(data_content_key, '')
-        reference = {
-            'text': content,
-            'elastic_id': hit['_id'],
-            'index': hit['_index'],
-            'title': source.get(data_title_key, ''),
-            'url': source.get(data_url_key, ''),
-        }
-        if content:
-            context_documents_contents.append(reference)
-
-    context = '\n\n'.join([document[data_content_key] for document in context_documents_contents])
-    query_with_context = (
-        'Answer the following question using the provided context from below! '
-        f'Question: ```{user_input}```'
-        '\n\n'
-        f'Context: ```{context}```'
-    )
-
-    return {'context': query_with_context, 'references': context_documents_contents}
+    hits = matching_documents['hits']['hits']
+    question_and_reference = parse_hits_as_references(hits, data_content_key, data_url_key, data_title_key, user_input)
+    return question_and_reference
 
 
 # Using bind sets the Celery Task object to the first argument, in this case self.
@@ -124,14 +104,14 @@ def query_and_format_rag_context(
     bind=True,
 )
 def call_openai_api(
-    self: Task,
-    context_and_references: dict,
-    conversation_id: int,
-    min_year: int,
-    max_year: int,
-    document_types_string: str,
-    user_input: str,
-    result_uuid: str,
+        self: Task,
+        context_and_references: dict,
+        conversation_id: int,
+        min_year: int,
+        max_year: int,
+        document_types_string: str,
+        user_input: str,
+        result_uuid: str,
 ) -> dict:
     """
     Task for fetching the RAG context from pre-processed vectors in ElasticSearch.
@@ -223,3 +203,68 @@ def save_openai_results(self: Task, results: dict, conversation_id: int, result_
     user.user_profile.save(update_fields=['used_cost'])
 
     task.set_success()
+
+
+@app.task(name='vectorize_and_aggregate', bind=True, ignore_results=True)
+def vectorize_and_aggregate(self, conversation_id: int, vector_field, document_type_field: str, year_field: str) -> None:
+    conversation = DocumentSearchConversation.objects.get(id=conversation_id)
+
+    knn = ElasticKNN(conversation.indices, field=vector_field)
+
+    vectorizer = Vectorizer(
+        model_name=settings.VECTORIZATION_MODEL_NAME,
+        system_configuration=settings.BGEM3_SYSTEM_CONFIGURATION,
+        inference_configuration=settings.BGEM3_INFERENCE_CONFIGURATION,
+        model_directory=settings.DATA_DIR,
+    )
+
+    question_vector = vectorizer.vectorize([conversation.user_input])["vectors"][0]
+
+    aggregates = knn.knn_filter_and_aggregate(
+        document_type_field=document_type_field,
+        year_field=year_field,
+        vector=question_vector,
+        search_query=None,
+        num_candidates=20,
+        k=20
+    )
+
+    conversation.aggregations = aggregates
+    conversation.save()
+
+
+@app.task(name='generate_doc_search_context', bind=True)
+def generate_doc_search_context(self, conversation_id: int, document_type: str) -> dict:
+    text_field = get_core_setting('ELASTICSEARCH_TEXT_CONTENT_FIELD')
+    document_type_field = get_core_setting('ELASTICSEARCH_DOCUMENT_TYPE_FIELD')
+    year_field = get_core_setting('ELASTICSEARCH_YEAR_FIELD')
+    data_url_key = get_core_setting('ELASTICSEARCH_URL_FIELD')
+    vector_field = get_core_setting('ELASTICSEARCH_VECTOR_FIELD')
+    title_field = get_core_setting('ELASTICSEARCH_TITLE_FIELD')
+
+    instance: DocumentSearchConversation = DocumentSearchConversation.objects.get(pk=conversation_id)
+
+    knn = ElasticKNN(indices=instance.indices, field=vector_field)
+    vectorizer = Vectorizer(
+        model_name=settings.VECTORIZATION_MODEL_NAME,
+        system_configuration=settings.BGEM3_SYSTEM_CONFIGURATION,
+        inference_configuration=settings.BGEM3_INFERENCE_CONFIGURATION,
+        model_directory=settings.DATA_DIR,
+    )
+    question_vector = vectorizer.vectorize([instance.user_input])["vectors"][0]
+    year_and_type_filter = knn.year_and_type_filter(
+        year_field,
+        document_type_field,
+        document_type,
+        instance.min_year,
+        instance.max_year,
+    )
+
+    search = knn.generate_knn_with_filter(
+        search_query=year_and_type_filter,
+        vector=question_vector
+    )
+
+    hits = search.execute()['hits']['hits']
+    question_and_reference = parse_hits_as_references(hits, text_field, data_url_key, title_field, instance.user_input)
+    return question_and_reference
