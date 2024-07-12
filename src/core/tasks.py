@@ -12,7 +12,6 @@ from api.utilities.elastic import ElasticKNN
 from api.utilities.gpt import ChatGPT
 from api.utilities.vectorizer import Vectorizer
 from core.models import TextSearchConversation, TextSearchQueryResult
-
 from .models import Task as TaskModel
 
 # pylint: disable=unused-argument,too-many-arguments
@@ -30,13 +29,13 @@ OPENAI_EXCEPTIONS = (
 
 
 def async_call_celery_task_chain(
-    min_year: int,
-    max_year: int,
-    user_input: str,
-    document_indices: List[str],
-    conversation_id: int,
-    document_types_string: str,
-    result_uuid: str,
+        min_year: int,
+        max_year: int,
+        user_input: str,
+        document_indices: List[str],
+        conversation_id: int,
+        document_types_string: str,
+        result_uuid: str,
 ) -> None:
     rag_task = query_and_format_rag_context.s(
         min_year=min_year,
@@ -59,7 +58,7 @@ def async_call_celery_task_chain(
 
 @app.task(name='query_and_format_rag_context', max_retries=5, bind=True)
 def query_and_format_rag_context(
-    self: Task, min_year: int, max_year: int, user_input: str, document_indices: List[str]
+        self: Task, min_year: int, max_year: int, user_input: str, document_indices: List[str]
 ) -> dict:
     """
     Task for fetching the RAG context from pre-processed vectors in ElasticSearch.
@@ -124,14 +123,14 @@ def query_and_format_rag_context(
     bind=True,
 )
 def call_openai_api(
-    self: Task,
-    context_and_references: dict,
-    conversation_id: int,
-    min_year: int,
-    max_year: int,
-    document_types_string: str,
-    user_input: str,
-    result_uuid: str,
+        self: Task,
+        context_and_references: dict,
+        conversation_id: int,
+        min_year: int,
+        max_year: int,
+        document_types_string: str,
+        user_input: str,
+        result_uuid: str,
 ) -> dict:
     """
     Task for fetching the RAG context from pre-processed vectors in ElasticSearch.

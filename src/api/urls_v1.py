@@ -14,7 +14,6 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
-from django.contrib import admin
 from django.urls import include, path
 from rest_framework import routers
 
@@ -32,7 +31,6 @@ router.register('user_profile', UserProfileViewSet, basename='user_profile')
 router.register('text_search', TextSearchConversationViewset, basename='text_search')
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
     path('', include(router.urls)),
     path(
         'elastic/<str:index>/<str:document_id>/',
