@@ -377,8 +377,5 @@ BASE_URL = env('RK_BASE_URL', default='http://localhost')
 
 # TODO: populate based on how documents get inserted into the real elasticsearch
 DOCUMENT_CATEGORY_TO_INDICES_MAP = {
-    # 'Seadused': ['rk_riigi_teataja_kehtivad_vectorized'],
-    'a': ['a_1', 'a_2'],
-    'b': ['b'],
-    'c': ['c_1', 'c_2'],
+    'rk_test': ['rk_riigi_teataja_kehtivad_vectorized']
 }

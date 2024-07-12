@@ -1,6 +1,7 @@
 services:
 
   rk_api:
+    image: docker.texta.ee/texta/riigikantselei_api:latest
     container_name: rk_api
     depends_on:
       - rk-elasticsearch
