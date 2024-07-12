@@ -77,12 +77,12 @@ class ElasticCore:
 
     @_elastic_connection
     def create_index(
-        self,
-        index_name: str,
-        shards: int = 3,
-        replicas: int = 1,
-        settings: Optional[dict] = None,
-        ignore: Tuple[int] = (400,),
+            self,
+            index_name: str,
+            shards: int = 3,
+            replicas: int = 1,
+            settings: Optional[dict] = None,
+            ignore: Tuple[int] = (400,),
     ) -> Dict:
         body = settings or {
             'number_of_shards': shards,
@@ -92,7 +92,7 @@ class ElasticCore:
 
     @_elastic_connection
     def add_vector_mapping(
-        self, index: str, field: str, body: Optional[dict] = None, dims: int = 1024
+            self, index: str, field: str, body: Optional[dict] = None, dims: int = 1024
     ) -> Dict:
         mapping = body or {'properties': {field: {'type': 'dense_vector', 'dims': dims}}}
         return self.elasticsearch.indices.put_mapping(body=mapping, index=index)
@@ -116,11 +116,11 @@ class ElasticCore:
 
 class ElasticKNN:
     def __init__(
-        self,
-        indices: str,
-        elasticsearch_url: Optional[str] = None,
-        timeout: Optional[int] = None,
-        field: Optional[str] = None,
+            self,
+            indices: str,
+            elasticsearch_url: Optional[str] = None,
+            timeout: Optional[int] = None,
+            field: Optional[str] = None,
     ):
         self.indices = indices
         self.timeout = timeout or get_core_setting('ELASTICSEARCH_TIMEOUT')
@@ -146,11 +146,11 @@ class ElasticKNN:
 
     @_elastic_connection
     def search_vector(
-        self,
-        vector: List[float],
-        search_query: Optional[dict] = None,
-        k: Optional[int] = 5,
-        num_candidates: Optional[int] = 25,
+            self,
+            vector: List[float],
+            search_query: Optional[dict] = None,
+            k: Optional[int] = 5,
+            num_candidates: Optional[int] = 25,
     ) -> Dict:
         # Define search interface
         search = Search(using=self.elasticsearch, index=self.indices)
@@ -175,7 +175,9 @@ class ElasticKNN:
                 field=self.field, k=k, num_candidates=num_candidates, query_vector=vector
             )
 
-        # Execute the query
+        # Limit the responses to 3 documents as per the project requirements.
+        # TODO: Check if this is subject to change.
+        search = search[:3]
         response = search.execute()
         return response
 
