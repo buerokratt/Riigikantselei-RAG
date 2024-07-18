@@ -42,6 +42,8 @@ CORE_SETTINGS = {
     'ELASTICSEARCH_YEAR_FIELD': env('RK_ELASTICSEARCH_YEAR_FIELD', default='year'),
     'ELASTICSEARCH_URL_FIELD': env('RK_ELASTICSEARCH_URL_FIELD', default='url'),
     'ELASTICSEARCH_TITLE_FIELD': env('RK_ELASTICSEARCH_TITLE_FIELD', default='title'),
+    'ELASTICSEARCH_TYPE_FIELD': env('RK_ELASTICSEARCH_TYPE_FIELD', default='type'),
+
     # OpenAI integration
     # TODO: obtain key
     'OPENAI_API_KEY': env('RK_OPENAI_API_KEY', default=None),
@@ -97,6 +99,8 @@ INSTALLED_APPS = [
     'corsheaders',
     'core',
     'health',
+    'text_search',
+    'document_search',
     'user_profile.apps.UserProfileConfig',
 ]
 
@@ -346,7 +350,7 @@ CELERY_DEFAULT_ROUTING_KEY = CELERY_DEFAULT_QUEUE
 
 #### VECTORIZATION CONFIGURATIONS ####
 VECTORIZATION_MODEL_NAME = 'BAAI/bge-m3'
-BGEM3_SYSTEM_CONFIGURATION = {'use_fp16': True, 'device': None, 'normalize_embeddings': True}
+BGEM3_SYSTEM_CONFIGURATION = {'use_fp16': True, 'device': 'cpu', 'normalize_embeddings': True}
 BGEM3_INFERENCE_CONFIGURATION = {'batch_size': 12, 'return_dense': True, 'max_length': 8192}
 
 # DOWNLOAD MODEL DEPENDENCIES

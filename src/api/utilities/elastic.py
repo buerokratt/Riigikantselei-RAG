@@ -26,6 +26,9 @@ ELASTIC_CONNECTION_ERROR_MESSAGE = (
     'Could not connect to Elasticsearch, is the location properly configured?'
 )
 
+K_DEFAULT = 3
+NUM_CANDIDATES_DEFAULT = 25
+
 
 def _elastic_connection(func: Callable) -> Callable:
     @functools.wraps(func)
@@ -33,15 +36,19 @@ def _elastic_connection(func: Callable) -> Callable:
         try:
             return func(*args, **kwargs)
         except NotFoundError as exception:
+            logger.exception(ELASTIC_NOT_FOUND_MESSAGE)
             raise NotFound(ELASTIC_NOT_FOUND_MESSAGE) from exception
 
         except RequestError as exception:
+            logger.exception(ELASTIC_REQUEST_ERROR_MESSAGE)
             raise APIException(ELASTIC_REQUEST_ERROR_MESSAGE) from exception
 
         except ConnectionTimeout as exception:
+            logger.exception(ELASTIC_CONNECTION_TIMEOUT_MESSAGE)
             raise APIException(ELASTIC_CONNECTION_TIMEOUT_MESSAGE) from exception
 
         except AuthenticationException as exception:
+            logger.exception(ELASTIC_AUTHENTICATION_ERROR_MESSAGE)
             raise AuthenticationFailed(ELASTIC_AUTHENTICATION_ERROR_MESSAGE) from exception
 
         # Important to set the ConnectionError to the bottom of the chain
@@ -53,9 +60,11 @@ def _elastic_connection(func: Callable) -> Callable:
                 # but we'd like to treat timing out separately
                 raise APIException(ELASTIC_CONNECTION_TIMEOUT_MESSAGE) from exception
 
+            logger.exception(ELASTIC_CONNECTION_ERROR_MESSAGE)
             raise APIException(ELASTIC_CONNECTION_ERROR_MESSAGE) from exception
 
         except Exception as exception:
+            logger.exception(ELASTIC_UNKNOWN_ERROR_MESSAGE)
             raise APIException(
                 ELASTIC_UNKNOWN_ERROR_MESSAGE, code=status.HTTP_500_INTERNAL_SERVER_ERROR
             ) from exception
@@ -144,40 +153,64 @@ class ElasticKNN:
         search = search.query('range', **{date_field: date_filter})
         return search.to_dict()
 
-    @_elastic_connection
-    def search_vector(
-            self,
-            vector: List[float],
-            search_query: Optional[dict] = None,
-            k: Optional[int] = 5,
-            num_candidates: Optional[int] = 25,
-    ) -> Dict:
-        # Define search interface
-        search = Search(using=self.elasticsearch, index=self.indices)
-
-        # Add search query to limit results if not None
+    def _apply_filter_to_knn(self, search_query: Optional[dict] = None) -> Optional[dict]:
         if search_query:
             filter_search = Search(using=self.elasticsearch, index=self.indices)
             filter_search.update_from_dict(search_query)
             # Applying some pre-filtering.
             # https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-knn-query.html#knn-query-filtering
             pre_knn_filter = filter_search.query.to_dict()
-            search = search.knn(
-                field=self.field,
-                k=k,
-                num_candidates=num_candidates,
-                query_vector=vector,
-                filter=pre_knn_filter,
-            )
+            return pre_knn_filter
 
-        else:
-            search = search.knn(
-                field=self.field, k=k, num_candidates=num_candidates, query_vector=vector
-            )
+        return None
 
-        # Limit the responses to 3 documents as per the project requirements.
-        # TODO: Check if this is subject to change.
-        search = search[:3]
+    def _generate_knn_with_filter(
+            self,
+            vector: List[float],
+            search_query: Optional[dict] = None,
+            num_candidates: int = NUM_CANDIDATES_DEFAULT,
+            k: int = K_DEFAULT,
+    ) -> elasticsearch_dsl.Search:
+        search = Search(using=self.elasticsearch, index=self.indices)
+
+        search_filter = self._apply_filter_to_knn(search_query)
+        filter_kwargs = {"filter": search_filter} if search_filter else {}
+        search = search.knn(
+            field=self.field,
+            k=k,
+            num_candidates=num_candidates,
+            query_vector=vector,
+            **filter_kwargs
+        )
+
+        return search
+
+    @_elastic_connection
+    def search_vector(
+            self,
+            vector: List[float],
+            search_query: Optional[dict] = None,
+            k: int = K_DEFAULT,
+            num_candidates: int = NUM_CANDIDATES_DEFAULT,
+            source: Optional[list] = None,
+            size: Optional[int] = None,
+    ) -> Dict:
+        # Define search interface
+        search = self._generate_knn_with_filter(
+            search_query=search_query,
+            vector=vector,
+            num_candidates=num_candidates,
+            k=k
+        )
+
+        # Which fields to include in case we want to save bandwidth (for the second workflow).
+        if source:
+            search = search.source(source)
+
+        if size:
+            search = search[:size]
+
+        # Execute the query
         response = search.execute()
         return response
 

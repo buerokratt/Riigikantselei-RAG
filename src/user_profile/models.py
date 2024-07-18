@@ -3,7 +3,6 @@ from django.db import models
 from rest_framework.authtoken.models import Token
 
 from api.utilities.core_settings import get_core_setting
-from core.models import TextSearchQueryResult
 
 
 class UserProfile(models.Model):

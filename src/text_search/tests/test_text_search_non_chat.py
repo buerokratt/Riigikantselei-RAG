@@ -5,7 +5,7 @@ from rest_framework.test import APITestCase
 
 from api.utilities.core_settings import get_core_setting
 from api.utilities.testing import IsDatetime, IsString
-from core.models import TextSearchConversation
+from text_search.models import TextSearchConversation
 from user_profile.utilities import create_test_user_with_user_profile
 
 
@@ -18,7 +18,7 @@ class TestTextSearchNonChat(APITestCase):
             'user_input': 'input question',
             'min_year': 2000,
             'max_year': 2024,
-            'document_types': ['a'],
+            'indices': ['a'],
         }
         cls.base_set_title_input = {
             'title': 'Asking about a topic',
@@ -62,7 +62,7 @@ class TestTextSearchNonChat(APITestCase):
             'created_at': IsString(),
             'min_year': self.base_create_input['min_year'],
             'max_year': self.base_create_input['max_year'],
-            'document_types': self.base_create_input['document_types'],
+            'indices': self.base_create_input['indices'],
         }
         response_only_expected_data = {'query_results': []}  # type: ignore
         model_only_expected_data = {
