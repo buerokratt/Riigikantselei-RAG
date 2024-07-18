@@ -6,9 +6,14 @@ from django.template.loader import render_to_string
 from rest_framework import status, viewsets
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import action
-from rest_framework.exceptions import APIException, AuthenticationFailed, ParseError, ValidationError
+from rest_framework.exceptions import (
+    APIException,
+    AuthenticationFailed,
+    ParseError,
+    ValidationError,
+)
 from rest_framework.generics import get_object_or_404
-from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
+from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.renderers import TemplateHTMLRenderer
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -24,7 +29,7 @@ from user_profile.serializers import (
     PasswordResetSerializer,
     PasswordSerializer,
     UserCreateSerializer,
-    UserProfileReadOnlySerializer, EmptySerializer,
+    UserProfileReadOnlySerializer,
 )
 
 
@@ -126,8 +131,8 @@ class UserProfileViewSet(viewsets.ViewSet):
         # Since the IsAdminUser looks for is_staff it's the more relevant one out of these.
         # hence we display mostly it.
         response = {
-            "detail": f"Set user {auth_user.username} admin status to {auth_user.is_staff}!",
-            "state": auth_user.is_staff
+            'detail': f'Set user {auth_user.username} admin status to {auth_user.is_staff}!',
+            'state': auth_user.is_staff,
         }
         return Response(response)
 
@@ -139,8 +144,8 @@ class UserProfileViewSet(viewsets.ViewSet):
         user_profile.is_manager = not user_profile.is_manager
         user_profile.save()
         response = {
-            "detail": f"Set user {auth_user.username} manager status to {user_profile.is_manager}!",
-            "state": user_profile.is_manager
+            'detail': f'Set user {auth_user.username} manager status to {user_profile.is_manager}!',
+            'state': user_profile.is_manager,
         }
         return Response(response)
 

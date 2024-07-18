@@ -1,12 +1,26 @@
 from rest_framework import serializers
 from rest_framework.authtoken.admin import User
 
-from document_search.models import DocumentSearchConversation, DocumentSearchQueryResult, DocumentTask, DocumentAggregationResult
-from text_search.serializers import TaskSerializer
+from document_search.models import (
+    DocumentAggregationResult,
+    DocumentSearchConversation,
+    DocumentSearchQueryResult,
+    DocumentTask,
+)
+
+
+class TaskSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DocumentTask
+        fields = ('status', 'error', 'created_at', 'modified_at')
+        read_only_fields = ('__all__',)
 
 
 class DocumentSearchQueryResultSerializer(serializers.ModelSerializer):
-    title = serializers.CharField(default='', help_text="Display value for history, no need to fill this as it's automatically set")
+    title = serializers.CharField(
+        default='',
+        help_text="Display value for history, no need to fill this as it's automatically set",
+    )
     celery_task = TaskSerializer(read_only=True, many=False)
 
     class Meta:
@@ -22,15 +36,8 @@ class DocumentSearchQueryResultSerializer(serializers.ModelSerializer):
             'total_cost',
             'celery_task',
             'references',
-            'created_at'
+            'created_at',
         )
-
-
-class TaskSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = DocumentTask
-        fields = ('status', 'error', 'created_at', 'modified_at')
-        read_only_fields = ('__all__',)
 
 
 class DocumentSearchChatSerializer(serializers.Serializer):
@@ -55,16 +62,22 @@ class DocumentSearchConversationSerializer(serializers.ModelSerializer):
     query_results = DocumentSearchQueryResultSerializer(many=True, read_only=True)
     aggregation_result = AggregationTaskSerializer(read_only=True)
 
-    def get_auth_user(self, obj):
+    def get_auth_user(self, obj: DocumentSearchConversation) -> dict:
         user = User.objects.get(pk=obj.auth_user.id)
         return {
             'username': user.username,
             'email': user.email,
             'first_name': user.first_name,
-            'last_name': user.last_name
+            'last_name': user.last_name,
         }
 
     class Meta:
         fields = '__all__'
-        read_only_fields = ('auth_user', 'query_results', 'aggregation_result', 'created_at', 'modified_at')
+        read_only_fields = (
+            'auth_user',
+            'query_results',
+            'aggregation_result',
+            'created_at',
+            'modified_at',
+        )
         model = DocumentSearchConversation

@@ -4,7 +4,7 @@ from typing import List
 from django.contrib.auth.models import User
 from django.db import models
 
-from core.choices import TaskStatus, TASK_STATUS_CHOICES
+from core.choices import TASK_STATUS_CHOICES, TaskStatus
 
 
 class CoreVariable(models.Model):
@@ -23,7 +23,7 @@ class ConversationMixin(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     modified_at = models.DateTimeField(auto_now=True)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"'{self.title}' by {self.auth_user.username}"
 
     @property

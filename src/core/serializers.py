@@ -5,9 +5,8 @@ from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 
 from core.choices import CORE_VARIABLE_CHOICES
-from core.models import (
-    CoreVariable,
-)
+from core.models import CoreVariable
+
 
 class CoreVariableSerializer(serializers.ModelSerializer):
     name = serializers.ChoiceField(

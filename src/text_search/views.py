@@ -5,11 +5,16 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from text_search.models import TextSearchConversation
-from text_search.serializers import TextSearchConversationCreateSerializer, TextSearchConversationReadOnlySerializer, TextSearchConversationBulkDeleteSerializer, ConversationSetTitleSerializer, TextSearchQuerySubmitSerializer
+from text_search.serializers import (
+    ConversationSetTitleSerializer,
+    TextSearchConversationBulkDeleteSerializer,
+    TextSearchConversationCreateSerializer,
+    TextSearchConversationReadOnlySerializer,
+    TextSearchQuerySubmitSerializer,
+)
 from user_profile.permissions import (  # type: ignore
     CanSpendResourcesPermission,
     IsAcceptedPermission,
-    IsManagerPermission,
 )
 
 

@@ -3,7 +3,7 @@ from typing import List
 from api.utilities.core_settings import get_core_setting
 
 
-def parse_gpt_question_and_references(user_input: str, hits: List[dict]):
+def parse_gpt_question_and_references(user_input: str, hits: List[dict]) -> dict:
     url_field = get_core_setting('ELASTICSEARCH_URL_FIELD')
     title_field = get_core_setting('ELASTICSEARCH_TITLE_FIELD')
     text_field = get_core_setting('ELASTICSEARCH_TEXT_CONTENT_FIELD')

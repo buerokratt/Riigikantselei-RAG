@@ -5,11 +5,8 @@ from rest_framework.response import Response
 
 from api.utilities.elastic import ElasticCore
 from core.models import CoreVariable
-from core.serializers import (
-    CoreVariableSerializer,
-)
+from core.serializers import CoreVariableSerializer
 from user_profile.permissions import (  # type: ignore
-    CanSpendResourcesPermission,
     IsAcceptedPermission,
     IsManagerPermission,
 )
@@ -19,7 +16,7 @@ class ElasticDocumentDetailView(views.APIView):
     permission_classes = (IsAcceptedPermission,)
 
     def get(
-            self, request: Request, index: str, document_id: str  # pylint: disable=unused-argument
+        self, request: Request, index: str, document_id: str  # pylint: disable=unused-argument
     ) -> Response:
         elastic_core = ElasticCore()
         text = elastic_core.get_document_content(index, document_id)

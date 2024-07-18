@@ -6,7 +6,7 @@ from rest_framework.exceptions import ValidationError
 
 from api.utilities.core_settings import get_core_setting
 from api.utilities.serializers import reasonable_character_with_spaces_validator
-from text_search.models import TextSearchConversation, TextTask, TextSearchQueryResult
+from text_search.models import TextSearchConversation, TextSearchQueryResult, TextTask
 from text_search.tasks import async_call_celery_task_chain
 
 
@@ -15,7 +15,9 @@ class TextSearchConversationCreateSerializer(serializers.Serializer):
 
     min_year = serializers.IntegerField(default=None, min_value=1700)
     max_year = serializers.IntegerField(default=None, min_value=1700)
-    indices = serializers.ListField(child=serializers.CharField(), default=list(['rk_riigi_teataja_kehtivad_vectorized']))
+    indices = serializers.ListField(
+        child=serializers.CharField(), default=list(['rk_riigi_teataja_kehtivad_vectorized'])
+    )
 
     def validate(self, data: dict) -> dict:
         min_year = data['min_year']

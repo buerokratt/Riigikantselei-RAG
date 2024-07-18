@@ -17,10 +17,7 @@ Including another URLconf
 from django.urls import include, path
 from rest_framework import routers
 
-from core.views import (
-    CoreVariableViewSet,
-    ElasticDocumentDetailView,
-)
+from core.views import CoreVariableViewSet, ElasticDocumentDetailView
 from document_search.views import DocumentSearchConversationViewset
 from health.views import HealthView
 from text_search.views import TextSearchConversationViewset

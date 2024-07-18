@@ -6,14 +6,12 @@ from django.conf import settings
 from django.db.models import F
 
 from api.celery_handler import app
-from api.utilities.core_settings import get_core_setting
 from api.utilities.elastic import ElasticKNN
 from api.utilities.gpt import ChatGPT
 from api.utilities.vectorizer import Vectorizer
 from core.exceptions import OPENAI_EXCEPTIONS
 from core.utilities import parse_gpt_question_and_references
 from text_search.models import TextSearchConversation, TextSearchQueryResult, TextTask
-
 
 # pylint: disable=unused-argument,too-many-arguments
 
@@ -22,12 +20,12 @@ from text_search.models import TextSearchConversation, TextSearchQueryResult, Te
 
 
 def async_call_celery_task_chain(
-        min_year: int,
-        max_year: int,
-        user_input: str,
-        indices: List[str],
-        conversation_id: int,
-        result_uuid: str,
+    min_year: int,
+    max_year: int,
+    user_input: str,
+    indices: List[str],
+    conversation_id: int,
+    result_uuid: str,
 ) -> None:
     rag_task = query_and_format_rag_context.s(
         min_year=min_year,
@@ -49,7 +47,7 @@ def async_call_celery_task_chain(
 
 @app.task(name='query_and_format_rag_context', max_retries=5, bind=True)
 def query_and_format_rag_context(
-        self: Task, min_year: int, max_year: int, user_input: str, indices: List[str]
+    self: Task, min_year: int, max_year: int, user_input: str, indices: List[str]
 ) -> dict:
     """
     Task for fetching the RAG context from pre-processed vectors in ElasticSearch.
@@ -61,11 +59,6 @@ def query_and_format_rag_context(
     :param indices: Which indices to search from Elasticsearch.
     :return: Text containing user input and relevant context documents.
     """
-    # Load important variables
-    data_url_key = get_core_setting('ELASTICSEARCH_URL_FIELD')
-    data_title_key = get_core_setting('ELASTICSEARCH_TITLE_FIELD')
-    data_content_key = get_core_setting('ELASTICSEARCH_TEXT_CONTENT_FIELD')
-
     vectorizer = Vectorizer(
         model_name=settings.VECTORIZATION_MODEL_NAME,
         system_configuration=settings.BGEM3_SYSTEM_CONFIGURATION,
@@ -94,13 +87,13 @@ def query_and_format_rag_context(
     bind=True,
 )
 def call_openai_api(
-        self: Task,
-        context_and_references: dict,
-        conversation_id: int,
-        min_year: int,
-        max_year: int,
-        user_input: str,
-        result_uuid: str,
+    self: Task,
+    context_and_references: dict,
+    conversation_id: int,
+    min_year: int,
+    max_year: int,
+    user_input: str,
+    result_uuid: str,
 ) -> dict:
     """
     Task for fetching the RAG context from pre-processed vectors in ElasticSearch.

@@ -8,7 +8,7 @@ from api.utilities.core_settings import get_core_setting
 from user_profile.utilities import create_test_user_with_user_profile
 
 
-# pylint: disable=too-many-instance-attributes
+# pylint: disable=too-many-instance-attributes,too-many-public-methods
 class TestUserProfileEdit(APITestCase):
     def setUp(self) -> None:  # pylint: disable=invalid-name
         self.manager_auth_user = create_test_user_with_user_profile(
@@ -213,9 +213,18 @@ class TestUserProfileEdit(APITestCase):
         response = self.client.post(self.set_limit_endpoint_url, data=input_data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_setting_user_to_manager(self):
-        admin = create_test_user_with_user_profile(self, 'admin', email='admin@gmail.com', password='1234', is_admin=True)
-        plebian = create_test_user_with_user_profile(self, 'plebian', email='plebian@gmail.com', password='1234', is_admin=False, is_manager=False)
+    def test_setting_user_to_manager(self) -> None:
+        admin = create_test_user_with_user_profile(
+            self, 'admin', email='admin@gmail.com', password='1234', is_admin=True
+        )
+        plebian = create_test_user_with_user_profile(
+            self,
+            'plebian',
+            email='plebian@gmail.com',
+            password='1234',
+            is_admin=False,
+            is_manager=False,
+        )
 
         # Login as admin
         token, _ = Token.objects.get_or_create(user=admin)
@@ -236,9 +245,18 @@ class TestUserProfileEdit(APITestCase):
         plebian.refresh_from_db()
         self.assertEqual(plebian.user_profile.is_manager, False)
 
-    def test_setting_user_to_superuser(self):
-        admin = create_test_user_with_user_profile(self, 'admin', email='admin@gmail.com', password='1234', is_admin=True)
-        plebian = create_test_user_with_user_profile(self, 'plebian', email='plebian@gmail.com', password='1234', is_admin=False, is_manager=False)
+    def test_setting_user_to_superuser(self) -> None:
+        admin = create_test_user_with_user_profile(
+            self, 'admin', email='admin@gmail.com', password='1234', is_admin=True
+        )
+        plebian = create_test_user_with_user_profile(
+            self,
+            'plebian',
+            email='plebian@gmail.com',
+            password='1234',
+            is_admin=False,
+            is_manager=False,
+        )
 
         # Login as admin
         token, _ = Token.objects.get_or_create(user=admin)
@@ -261,8 +279,10 @@ class TestUserProfileEdit(APITestCase):
         self.assertEqual(plebian.is_staff, False)
         self.assertEqual(plebian.is_superuser, False)
 
-    def test_superusers_not_being_able_to_change_their_status(self):
-        admin = create_test_user_with_user_profile(self, 'admin', email='admin@gmail.com', password='1234', is_admin=True)
+    def test_superusers_not_being_able_to_change_their_status(self) -> None:
+        admin = create_test_user_with_user_profile(
+            self, 'admin', email='admin@gmail.com', password='1234', is_admin=True
+        )
         token, _ = Token.objects.get_or_create(user=admin)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 

@@ -13,7 +13,7 @@ from api.utilities.core_settings import get_core_setting
 from api.utilities.elastic import ElasticCore
 from api.utilities.vectorizer import Vectorizer
 from core.choices import TaskStatus
-from text_search.models import TextSearchQueryResult, TextTask, TextSearchConversation
+from text_search.models import TextSearchConversation, TextSearchQueryResult, TextTask
 from text_search.tests.test_settings import (
     BASE_CREATE_INPUT,
     CONTINUE_CONVERSATION_INPUT,
@@ -26,7 +26,6 @@ from text_search.tests.test_settings import (
     SecondChatInConversationMockResults,
 )
 from user_profile.utilities import create_test_user_with_user_profile
-
 
 # pylint: disable=invalid-name
 
@@ -313,8 +312,6 @@ class TestTextSearchChat(APITransactionTestCase):
 
         chat_endpoint_url = reverse('v1:text_search-chat', kwargs={'pk': conversation.data['id']})
 
-        index_category, _ = self.indices[0].split('_')
-
         openai_mock_response = FirstChatInConversationMockResults()
         with mock.patch('text_search.tasks.ChatGPT.chat', return_value=openai_mock_response):
             response = self.client.post(
@@ -371,7 +368,8 @@ class TestTextSearchChat(APITransactionTestCase):
     #         uri=self.create_endpoint_url, data=MIN_YEAR_WITHOUT_MAX_INPUT
     #     )
     #     response = self._create_chat_with_mock_gpt(
-    #         chat_endpoint_url=chat_endpoint_url, data={'user_input': 'Kuidas sai Eesti iseseivuse?'}
+    #         chat_endpoint_url=chat_endpoint_url,
+    #         data={'user_input': 'Kuidas sai Eesti iseseivuse?'}
     #     )
     #
     #     references = response.data['query_results'][0]['references']
@@ -411,7 +409,8 @@ class TestTextSearchChat(APITransactionTestCase):
     #         uri=self.create_endpoint_url, data=MAX_YEAR_WITHOUT_MAX_INPUT
     #     )
     #     response = self._create_chat_with_mock_gpt(
-    #         chat_endpoint_url=chat_endpoint_url, data={'user_input': 'Kuidas sai Eesti iseseivuse?'}
+    #         chat_endpoint_url=chat_endpoint_url,
+    #         data={'user_input': 'Kuidas sai Eesti iseseivuse?'}
     #     )
     #
     #     # Check the references for their integrity.

@@ -43,7 +43,6 @@ CORE_SETTINGS = {
     'ELASTICSEARCH_URL_FIELD': env('RK_ELASTICSEARCH_URL_FIELD', default='url'),
     'ELASTICSEARCH_TITLE_FIELD': env('RK_ELASTICSEARCH_TITLE_FIELD', default='title'),
     'ELASTICSEARCH_TYPE_FIELD': env('RK_ELASTICSEARCH_TYPE_FIELD', default='type'),
-
     # OpenAI integration
     # TODO: obtain key
     'OPENAI_API_KEY': env('RK_OPENAI_API_KEY', default=None),
@@ -235,7 +234,7 @@ LOGGING = {
     'formatters': {
         'simple': {
             'format': '\n'
-                      + LOGGING_SEPARATOR.join(
+            + LOGGING_SEPARATOR.join(
                 [
                     '%(levelname)s',
                     '%(module)s',
@@ -263,7 +262,7 @@ LOGGING = {
         },
         'detailed_error': {
             'format': '\n'
-                      + LOGGING_SEPARATOR.join(
+            + LOGGING_SEPARATOR.join(
                 [
                     '%(levelname)s',
                     '%(module)s',

@@ -1,6 +1,6 @@
 from django.db import models
 
-from core.models import TaskMixin, ConversationMixin, ResultMixin
+from core.models import ConversationMixin, ResultMixin, TaskMixin
 
 
 class TextSearchConversation(ConversationMixin):

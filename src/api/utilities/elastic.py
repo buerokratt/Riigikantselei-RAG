@@ -86,12 +86,12 @@ class ElasticCore:
 
     @_elastic_connection
     def create_index(
-            self,
-            index_name: str,
-            shards: int = 3,
-            replicas: int = 1,
-            settings: Optional[dict] = None,
-            ignore: Tuple[int] = (400,),
+        self,
+        index_name: str,
+        shards: int = 3,
+        replicas: int = 1,
+        settings: Optional[dict] = None,
+        ignore: Tuple[int] = (400,),
     ) -> Dict:
         body = settings or {
             'number_of_shards': shards,
@@ -101,7 +101,7 @@ class ElasticCore:
 
     @_elastic_connection
     def add_vector_mapping(
-            self, index: str, field: str, body: Optional[dict] = None, dims: int = 1024
+        self, index: str, field: str, body: Optional[dict] = None, dims: int = 1024
     ) -> Dict:
         mapping = body or {'properties': {field: {'type': 'dense_vector', 'dims': dims}}}
         return self.elasticsearch.indices.put_mapping(body=mapping, index=index)
@@ -125,11 +125,11 @@ class ElasticCore:
 
 class ElasticKNN:
     def __init__(
-            self,
-            indices: str,
-            elasticsearch_url: Optional[str] = None,
-            timeout: Optional[int] = None,
-            field: Optional[str] = None,
+        self,
+        indices: str,
+        elasticsearch_url: Optional[str] = None,
+        timeout: Optional[int] = None,
+        field: Optional[str] = None,
     ):
         self.indices = indices
         self.timeout = timeout or get_core_setting('ELASTICSEARCH_TIMEOUT')
@@ -165,16 +165,16 @@ class ElasticKNN:
         return None
 
     def _generate_knn_with_filter(
-            self,
-            vector: List[float],
-            search_query: Optional[dict] = None,
-            num_candidates: int = NUM_CANDIDATES_DEFAULT,
-            k: int = K_DEFAULT,
+        self,
+        vector: List[float],
+        search_query: Optional[dict] = None,
+        num_candidates: int = NUM_CANDIDATES_DEFAULT,
+        k: int = K_DEFAULT,
     ) -> elasticsearch_dsl.Search:
         search = Search(using=self.elasticsearch, index=self.indices)
 
         search_filter = self._apply_filter_to_knn(search_query)
-        filter_kwargs = {"filter": search_filter} if search_filter else {}
+        filter_kwargs = {'filter': search_filter} if search_filter else {}
         search = search.knn(
             field=self.field,
             k=k,
@@ -186,21 +186,18 @@ class ElasticKNN:
         return search
 
     @_elastic_connection
-    def search_vector(
-            self,
-            vector: List[float],
-            search_query: Optional[dict] = None,
-            k: int = K_DEFAULT,
-            num_candidates: int = NUM_CANDIDATES_DEFAULT,
-            source: Optional[list] = None,
-            size: Optional[int] = None,
+    def search_vector(  # pylint: disable=too-many-arguments
+        self,
+        vector: List[float],
+        search_query: Optional[dict] = None,
+        k: int = K_DEFAULT,
+        num_candidates: int = NUM_CANDIDATES_DEFAULT,
+        source: Optional[list] = None,
+        size: Optional[int] = None,
     ) -> Dict:
         # Define search interface
         search = self._generate_knn_with_filter(
-            search_query=search_query,
-            vector=vector,
-            num_candidates=num_candidates,
-            k=k
+            search_query=search_query, vector=vector, num_candidates=num_candidates, k=k
         )
 
         # Which fields to include in case we want to save bandwidth (for the second workflow).
