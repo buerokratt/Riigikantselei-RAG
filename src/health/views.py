@@ -7,7 +7,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
 
-from .utils import get_elastic_status, get_redis_status, get_version
+from health.utils import get_elastic_status, get_redis_status, get_version
 
 
 @permission_classes((AllowAny,))

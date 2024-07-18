@@ -6,6 +6,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from api.utilities.core_settings import get_core_setting
+from core.models import Dataset
 from document_search.models import (
     AggregationTask,
     DocumentAggregationResult,
@@ -28,8 +29,14 @@ from user_profile.permissions import (  # type: ignore
     IsAcceptedPermission,
 )
 
+# TODO: this file and its text_search sibling
+#  differ in unnecessary ways (code that does the same thing is written differently)
+#  and is way too similar in other ways (duplicated code).
+#  Unify the unnecessarily different code and then refactor all shared code out.
+#  Otherwise we will end up with different behaviour between workflows
+#  and bugs will happen more easily.
 
-# Create your views here.
+
 class DocumentSearchConversationViewset(viewsets.ModelViewSet):
     queryset = DocumentSearchConversation.objects.all()
     permission_classes = (IsAcceptedPermission,)
@@ -67,8 +74,6 @@ class DocumentSearchConversationViewset(viewsets.ModelViewSet):
         serializer = DocumentSearchChatSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        index = serializer.validated_data['index']
-
         instance = self.get_object()
         user_input = instance.user_input
         result = DocumentSearchQueryResult.objects.create(
@@ -76,7 +81,11 @@ class DocumentSearchConversationViewset(viewsets.ModelViewSet):
         )
         DocumentTask.objects.create(result=result)
 
-        prompt_task = generate_openai_prompt.s(pk, index)
+        dataset_name = serializer.validated_data['dataset_name']
+        dataset = Dataset.objects.get(name=dataset_name)
+        dataset_index_query = dataset.index_query
+
+        prompt_task = generate_openai_prompt.s(pk, [dataset_index_query])
         gpt_task = send_document_search.s(pk, user_input, result.uuid)
         save_task = save_openai_results_for_doc.s(pk, result.uuid)
 

@@ -19,11 +19,12 @@ from text_search.models import TextSearchConversation, TextSearchQueryResult, Te
 #   probably using the headers information about timeout expirations would be useful.
 
 
+# TODO: unit test
 def async_call_celery_task_chain(
     min_year: int,
     max_year: int,
     user_input: str,
-    indices: List[str],
+    dataset_index_queries: List[str],
     conversation_id: int,
     result_uuid: str,
 ) -> None:
@@ -31,12 +32,10 @@ def async_call_celery_task_chain(
         min_year=min_year,
         max_year=max_year,
         user_input=user_input,
-        indices=indices,
+        dataset_index_queries=dataset_index_queries,
     )
     openai_task = call_openai_api.s(
         conversation_id=conversation_id,
-        min_year=min_year,
-        max_year=max_year,
         user_input=user_input,
         result_uuid=result_uuid,
     )
@@ -45,18 +44,24 @@ def async_call_celery_task_chain(
     (rag_task | openai_task | save_task).apply_async()
 
 
+# TODO: implement real RAG logic, then unit test
+# Using bind=True sets the Celery Task object to the first argument, in this case celery_task.
 @app.task(name='query_and_format_rag_context', max_retries=5, bind=True)
 def query_and_format_rag_context(
-    self: Task, min_year: int, max_year: int, user_input: str, indices: List[str]
+    celery_task: Task,
+    min_year: int,
+    max_year: int,
+    user_input: str,
+    dataset_index_queries: List[str],
 ) -> dict:
     """
     Task for fetching the RAG context from pre-processed vectors in ElasticSearch.
 
-    :param self: Contains access to the Celery Task instance.
+    :param celery_task: Contains access to the Celery Task instance.
     :param min_year: Earliest year to consider documents from.
     :param max_year: Latest year to consider documents from.
     :param user_input: User sent input to add context to.
-    :param indices: Which indices to search from Elasticsearch.
+    :param dataset_index_queries: Which wildcarded indexes to search from in Elasticsearch.
     :return: Text containing user input and relevant context documents.
     """
     vectorizer = Vectorizer(
@@ -67,19 +72,21 @@ def query_and_format_rag_context(
     )
     input_vector = vectorizer.vectorize([user_input])['vectors'][0]
 
-    indices_string = ','.join(indices)
-    elastic_knn = ElasticKNN(indices=indices_string)
+    elastic_knn = ElasticKNN()
 
     search_query = ElasticKNN.create_date_query(min_year=min_year, max_year=max_year)
-    search_query = {'search_query': search_query} if search_query else {}
-    matching_documents = elastic_knn.search_vector(vector=input_vector, **search_query)
+    search_query_wrapper = {'search_query': search_query} if search_query else {}
+    matching_documents = elastic_knn.search_vector(
+        vector=input_vector, index_queries=dataset_index_queries, **search_query_wrapper
+    )
 
     hits = matching_documents['hits']['hits']
     question_and_references = parse_gpt_question_and_references(user_input, hits)
     return question_and_references
 
 
-# Using bind sets the Celery Task object to the first argument, in this case self.
+# TODO: unit test, mocking like in test_openai_components.py
+# Using bind=True sets the Celery Task object to the first argument, in this case celery_task.
 @app.task(
     name='call_openai_api',
     autoretry_for=OPENAI_EXCEPTIONS,
@@ -87,32 +94,28 @@ def query_and_format_rag_context(
     bind=True,
 )
 def call_openai_api(
-    self: Task,
+    celery_task: Task,
     context_and_references: dict,
     conversation_id: int,
-    min_year: int,
-    max_year: int,
     user_input: str,
     result_uuid: str,
 ) -> dict:
     """
     Task for fetching the RAG context from pre-processed vectors in ElasticSearch.
 
+    :param celery_task: Contains access to the Celery Task instance.
     :param context_and_references: Text containing user input and relevant context documents.
-    :param self: Contains access to the Celery Task instance.
     :param conversation_id: ID of the conversation this API call is a part of.
-    :param min_year: Earliest year to consider documents from.
-    :param max_year: Latest year to consider documents from.
-    :param document_types_string: Which indices to search from Elasticsearch.
     :param user_input: User sent input to send to the LLM.
+    :param result_uuid: UUID of the TaskResult.
     :return: Dict needed to build a TextSearchQueryResult.
     """
     try:
         conversation = TextSearchConversation.objects.get(id=conversation_id)
         result: TextSearchQueryResult = conversation.query_results.filter(uuid=result_uuid).first()
-        task: TextTask = result.celery_task
+        text_task: TextTask = result.celery_task
 
-        task.set_started()
+        text_task.set_started()
 
         user_input_with_context = context_and_references['context']
         references = context_and_references['references']
@@ -127,8 +130,6 @@ def call_openai_api(
         # the TextSearchQueryResult is created in the view.
         return {
             'model': llm_response.model,
-            'min_year': min_year,
-            'max_year': max_year,
             'user_input': user_input,
             'response': llm_response.message,
             'input_tokens': llm_response.input_tokens,
@@ -146,20 +147,22 @@ def call_openai_api(
         logging.getLogger(settings.ERROR_LOGGER).exception('Failed to connect to OpenAI API!')
         conversation = TextSearchConversation.objects.get(id=conversation_id)
         query_result: TextSearchQueryResult = conversation.query_results.last()
-        celery_task: TextTask = query_result.celery_task
+        celery_task = query_result.celery_task
         celery_task.set_failed(str(exception))
         raise exception
 
 
+# TODO: unit test
+# Using bind=True sets the Celery Task object to the first argument, in this case celery_task.
 @app.task(name='save_openai_results', bind=True, ignore_results=True)
-def save_openai_results(self: Task, results: dict, conversation_id: int, result_uuid: str) -> None:
+def save_openai_results(
+    celery_task: Task, results: dict, conversation_id: int, result_uuid: str
+) -> None:
     conversation = TextSearchConversation.objects.get(id=conversation_id)
     result: TextSearchQueryResult = conversation.query_results.filter(uuid=result_uuid).first()
     task: TextTask = result.celery_task
 
     result.model = results['model']
-    result.min_year = results['min_year']
-    result.max_year = results['max_year']
     result.user_input = results['user_input']
     result.response = results['response']
     result.input_tokens = results['input_tokens']

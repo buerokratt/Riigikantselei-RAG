@@ -42,7 +42,9 @@ CORE_SETTINGS = {
     'ELASTICSEARCH_YEAR_FIELD': env('RK_ELASTICSEARCH_YEAR_FIELD', default='year'),
     'ELASTICSEARCH_URL_FIELD': env('RK_ELASTICSEARCH_URL_FIELD', default='url'),
     'ELASTICSEARCH_TITLE_FIELD': env('RK_ELASTICSEARCH_TITLE_FIELD', default='title'),
-    'ELASTICSEARCH_TYPE_FIELD': env('RK_ELASTICSEARCH_TYPE_FIELD', default='type'),
+    'ELASTICSEARCH_DATASET_NAME_FIELD': env(
+        'RK_ELASTICSEARCH_DATASET_NAME_FIELD', default='dataset_name'
+    ),
     # OpenAI integration
     # TODO: obtain key
     'OPENAI_API_KEY': env('RK_OPENAI_API_KEY', default=None),
@@ -377,11 +379,3 @@ EMAIL_BACKEND = 'django.core.mail.backends.dummy.EmailBackend'
 
 SERVICE_NAME = 'Riigikantselei semantiline tekstiotsing'
 BASE_URL = env('RK_BASE_URL', default='http://localhost')
-
-# TODO: populate based on how documents get inserted into the real elasticsearch
-DOCUMENT_CATEGORY_TO_INDICES_MAP = {
-    # 'Seadused': ['rk_riigi_teataja_kehtivad_vectorized'],
-    'a': ['a_1', 'a_2'],
-    'b': ['b'],
-    'c': ['c_1', 'c_2'],
-}

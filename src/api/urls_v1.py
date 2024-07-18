@@ -17,7 +17,11 @@ Including another URLconf
 from django.urls import include, path
 from rest_framework import routers
 
-from core.views import CoreVariableViewSet, ElasticDocumentDetailView
+from core.views import (
+    CoreVariableViewSet,
+    DatasetReadOnlyViewSet,
+    ElasticDocumentDetailView,
+)
 from document_search.views import DocumentSearchConversationViewset
 from health.views import HealthView
 from text_search.views import TextSearchConversationViewset
@@ -25,6 +29,7 @@ from user_profile.views import GetTokenView, LogOutView, UserProfileViewSet
 
 router = routers.DefaultRouter()
 router.register('core_settings', CoreVariableViewSet, basename='core_settings')
+router.register('dataset', DatasetReadOnlyViewSet, basename='dataset')
 router.register('user_profile', UserProfileViewSet, basename='user_profile')
 router.register('text_search', TextSearchConversationViewset, basename='text_search')
 router.register('document_search', DocumentSearchConversationViewset, basename='document_search')

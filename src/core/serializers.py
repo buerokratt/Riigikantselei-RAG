@@ -1,11 +1,11 @@
-from typing import Any
+from typing import Any, List
 
 from django.conf import settings
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 
 from core.choices import CORE_VARIABLE_CHOICES
-from core.models import CoreVariable
+from core.models import CoreVariable, Dataset
 
 
 class CoreVariableSerializer(serializers.ModelSerializer):
@@ -41,3 +41,15 @@ class CoreVariableSerializer(serializers.ModelSerializer):
         variable_name = obj.name
         env_value = settings.CORE_SETTINGS.get(variable_name, '')
         return env_value
+
+
+# Objects are never modified through views, so the serializer is used only for reading
+class DatasetSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Dataset
+        fields = '__all__'
+        read_only_fields = ('__all__',)
+
+
+def get_all_dataset_names() -> List[str]:
+    return list(Dataset.objects.values_list('name', flat=True))

@@ -4,8 +4,8 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from api.utilities.elastic import ElasticCore
-from core.models import CoreVariable
-from core.serializers import CoreVariableSerializer
+from core.models import CoreVariable, Dataset
+from core.serializers import CoreVariableSerializer, DatasetSerializer
 from user_profile.permissions import (  # type: ignore
     IsAcceptedPermission,
     IsManagerPermission,
@@ -30,3 +30,14 @@ class CoreVariableViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self) -> QuerySet:
         return CoreVariable.objects.all()
+
+
+# API can show dataset info to allow user to choose which documents to query,
+# but dataset info can only be edited in Django Admin
+class DatasetReadOnlyViewSet(viewsets.ReadOnlyModelViewSet):
+    pagination_class = None
+    serializer_class = DatasetSerializer
+    permission_classes = (IsAcceptedPermission,)
+
+    def get_queryset(self) -> QuerySet:
+        return Dataset.objects.all()

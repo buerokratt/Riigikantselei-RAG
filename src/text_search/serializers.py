@@ -6,6 +6,8 @@ from rest_framework.exceptions import ValidationError
 
 from api.utilities.core_settings import get_core_setting
 from api.utilities.serializers import reasonable_character_with_spaces_validator
+from core.models import Dataset
+from core.serializers import get_all_dataset_names
 from text_search.models import TextSearchConversation, TextSearchQueryResult, TextTask
 from text_search.tasks import async_call_celery_task_chain
 
@@ -15,8 +17,10 @@ class TextSearchConversationCreateSerializer(serializers.Serializer):
 
     min_year = serializers.IntegerField(default=None, min_value=1700)
     max_year = serializers.IntegerField(default=None, min_value=1700)
-    indices = serializers.ListField(
-        child=serializers.CharField(), default=list(['rk_riigi_teataja_kehtivad_vectorized'])
+    dataset_names = serializers.ListField(
+        # By default include all datasets.
+        default=get_all_dataset_names,
+        child=serializers.CharField(),
     )
 
     def validate(self, data: dict) -> dict:
@@ -31,18 +35,28 @@ class TextSearchConversationCreateSerializer(serializers.Serializer):
         if min_year and max_year and min_year > max_year:
             raise ValidationError('min_year must be lesser than max_year!')
 
+        if data['dataset_names']:
+            known_dataset_names = get_all_dataset_names()
+            bad_dataset_names = []
+            for dataset_name in data['dataset_names']:
+                if dataset_name not in known_dataset_names:
+                    bad_dataset_names.append(dataset_name)
+
+            if bad_dataset_names:
+                raise ValidationError(f'Unknown dataset names: [{", ".join(bad_dataset_names)}]')
+
         return data
 
     def create(self, validated_data: dict) -> TextSearchConversation:
         min_year = self.validated_data['min_year']
         max_year = self.validated_data['max_year']
-        indices = self.validated_data['indices']
+        dataset_names_string = ','.join(self.validated_data['dataset_names'])
 
         conversation = TextSearchConversation.objects.create(
             auth_user=validated_data['auth_user'],
             system_input=get_core_setting('OPENAI_SYSTEM_MESSAGE'),
             title=validated_data['user_input'],
-            indices=indices,
+            dataset_names_string=dataset_names_string,
             min_year=min_year,
             max_year=max_year,
         )
@@ -50,7 +64,8 @@ class TextSearchConversationCreateSerializer(serializers.Serializer):
         return conversation
 
 
-class TaskSerializer(serializers.ModelSerializer):
+# Objects are never modified through views, so the serializer is used only for reading
+class TextTaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = TextTask
         fields = ('status', 'error', 'created_at', 'modified_at')
@@ -59,7 +74,7 @@ class TaskSerializer(serializers.ModelSerializer):
 
 # Objects are never modified, so the serializer is used only for reading
 class TextSearchQueryResultReadOnlySerializer(serializers.ModelSerializer):
-    celery_task = TaskSerializer(read_only=True, many=False)
+    celery_task = TextTaskSerializer(read_only=True, many=False)
 
     class Meta:
         model = TextSearchQueryResult
@@ -74,7 +89,8 @@ class TextSearchQueryResultReadOnlySerializer(serializers.ModelSerializer):
         read_only_fields = ('__all__',)
 
 
-# Objects are never modified, so the serializer is used only for reading
+# Objects are modified only through very specific views,
+# so the serializer is used only for reading
 class TextSearchConversationReadOnlySerializer(serializers.ModelSerializer):
     query_results = TextSearchQueryResultReadOnlySerializer(many=True)
 
@@ -85,7 +101,7 @@ class TextSearchConversationReadOnlySerializer(serializers.ModelSerializer):
             'title',
             'min_year',
             'max_year',
-            'indices',
+            'dataset_names',
             'created_at',
             'query_results',
         )
@@ -108,7 +124,12 @@ class TextSearchQuerySubmitSerializer(serializers.Serializer):
     def save(self, conversation_id: int) -> dict:
         user_input = self.validated_data['user_input']
 
-        instance = TextSearchConversation.objects.get(pk=conversation_id)
+        instance = TextSearchConversation.objects.get(id=conversation_id)
+
+        dataset_index_queries = []
+        for dataset_name in instance.dataset_names:
+            dataset = Dataset.objects.get(name=dataset_name)
+            dataset_index_queries.append(dataset.index_query)
 
         # TODO: Maybe auto-create the task through a signal or by rewriting
         #  results .save() function in the model?
@@ -123,8 +144,8 @@ class TextSearchQuerySubmitSerializer(serializers.Serializer):
                     min_year=instance.min_year,
                     max_year=instance.max_year,
                     user_input=user_input,
+                    dataset_index_queries=dataset_index_queries,
                     conversation_id=conversation_id,
-                    indices=instance.indices,
                     result_uuid=result.uuid,
                 )
             )

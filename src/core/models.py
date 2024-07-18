@@ -15,6 +15,21 @@ class CoreVariable(models.Model):
         return f'{self.name} - {self.value}'
 
 
+class Dataset(models.Model):
+    # Name of the dataset, for example 'Riigi teataja'
+    name = models.CharField(max_length=100, unique=True)
+    # Type of dataset, for example 'Arengukava'
+    type = models.CharField(max_length=100)
+    # Elasticsearch wildcard string describing names of all indexes used by this dataset.
+    # For example, to cover 'riigiteataja_1' and 'riigiteataja_2', use 'riigiteataja_*'.
+    index_query = models.CharField(max_length=100)
+    # Description of dataset contents
+    description = models.TextField(default='')
+
+    def __str__(self) -> str:
+        return f'{self.name} ({self.type})'
+
+
 class ConversationMixin(models.Model):
     title = models.CharField(max_length=100)
     auth_user = models.ForeignKey(User, on_delete=models.RESTRICT)

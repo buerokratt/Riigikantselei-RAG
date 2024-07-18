@@ -35,10 +35,10 @@ class Vectorizer:
         inference_configuration: dict,
         model_directory: pathlib.Path,
     ):
-        self.model_directory = model_directory
         self.model_name = model_name
         self.system_configuration = system_configuration
         self.inference_configuration = inference_configuration
+        self.model_directory = model_directory
 
         self.model_interface: Optional[BGEM3FlagModel] = None
 
@@ -82,6 +82,7 @@ class Vectorizer:
 
         result = self.model_interface.encode(texts, **self.inference_configuration, **kwargs)
 
+        # TODO: consider removing dtype and shape if never used
         return {
             'vectors': result['dense_vecs'],
             'dtype': str(result['dense_vecs'].dtype),

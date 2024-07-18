@@ -8,8 +8,15 @@ from document_search.models import (
     DocumentTask,
 )
 
+# TODO: this file and its text_search sibling
+#  differ in unnecessary ways (code that does the same thing is written differently)
+#  and is way too similar in other ways (duplicated code).
+#  Unify the unnecessarily different code and then refactor all shared code out.
+#  Otherwise we will end up with different behaviour between workflows
+#  and bugs will happen more easily.
 
-class TaskSerializer(serializers.ModelSerializer):
+
+class DocumentTaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = DocumentTask
         fields = ('status', 'error', 'created_at', 'modified_at')
@@ -21,7 +28,7 @@ class DocumentSearchQueryResultSerializer(serializers.ModelSerializer):
         default='',
         help_text="Display value for history, no need to fill this as it's automatically set",
     )
-    celery_task = TaskSerializer(read_only=True, many=False)
+    celery_task = DocumentTaskSerializer(read_only=True, many=False)
 
     class Meta:
         model = DocumentSearchQueryResult
@@ -41,11 +48,11 @@ class DocumentSearchQueryResultSerializer(serializers.ModelSerializer):
 
 
 class DocumentSearchChatSerializer(serializers.Serializer):
-    index = serializers.CharField()
+    dataset_name = serializers.CharField()
 
 
 class AggregationTaskSerializer(serializers.ModelSerializer):
-    celery_task = TaskSerializer(read_only=True)
+    celery_task = DocumentTaskSerializer(read_only=True)
 
     class Meta:
         model = DocumentAggregationResult

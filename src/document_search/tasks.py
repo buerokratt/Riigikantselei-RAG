@@ -1,4 +1,5 @@
 import logging
+from typing import List
 
 from celery import Task
 from django.conf import settings
@@ -12,7 +13,6 @@ from api.utilities.vectorizer import Vectorizer
 from core.exceptions import OPENAI_EXCEPTIONS
 from core.utilities import parse_gpt_question_and_references
 from document_search.models import (
-    AggregationTask,
     DocumentAggregationResult,
     DocumentSearchConversation,
     DocumentSearchQueryResult,
@@ -21,15 +21,21 @@ from document_search.models import (
 
 # pylint: disable=unused-argument,too-many-arguments
 
+# TODO: this file and its text_search sibling
+#  differ in unnecessary ways (code that does the same thing is written differently)
+#  and is way too similar in other ways (duplicated code).
+#  Unify the unnecessarily different code and then refactor all shared code out.
+#  Otherwise we will end up with different behaviour between workflows
+#  and bugs will happen more easily.
 
+
+# TODO: unit test
+# Using bind=True sets the Celery Task object to the first argument, in this case celery_task.
 @app.task(name='generate_aggregations', bind=True)
 def generate_aggregations(
-    task: Task, conversation_id: int, user_input: str, result_uuid: str
+    celery_task: Task, conversation_id: int, user_input: str, result_uuid: str
 ) -> None:
     try:
-        aggregations = {}
-        response = []
-
         conversation: DocumentSearchConversation = DocumentSearchConversation.objects.get(
             pk=conversation_id
         )
@@ -40,8 +46,9 @@ def generate_aggregations(
 
         task.set_started()
 
-        knn = ElasticKNN(indices='*')  # TODO: Change when the index system is ready.
+        knn = ElasticKNN()
         year_field = get_core_setting('ELASTICSEARCH_YEAR_FIELD')
+        dataset_name_field = get_core_setting('ELASTICSEARCH_DATASET_NAME_FIELD')
 
         vectorizer = Vectorizer(
             model_name=settings.VECTORIZATION_MODEL_NAME,
@@ -54,27 +61,32 @@ def generate_aggregations(
         output_count = 100
         hits = knn.search_vector(
             vector=question_vector,
-            num_candidates=500,
             k=output_count,
-            source=[year_field],
+            num_candidates=500,
             size=output_count,
         )
 
+        index_years = {}
+        index_dataset_name = {}
         for hit in hits:
             index = hit.meta.index
             year = getattr(hit, year_field)
-            if index not in aggregations:
-                aggregations[index] = [year]
+            dataset_name = getattr(hit, dataset_name_field)
+            if index not in index_years:
+                index_years[index] = [year]
             else:
-                aggregations[index].append(year)
+                index_years[index].append(year)
+            index_dataset_name[index] = dataset_name
 
-        for index, years in aggregations.items():
+        response = []
+        for index, years in index_years.items():
             response.append(
                 {
                     'index': index,
                     'min_year': min(years),
                     'max_year': max(years),
                     'count': len(years),
+                    'dataset_name': index_dataset_name[index],
                 }
             )
 
@@ -87,15 +99,19 @@ def generate_aggregations(
         logging.getLogger(settings.ERROR_LOGGER).exception('Failed to fetch aggregations!')
         conversation = DocumentSearchConversation.objects.get(id=conversation_id)
         aggregation_result = conversation.aggregation_result
-        celery_task: AggregationTask = aggregation_result.celery_task
+        celery_task = aggregation_result.celery_task
         celery_task.set_failed(str(exception))
         raise exception
 
 
+# TODO: implement real RAG logic, then unit test
+# Using bind=True sets the Celery Task object to the first argument, in this case celery_task.
 @app.task(name='generate_openai_prompt', bind=True)
-def generate_openai_prompt(task: Task, conversation_id: int, index: str) -> dict:
+def generate_openai_prompt(
+    celery_task: Task, conversation_id: int, dataset_index_queries: List[str]
+) -> dict:
     conversation = DocumentSearchConversation.objects.get(pk=conversation_id)
-    knn = ElasticKNN(indices=index)
+    knn = ElasticKNN()
 
     vectorizer = Vectorizer(
         model_name=settings.VECTORIZATION_MODEL_NAME,
@@ -106,9 +122,7 @@ def generate_openai_prompt(task: Task, conversation_id: int, index: str) -> dict
 
     question_vector = vectorizer.vectorize([conversation.user_input])['vectors'][0]
 
-    response = knn.search_vector(
-        vector=question_vector,
-    )
+    response = knn.search_vector(vector=question_vector, index_queries=dataset_index_queries)
 
     hits = response['hits']['hits']
     context_and_references = parse_gpt_question_and_references(
@@ -117,6 +131,8 @@ def generate_openai_prompt(task: Task, conversation_id: int, index: str) -> dict
     return context_and_references
 
 
+# TODO: unit test, mocking like in test_openai_components.py
+# Using bind=True sets the Celery Task object to the first argument, in this case celery_task.
 @app.task(
     name='send_document_search',
     autoretry_for=OPENAI_EXCEPTIONS,
@@ -124,7 +140,7 @@ def generate_openai_prompt(task: Task, conversation_id: int, index: str) -> dict
     bind=True,
 )
 def send_document_search(
-    task: Task,
+    celery_task: Task,
     context_and_references: dict,
     conversation_id: int,
     user_input: str,
@@ -133,13 +149,11 @@ def send_document_search(
     """
     Task for fetching the RAG context from pre-processed vectors in ElasticSearch.
 
+    :param celery_task: Contains access to the Celery Task instance.
     :param context_and_references: Text containing user input and relevant context documents.
-    :param task: Contains access to the Celery Task instance.
     :param conversation_id: ID of the conversation this API call is a part of.
-    :param min_year: Earliest year to consider documents from.
-    :param max_year: Latest year to consider documents from.
-    :param document_types_string: Which indices to search from Elasticsearch.
     :param user_input: User sent input to send to the LLM.
+    :param result_uuid: UUID of the TaskResult.
     :return: Dict needed to build a TextSearchQueryResult.
     """
     try:
@@ -181,14 +195,16 @@ def send_document_search(
         logging.getLogger(settings.ERROR_LOGGER).exception('Failed to connect to OpenAI API!')
         conversation = DocumentSearchConversation.objects.get(id=conversation_id)
         query_result: DocumentSearchQueryResult = conversation.query_results.last()
-        celery_task: DocumentTask = query_result.celery_task
+        celery_task = query_result.celery_task
         celery_task.set_failed(str(exception))
         raise exception
 
 
+# TODO: unit test
+# Using bind=True sets the Celery Task object to the first argument, in this case celery_task.
 @app.task(name='save_openai_results_for_doc', bind=True, ignore_results=True)
 def save_openai_results_for_doc(
-    task: Task, results: dict, conversation_id: int, result_uuid: str
+    celery_task: Task, results: dict, conversation_id: int, result_uuid: str
 ) -> None:
     conversation = DocumentSearchConversation.objects.get(id=conversation_id)
     result: DocumentSearchQueryResult = conversation.query_results.filter(uuid=result_uuid).first()
