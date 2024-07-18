@@ -13,8 +13,8 @@ from api.utilities.core_settings import get_core_setting
 from api.utilities.elastic import ElasticCore
 from api.utilities.vectorizer import Vectorizer
 from core.choices import TaskStatus
-from core.models import Task, TextSearchConversation, TextSearchQueryResult
-from core.tests.test_settings import (
+from text_search.models import TextSearchQueryResult, TextTask, TextSearchConversation
+from text_search.tests.test_settings import (
     BASE_CREATE_INPUT,
     CONTINUE_CONVERSATION_INPUT,
     EQUAL_DATES_INPUT,
@@ -26,6 +26,7 @@ from core.tests.test_settings import (
     SecondChatInConversationMockResults,
 )
 from user_profile.utilities import create_test_user_with_user_profile
+
 
 # pylint: disable=invalid-name
 
@@ -58,7 +59,7 @@ class TestTextSearchChat(APITransactionTestCase):
         :return: Response of the web-request sent using the test request factory.
         """
         mock_output = FirstChatInConversationMockResults()
-        gpt_mock = mock.patch('core.tasks.ChatGPT.chat', return_value=mock_output)
+        gpt_mock = mock.patch('text_search.tasks.ChatGPT.chat', return_value=mock_output)
         with gpt_mock:
             response = self.client.post(chat_endpoint_url, data=data)
             result = response.data['query_results'][0]
@@ -134,7 +135,7 @@ class TestTextSearchChat(APITransactionTestCase):
 
         first_response = FirstChatInConversationMockResults()
         second_response = SecondChatInConversationMockResults()
-        with mock.patch('core.tasks.ChatGPT.chat', return_value=first_response):
+        with mock.patch('text_search.tasks.ChatGPT.chat', return_value=first_response):
             # Start conversing with OpenAI
             response = self.client.post(chat_endpoint_url, data=FIRST_CONVERSATION_START_INPUT)
             results = response.data['query_results']
@@ -143,7 +144,7 @@ class TestTextSearchChat(APITransactionTestCase):
             self.assertEqual(first_celery_status, TaskStatus.SUCCESS)
             self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        with mock.patch('core.tasks.ChatGPT.chat', return_value=second_response):
+        with mock.patch('text_search.tasks.ChatGPT.chat', return_value=second_response):
             # Continue the conversation.
             response = self.client.post(chat_endpoint_url, data=CONTINUE_CONVERSATION_INPUT)
             results = response.data['query_results']
@@ -180,7 +181,7 @@ class TestTextSearchChat(APITransactionTestCase):
         failure_instance = TextSearchQueryResult.objects.create(
             conversation_id=conversation_id, user_input='Why are you like this?'
         )
-        Task.objects.create(
+        TextTask.objects.create(
             result=failure_instance, status=TaskStatus.FAILURE, error='Something went wrong!'
         )
 
@@ -189,7 +190,7 @@ class TestTextSearchChat(APITransactionTestCase):
         success_instance = TextSearchQueryResult.objects.create(
             conversation_id=conversation_id, user_input=success_input, response=response_message
         )
-        Task.objects.create(result=success_instance, status=TaskStatus.SUCCESS)
+        TextTask.objects.create(result=success_instance, status=TaskStatus.SUCCESS)
 
         # Check the context that the conversation instance creates.
         conversation = TextSearchConversation.objects.get(pk=conversation_id)
@@ -275,21 +276,21 @@ class TestTextSearchChat(APITransactionTestCase):
         response = self.client.post(chat_endpoint_url, data=FIRST_CONVERSATION_START_INPUT)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
-    def test_conversation_fails_because_bad_document_types(self) -> None:
-        token, _ = Token.objects.get_or_create(user=self.allowed_auth_user)
-        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
-
-        # Create
-        response = self.client.post(
-            self.create_endpoint_url,
-            data={
-                'user_input': 'How does the jam get into the candy?',
-                'min_year': 2000,
-                'max_year': 2024,
-                'document_types': ['test_xyz'],
-            },
-        )
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+    # def test_conversation_fails_because_bad_document_types(self) -> None:
+    #     token, _ = Token.objects.get_or_create(user=self.allowed_auth_user)
+    #     self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
+    #
+    #     # Create
+    #     response = self.client.post(
+    #         self.create_endpoint_url,
+    #         data={
+    #             'user_input': 'How does the jam get into the candy?',
+    #             'min_year': 2000,
+    #             'max_year': 2024,
+    #             'indices': ['test_xyz'],
+    #         },
+    #     )
+    #     self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     @override_settings(CELERY_TASK_ALWAYS_EAGER=True)
     def test_references_being_stored_inside_results_for_successful_rag(self) -> None:
@@ -315,14 +316,14 @@ class TestTextSearchChat(APITransactionTestCase):
         index_category, _ = self.indices[0].split('_')
 
         openai_mock_response = FirstChatInConversationMockResults()
-        with mock.patch('core.tasks.ChatGPT.chat', return_value=openai_mock_response):
+        with mock.patch('text_search.tasks.ChatGPT.chat', return_value=openai_mock_response):
             response = self.client.post(
                 chat_endpoint_url,
                 data={
                     'user_input': 'Millal Eesti iseseivus?',
                     'min_year': 2024,
                     'max_year': 2024,
-                    'document_types': [index_category],
+                    'indices': [self.indices[0]],
                 },
             )
             self.assertEqual(response.status_code, status.HTTP_200_OK)

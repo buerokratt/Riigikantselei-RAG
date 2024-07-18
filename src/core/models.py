@@ -1,10 +1,10 @@
 import uuid
-from typing import List, Optional
+from typing import List
 
 from django.contrib.auth.models import User
 from django.db import models
 
-from core.choices import TASK_STATUS_CHOICES, TaskStatus
+from core.choices import TaskStatus, TASK_STATUS_CHOICES
 
 
 class CoreVariable(models.Model):
@@ -15,16 +15,16 @@ class CoreVariable(models.Model):
         return f'{self.name} - {self.value}'
 
 
-class TextSearchConversation(models.Model):
+class ConversationMixin(models.Model):
+    title = models.CharField(max_length=100)
     auth_user = models.ForeignKey(User, on_delete=models.RESTRICT)
     system_input = models.TextField()
-    title = models.CharField(max_length=100)
-
-    min_year = models.IntegerField(null=True, default=None)
-    max_year = models.IntegerField(null=True, default=None)
-    document_types_string = models.TextField(null=True, default=None)
 
     created_at = models.DateTimeField(auto_now_add=True)
+    modified_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"'{self.title}' by {self.auth_user.username}"
 
     @property
     def messages(self) -> List[dict]:
@@ -39,20 +39,12 @@ class TextSearchConversation(models.Model):
                 container.extend(query_result.messages)
         return container
 
-    @property
-    def document_types(self) -> Optional[List[str]]:
-        if self.document_types_string:
-            return self.document_types_string.split(',')
-
-        return None
+    class Meta:
+        abstract = True
 
 
-class TextSearchQueryResult(models.Model):
+class ResultMixin(models.Model):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False)
-
-    conversation = models.ForeignKey(
-        TextSearchConversation, on_delete=models.CASCADE, related_name='query_results'
-    )
 
     model = models.CharField(max_length=100, null=True, default=None)
 
@@ -75,21 +67,17 @@ class TextSearchQueryResult(models.Model):
             {'role': 'assistant', 'content': self.response},
         ]
 
-    def __str__(self) -> str:
-        return f"'{self.conversation.title.title()}' @ {self.conversation.auth_user.username}"
+    class Meta:
+        abstract = True
 
 
-class Task(models.Model):
+class TaskMixin(models.Model):
     status = models.CharField(
         choices=TASK_STATUS_CHOICES, max_length=50, default=TaskStatus.PENDING
     )
     error = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     modified_at = models.DateTimeField(auto_now=True)
-
-    result = models.OneToOneField(
-        TextSearchQueryResult, on_delete=models.CASCADE, related_name='celery_task'
-    )
 
     def set_success(self) -> None:
         self.status = TaskStatus.SUCCESS
@@ -106,3 +94,6 @@ class Task(models.Model):
 
     def __str__(self) -> str:
         return f'Task {self.status} @ {self.modified_at}'
+
+    class Meta:
+        abstract = True

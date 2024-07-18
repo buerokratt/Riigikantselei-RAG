@@ -7,7 +7,7 @@ BASE_CREATE_INPUT = {
     'user_input': 'Eesti iseseisvus',
     'min_year': 2020,
     'max_year': 2024,
-    'document_types': ['a', 'c'],
+    'indices': ['a_1'],
 }
 
 MIN_YEAR_WITHOUT_MAX_INPUT = {
@@ -22,23 +22,25 @@ MAX_YEAR_WITHOUT_MAX_INPUT = {
 
 NO_DATE_RANGE_INPUT = {
     'user_input': 'How does the jam get into the candy?',
+    'indices': ['a_1', 'a_2'],
 }
 
 FIRST_CONVERSATION_START_INPUT = {
     'user_input': 'Kuidas sai Eesti iseseivuse?',
+    'indices': ['a_1', 'a_2'],
 }
 
 INVALID_MIN_YEAR_INPUT = {
     'min_year': datetime.datetime.now().year + 1,
     'max_year': 2024,
-    'document_types': ['a', 'c'],
+    'indices': ['a_1'],
     'user_input': 'Kuidas sai Eesti iseseivuse?',
 }
 
 INVALID_MAX_YEAR_INPUT = {
     'min_year': 2020,
     'max_year': datetime.datetime.now().year + 1,
-    'document_types': ['a', 'c'],
+    'indices': ['a_1'],
     'user_input': 'Kuidas sai Eesti iseseivuse?',
 }
 
@@ -46,21 +48,21 @@ INVALID_MAX_YEAR_INPUT = {
 INVALID_YEAR_DIFFERENCE_INPUT = {
     'min_year': 2024,
     'max_year': 2020,
-    'document_types': ['a', 'c'],
+    'indices': ['a_1'],
     'user_input': 'Kuidas sai Eesti iseseivuse?',
 }
 
 EQUAL_DATES_INPUT = {
     'min_year': 2024,
     'max_year': 2024,
-    'document_types': ['a', 'c'],
+    'indices': ['a_1'],
     'user_input': 'Kuidas sai Eesti iseseivuse?',
 }
 
 CONTINUE_CONVERSATION_INPUT = {
     'min_year': 2022,
     'max_year': 2023,
-    'document_types': ['c', 'b'],
+    'indices': ['a_1'],
     'user_input': 'Ok, aga anna siis infot Läti iseseivuse kohta.',
 }
 
@@ -68,7 +70,7 @@ MIN_AND_MAX_YEAR_FUNCTIONALITY_INPUTS = {
     'user_input': 'Fruit migration',
     'min_year': 2021,
     'max_year': 2024,
-    'document_types': ['a'],
+    'indices': ['a_1'],
 }
 
 
@@ -77,7 +79,7 @@ class FirstChatInConversationMockResults:
         'model': 'gpt-4o-2024-05-13',
         'min_year': 2020,
         'max_year': 2024,
-        'document_types_string': 'a,c',
+        'indices': 'a,c',
         'user_input': 'Kuidas sai Eesti iseseivuse?',
         'response': 'Vabandust, aga paistab, et konteksti ei ole antud. '
         'Kui annate mulle vajaliku teabe või konteksti, '
@@ -128,7 +130,7 @@ class SecondChatInConversationMockResults:
         'model': 'gpt-4o-2024-05-13',
         'min_year': 2022,
         'max_year': 2023,
-        'document_types_string': 'a,c',
+        'indices': 'a,c',
         'user_input': 'Ok, aga anna siis infot Läti iseseivuse kohta.',
         'response': 'Läti iseseisvusprotsess on tihedalt seotud Esimese '
         'maailmasõja ja Vene impeeriumi lagunemisega.'
