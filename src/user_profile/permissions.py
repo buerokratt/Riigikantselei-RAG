@@ -1,4 +1,5 @@
 # type: ignore
+from django.utils.translation import gettext as _
 from rest_framework import permissions
 
 _LOGGED_OUT_ONLY_ACTIONS = {
@@ -28,6 +29,8 @@ class UserProfilePermission(permissions.BasePermission):
 
 
 class IsManagerPermission(permissions.BasePermission):
+    message = _('Your account is not a manager!')
+
     def has_permission(self, request, view):  # pylint: disable=unused-argument
         # Just in case superuser does not have good UserProfile values set
         if request.user.is_authenticated and request.user.is_superuser:
@@ -37,6 +40,8 @@ class IsManagerPermission(permissions.BasePermission):
 
 
 class IsAcceptedPermission(permissions.BasePermission):
+    message = _('Your account has not been accepted by a moderator!')
+
     def has_permission(self, request, view):  # pylint: disable=unused-argument
         # Just in case superuser does not have good UserProfile values set
         if request.user.is_authenticated and request.user.is_superuser:
@@ -46,13 +51,15 @@ class IsAcceptedPermission(permissions.BasePermission):
 
 
 class CanSpendResourcesPermission(permissions.BasePermission):
+    message = _('You have reached your monetary limit!')
+
     def has_permission(self, request, view):  # pylint: disable=unused-argument
         # Just in case superuser does not have good UserProfile values set
         if request.user.is_authenticated and request.user.is_superuser:
             return True
 
         return (
-            request.user.is_authenticated
-            and request.user.user_profile.is_allowed_to_spend_resources
-            and request.user.user_profile.used_cost < request.user.user_profile.usage_limit
+                request.user.is_authenticated
+                and request.user.user_profile.is_allowed_to_spend_resources
+                and request.user.user_profile.used_cost < request.user.user_profile.usage_limit
         )

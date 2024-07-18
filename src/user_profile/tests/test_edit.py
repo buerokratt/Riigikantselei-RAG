@@ -212,3 +212,60 @@ class TestUserProfileEdit(APITestCase):
 
         response = self.client.post(self.set_limit_endpoint_url, data=input_data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_setting_user_to_manager(self):
+        admin = create_test_user_with_user_profile(self, 'admin', email='admin@gmail.com', password='1234', is_admin=True)
+        plebian = create_test_user_with_user_profile(self, 'plebian', email='plebian@gmail.com', password='1234', is_admin=False, is_manager=False)
+
+        # Login as admin
+        token, _ = Token.objects.get_or_create(user=admin)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
+
+        # Make the request
+        uri = reverse('v1:user_profile-set-manager', kwargs={'pk': plebian.id})
+        response = self.client.post(uri, data={})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Check the state.
+        plebian.refresh_from_db()
+        self.assertEqual(plebian.user_profile.is_manager, True)
+
+        # Lets try switching it again.
+        response = self.client.post(uri, data={})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        plebian.refresh_from_db()
+        self.assertEqual(plebian.user_profile.is_manager, False)
+
+    def test_setting_user_to_superuser(self):
+        admin = create_test_user_with_user_profile(self, 'admin', email='admin@gmail.com', password='1234', is_admin=True)
+        plebian = create_test_user_with_user_profile(self, 'plebian', email='plebian@gmail.com', password='1234', is_admin=False, is_manager=False)
+
+        # Login as admin
+        token, _ = Token.objects.get_or_create(user=admin)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
+
+        # Make the request
+        uri = reverse('v1:user_profile-set-superuser', kwargs={'pk': plebian.id})
+        response = self.client.post(uri, data={})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Check the state.
+        plebian.refresh_from_db()
+        self.assertEqual(plebian.is_staff, True)
+        self.assertEqual(plebian.is_superuser, True)
+
+        # Lets try switching it again.
+        response = self.client.post(uri, data={})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        plebian.refresh_from_db()
+        self.assertEqual(plebian.is_staff, False)
+        self.assertEqual(plebian.is_superuser, False)
+
+    def test_superusers_not_being_able_to_change_their_status(self):
+        admin = create_test_user_with_user_profile(self, 'admin', email='admin@gmail.com', password='1234', is_admin=True)
+        token, _ = Token.objects.get_or_create(user=admin)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
+
+        uri = reverse('v1:user_profile-set-superuser', kwargs={'pk': admin.id})
+        response = self.client.post(uri, data={})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

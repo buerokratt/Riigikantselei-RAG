@@ -28,6 +28,10 @@ def _unique_email_validator(email: str) -> str:
     return email
 
 
+class EmptySerializer(serializers.Serializer):
+    pass
+
+
 class UserCreateSerializer(serializers.Serializer):
     username = serializers.CharField(
         required=True,
