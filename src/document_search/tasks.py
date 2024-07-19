@@ -1,4 +1,5 @@
 import logging
+from typing import List, Optional
 
 from celery import Task
 from django.conf import settings
@@ -10,24 +11,45 @@ from api.utilities.elastic import ElasticKNN
 from api.utilities.gpt import ChatGPT
 from api.utilities.vectorizer import Vectorizer
 from core.exceptions import OPENAI_EXCEPTIONS
-from core.utilities import parse_gpt_question_and_references
-from document_search.models import DocumentSearchConversation, DocumentSearchQueryResult, DocumentTask, DocumentAggregationResult, AggregationTask
+from core.models import Dataset
+from core.utilities import get_all_dataset_values, parse_gpt_question_and_references
+from document_search.models import (
+    DocumentAggregationResult,
+    DocumentSearchConversation,
+    DocumentSearchQueryResult,
+    DocumentTask,
+)
+from document_search.utilities import match_pattern
+
+# pylint: disable=unused-argument,too-many-arguments
+
+# TODO: this file and its text_search sibling
+#  differ in unnecessary ways (code that does the same thing is written differently)
+#  and is way too similar in other ways (duplicated code).
+#  Unify the unnecessarily different code and then refactor all shared code out.
+#  Otherwise we will end up with different behaviour between workflows
+#  and bugs will happen more easily.
 
 
-@app.task(name="generate_aggregations", bind=True)
-def generate_aggregations(self, conversation_id: int, user_input: str, result_uuid: str):
+# TODO: unit test
+# Using bind=True sets the Celery Task object to the first argument, in this case celery_task.
+@app.task(name='generate_aggregations', bind=True)
+def generate_aggregations(
+    celery_task: Task, conversation_id: int, user_input: str, result_uuid: str
+) -> None:
     try:
-        aggregations = {}
-        response = []
-
-        conversation: DocumentSearchConversation = DocumentSearchConversation.objects.get(pk=conversation_id)
-        aggregation_result: DocumentAggregationResult = DocumentAggregationResult.objects.get(uuid=result_uuid, conversation=conversation)
+        conversation: DocumentSearchConversation = DocumentSearchConversation.objects.get(
+            pk=conversation_id
+        )
+        aggregation_result: DocumentAggregationResult = DocumentAggregationResult.objects.get(
+            uuid=result_uuid, conversation=conversation
+        )
         task = aggregation_result.celery_task
-
         task.set_started()
 
-        knn = ElasticKNN(indices='*')  # TODO: Change when the index system is ready.
+        knn = ElasticKNN()
         year_field = get_core_setting('ELASTICSEARCH_YEAR_FIELD')
+        indices = get_all_dataset_values('index')
 
         vectorizer = Vectorizer(
             model_name=settings.VECTORIZATION_MODEL_NAME,
@@ -40,48 +62,61 @@ def generate_aggregations(self, conversation_id: int, user_input: str, result_uu
         output_count = 100
         hits = knn.search_vector(
             vector=question_vector,
-            num_candidates=500,
             k=output_count,
-            source=[year_field],
-            size=output_count
+            num_candidates=500,
+            size=output_count,
+            indices=indices,
         )
 
+        datasets = {}
+        for dataset in Dataset.objects.all():
+            datasets[dataset.index] = dataset
+
+        dataset_years = {}
         for hit in hits:
             index = hit.meta.index
-            year = getattr(hit, year_field)
-            if index not in aggregations:
-                aggregations[index] = [year]
-            else:
-                aggregations[index].append(year)
+            dataset_orm: Optional[Dataset] = match_pattern(index, datasets)
+            if dataset_orm:
+                dataset_name = dataset_orm.name
+                year = getattr(hit, year_field)
+                if dataset_name not in dataset_years:
+                    dataset_years[dataset_name] = [year]
+                else:
+                    dataset_years[dataset_name].append(year)
 
-        for index, years in aggregations.items():
-            response.append(
-                {
-                    'index': index,
-                    'min_year': min(years),
-                    'max_year': max(years),
-                    'count': len(years)
-                }
-            )
+        response = []
+        for dataset, years in dataset_years.items():
+            item = {
+                'dataset_name': dataset,
+                'min_year': min(years),
+                'max_year': max(years),
+                'count': len(years),
+            }
 
-        aggregation_result.aggregations = response
-        aggregation_result.save()
+            response.append(item)
 
-        task.set_success()
+            aggregation_result.aggregations = response
+            aggregation_result.save()
+
+            task.set_success()
 
     except Exception as exception:
         logging.getLogger(settings.ERROR_LOGGER).exception('Failed to fetch aggregations!')
         conversation = DocumentSearchConversation.objects.get(id=conversation_id)
-        aggregation_result: DocumentAggregationResult = conversation.aggregation_result
-        celery_task: AggregationTask = aggregation_result.celery_task
+        aggregation_result = conversation.aggregation_result
+        celery_task = aggregation_result.celery_task
         celery_task.set_failed(str(exception))
         raise exception
 
 
-@app.task(name="generate_openeai_prompt", bind=True)
-def generate_openeai_prompt(self, conversation_id: int, index: str):
+# TODO: implement real RAG logic, then unit test
+# Using bind=True sets the Celery Task object to the first argument, in this case celery_task.
+@app.task(name='generate_openai_prompt', bind=True)
+def generate_openai_prompt(
+    celery_task: Task, conversation_id: int, dataset_index_queries: List[str]
+) -> dict:
     conversation = DocumentSearchConversation.objects.get(pk=conversation_id)
-    knn = ElasticKNN(indices=index)
+    knn = ElasticKNN()
 
     vectorizer = Vectorizer(
         model_name=settings.VECTORIZATION_MODEL_NAME,
@@ -91,16 +126,22 @@ def generate_openeai_prompt(self, conversation_id: int, index: str):
     )
 
     question_vector = vectorizer.vectorize([conversation.user_input])['vectors'][0]
-
+    search_query = knn.create_date_query(
+        min_year=conversation.min_year, max_year=conversation.max_year
+    )
     response = knn.search_vector(
-        vector=question_vector,
+        vector=question_vector, indices=dataset_index_queries, search_query=search_query
     )
 
     hits = response['hits']['hits']
-    context_and_references = parse_gpt_question_and_references(user_input=conversation.user_input, hits=hits)
+    context_and_references = parse_gpt_question_and_references(
+        user_input=conversation.user_input, hits=hits
+    )
     return context_and_references
 
 
+# TODO: unit test, mocking like in test_openai_components.py
+# Using bind=True sets the Celery Task object to the first argument, in this case celery_task.
 @app.task(
     name='send_document_search',
     autoretry_for=OPENAI_EXCEPTIONS,
@@ -108,30 +149,30 @@ def generate_openeai_prompt(self, conversation_id: int, index: str):
     bind=True,
 )
 def send_document_search(
-        self: Task,
-        context_and_references: dict,
-        conversation_id: int,
-        user_input: str,
-        result_uuid: str,
+    celery_task: Task,
+    context_and_references: dict,
+    conversation_id: int,
+    user_input: str,
+    result_uuid: str,
 ) -> dict:
     """
     Task for fetching the RAG context from pre-processed vectors in ElasticSearch.
 
+    :param celery_task: Contains access to the Celery Task instance.
     :param context_and_references: Text containing user input and relevant context documents.
-    :param self: Contains access to the Celery Task instance.
     :param conversation_id: ID of the conversation this API call is a part of.
-    :param min_year: Earliest year to consider documents from.
-    :param max_year: Latest year to consider documents from.
-    :param document_types_string: Which indices to search from Elasticsearch.
     :param user_input: User sent input to send to the LLM.
+    :param result_uuid: UUID of the TaskResult.
     :return: Dict needed to build a TextSearchQueryResult.
     """
     try:
         conversation = DocumentSearchConversation.objects.get(id=conversation_id)
-        result: DocumentSearchQueryResult = conversation.query_results.filter(uuid=result_uuid).first()
-        task: DocumentTask = result.celery_task
+        result: DocumentSearchQueryResult = conversation.query_results.filter(
+            uuid=result_uuid
+        ).first()
+        document_task: DocumentTask = result.celery_task
 
-        task.set_started()
+        document_task.set_started()
 
         user_input_with_context = context_and_references['context']
         references = context_and_references['references']
@@ -163,18 +204,23 @@ def send_document_search(
         logging.getLogger(settings.ERROR_LOGGER).exception('Failed to connect to OpenAI API!')
         conversation = DocumentSearchConversation.objects.get(id=conversation_id)
         query_result: DocumentSearchQueryResult = conversation.query_results.last()
-        celery_task: DocumentTask = query_result.celery_task
+        celery_task = query_result.celery_task
         celery_task.set_failed(str(exception))
         raise exception
 
 
+# TODO: unit test
+# Using bind=True sets the Celery Task object to the first argument, in this case celery_task.
 @app.task(name='save_openai_results_for_doc', bind=True, ignore_results=True)
-def save_openai_results_for_doc(self: Task, results: dict, conversation_id: int, result_uuid: str) -> None:
+def save_openai_results_for_doc(
+    celery_task: Task, results: dict, conversation_id: int, result_uuid: str, dataset_name: str
+) -> None:
     conversation = DocumentSearchConversation.objects.get(id=conversation_id)
     result: DocumentSearchQueryResult = conversation.query_results.filter(uuid=result_uuid).first()
-    task: DocumentTask = result.celery_task
+    document_task: DocumentTask = result.celery_task
 
     result.model = results['model']
+    result.dataset_name = dataset_name
     result.user_input = results['user_input']
     result.response = results['response']
     result.input_tokens = results['input_tokens']
@@ -190,4 +236,4 @@ def save_openai_results_for_doc(self: Task, results: dict, conversation_id: int,
     user.user_profile.used_cost = F('used_cost') + results['total_cost']
     user.user_profile.save(update_fields=['used_cost'])
 
-    task.set_success()
+    document_task.set_success()

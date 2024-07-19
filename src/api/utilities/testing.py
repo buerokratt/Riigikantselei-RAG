@@ -1,4 +1,3 @@
-from datetime import datetime
 from typing import Any
 
 from django.contrib.auth import get_user_model
@@ -8,14 +7,12 @@ from core.models import CoreVariable
 from core.serializers import CoreVariableSerializer
 
 
-class IsString:
-    def __eq__(self, other: Any) -> bool:
-        return isinstance(other, str)
+class IsType:
+    def __init__(self, type_class: Any):
+        self.type = type_class
 
-
-class IsDatetime:
     def __eq__(self, other: Any) -> bool:
-        return isinstance(other, datetime)
+        return isinstance(other, self.type)
 
 
 def create_test_user(username: str, email: str, password: str, is_superuser: bool = False) -> User:

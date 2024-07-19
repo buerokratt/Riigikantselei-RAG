@@ -59,7 +59,7 @@ class CanSpendResourcesPermission(permissions.BasePermission):
             return True
 
         return (
-                request.user.is_authenticated
-                and request.user.user_profile.is_allowed_to_spend_resources
-                and request.user.user_profile.used_cost < request.user.user_profile.usage_limit
+            request.user.is_authenticated
+            and request.user.user_profile.is_allowed_to_spend_resources
+            and request.user.user_profile.used_cost < request.user.user_profile.usage_limit
         )

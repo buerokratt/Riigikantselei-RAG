@@ -1,13 +1,19 @@
+from typing import List, Optional
+
 from django.db import models
 
-from core.models import TaskMixin, ConversationMixin, ResultMixin
+from core.models import ConversationMixin, ResultMixin, TaskMixin
 
 
 class TextSearchConversation(ConversationMixin):
-    indices = models.JSONField(null=True, default=None)
+    dataset_names_string = models.TextField(null=True, default=None)
 
-    min_year = models.IntegerField(null=True, default=None)
-    max_year = models.IntegerField(null=True, default=None)
+    @property
+    def dataset_names(self) -> Optional[List[str]]:
+        if self.dataset_names_string:
+            return self.dataset_names_string.split(',')
+
+        return None
 
 
 class TextSearchQueryResult(ResultMixin):

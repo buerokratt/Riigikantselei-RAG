@@ -5,11 +5,16 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from text_search.models import TextSearchConversation
-from text_search.serializers import TextSearchConversationCreateSerializer, TextSearchConversationReadOnlySerializer, TextSearchConversationBulkDeleteSerializer, ConversationSetTitleSerializer, TextSearchQuerySubmitSerializer
+from text_search.serializers import (
+    ConversationSetTitleSerializer,
+    TextSearchConversationBulkDeleteSerializer,
+    TextSearchConversationCreateSerializer,
+    TextSearchConversationReadOnlySerializer,
+    TextSearchQuerySubmitSerializer,
+)
 from user_profile.permissions import (  # type: ignore
     CanSpendResourcesPermission,
     IsAcceptedPermission,
-    IsManagerPermission,
 )
 
 
@@ -98,6 +103,6 @@ class TextSearchConversationViewset(viewsets.ViewSet):
         request_serializer.save(conversation_id=pk)
 
         # Mostly needed for tests but helpful to fetch a more updated task instance.
-        conversation = TextSearchConversation.objects.get(pk=pk)
+        conversation = TextSearchConversation.objects.get(id=pk)
         data = TextSearchConversationReadOnlySerializer(conversation).data
         return Response(data)
