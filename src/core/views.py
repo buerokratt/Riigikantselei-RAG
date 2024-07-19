@@ -1,5 +1,8 @@
+from typing import List
+
 from django.db.models import QuerySet
 from rest_framework import views, viewsets
+from rest_framework.permissions import IsAdminUser
 from rest_framework.request import Request
 from rest_framework.response import Response
 
@@ -32,12 +35,16 @@ class CoreVariableViewSet(viewsets.ModelViewSet):
         return CoreVariable.objects.all()
 
 
-# API can show dataset info to allow user to choose which documents to query,
-# but dataset info can only be edited in Django Admin
-class DatasetReadOnlyViewSet(viewsets.ReadOnlyModelViewSet):
+class DatasetViewset(viewsets.ModelViewSet):
     pagination_class = None
     serializer_class = DatasetSerializer
     permission_classes = (IsAcceptedPermission,)
+
+    def get_permissions(self) -> List:
+        if self.action in ('create', 'update', 'partial_update'):
+            self.permission_classes = [IsAdminUser, IsAcceptedPermission]  # type: ignore
+
+        return super().get_permissions()
 
     def get_queryset(self) -> QuerySet:
         return Dataset.objects.all()

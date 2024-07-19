@@ -154,10 +154,10 @@ class ElasticKNN:
         return search.to_dict()
 
     def _apply_filter_to_knn(
-        self, index_query: str, search_query: Optional[dict] = None
+        self, index: str, search_query: Optional[dict] = None
     ) -> Optional[dict]:
         if search_query:
-            filter_search = Search(using=self.elasticsearch, index=index_query)
+            filter_search = Search(using=self.elasticsearch, index=index)
             filter_search.update_from_dict(search_query)
             # Applying some pre-filtering.
             # https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-knn-query.html#knn-query-filtering
@@ -169,14 +169,14 @@ class ElasticKNN:
     def _generate_knn_with_filter(
         self,
         vector: List[float],
-        index_query: str,
+        indices: str,
         search_query: Optional[dict] = None,
         num_candidates: int = NUM_CANDIDATES_DEFAULT,
         k: int = K_DEFAULT,
     ) -> elasticsearch_dsl.Search:
-        search = Search(using=self.elasticsearch, index=index_query)
+        search = Search(using=self.elasticsearch, index=indices)
 
-        search_filter = self._apply_filter_to_knn(index_query, search_query)
+        search_filter = self._apply_filter_to_knn(indices, search_query)
         filter_kwargs = {'filter': search_filter} if search_filter else {}
         search = search.knn(
             field=self.field,
@@ -192,22 +192,22 @@ class ElasticKNN:
     def search_vector(  # pylint: disable=too-many-arguments
         self,
         vector: List[float],
-        index_queries: Optional[List[str]] = None,
+        indices: Optional[List[str]] = None,
         search_query: Optional[dict] = None,
         k: int = K_DEFAULT,
         num_candidates: int = NUM_CANDIDATES_DEFAULT,
         source: Optional[list] = None,
         size: Optional[int] = None,
     ) -> Dict:
-        if index_queries is None:
-            index_query = '*'
+        if indices is None:
+            indices_str = '*'
         else:
-            index_query = ','.join(index_queries)
+            indices_str = ','.join(indices)
 
         # Define search interface
         search = self._generate_knn_with_filter(
             vector=vector,
-            index_query=index_query,
+            indices=indices_str,
             search_query=search_query,
             num_candidates=num_candidates,
             k=k,

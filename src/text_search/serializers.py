@@ -7,7 +7,7 @@ from rest_framework.exceptions import ValidationError
 from api.utilities.core_settings import get_core_setting
 from api.utilities.serializers import reasonable_character_with_spaces_validator
 from core.models import Dataset
-from core.serializers import get_all_dataset_names
+from core.utilities import get_all_dataset_values
 from text_search.models import TextSearchConversation, TextSearchQueryResult, TextTask
 from text_search.tasks import async_call_celery_task_chain
 
@@ -19,7 +19,7 @@ class TextSearchConversationCreateSerializer(serializers.Serializer):
     max_year = serializers.IntegerField(default=None, min_value=1700)
     dataset_names = serializers.ListField(
         # By default include all datasets.
-        default=get_all_dataset_names,
+        default=get_all_dataset_values,
         child=serializers.CharField(),
     )
 
@@ -36,7 +36,7 @@ class TextSearchConversationCreateSerializer(serializers.Serializer):
             raise ValidationError('min_year must be lesser than max_year!')
 
         if data['dataset_names']:
-            known_dataset_names = get_all_dataset_names()
+            known_dataset_names = get_all_dataset_values()
             bad_dataset_names = []
             for dataset_name in data['dataset_names']:
                 if dataset_name not in known_dataset_names:
@@ -129,7 +129,7 @@ class TextSearchQuerySubmitSerializer(serializers.Serializer):
         dataset_index_queries = []
         for dataset_name in instance.dataset_names:
             dataset = Dataset.objects.get(name=dataset_name)
-            dataset_index_queries.append(dataset.index_query)
+            dataset_index_queries.append(dataset.index)
 
         # TODO: Maybe auto-create the task through a signal or by rewriting
         #  results .save() function in the model?

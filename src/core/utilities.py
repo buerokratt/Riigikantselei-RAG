@@ -1,6 +1,7 @@
 from typing import List
 
 from api.utilities.core_settings import get_core_setting
+from core.models import Dataset
 
 
 def parse_gpt_question_and_references(user_input: str, hits: List[dict]) -> dict:
@@ -36,3 +37,7 @@ def parse_gpt_question_and_references(user_input: str, hits: List[dict]) -> dict
         reference.pop('text', None)
 
     return {'context': query_with_context, 'references': context_documents_contents}
+
+
+def get_all_dataset_values(field: str = 'name') -> List[str]:
+    return list(Dataset.objects.values_list(field, flat=True))

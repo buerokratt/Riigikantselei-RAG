@@ -77,7 +77,7 @@ def query_and_format_rag_context(
     search_query = ElasticKNN.create_date_query(min_year=min_year, max_year=max_year)
     search_query_wrapper = {'search_query': search_query} if search_query else {}
     matching_documents = elastic_knn.search_vector(
-        vector=input_vector, index_queries=dataset_index_queries, **search_query_wrapper
+        vector=input_vector, indices=dataset_index_queries, **search_query_wrapper
     )
 
     hits = matching_documents['hits']['hits']

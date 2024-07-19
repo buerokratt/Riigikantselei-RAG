@@ -155,7 +155,7 @@ class TestElasticCore(APITestCase):
         search_vector = vectorizer.vectorize([SEARCH_TEXT])['vectors'][0]
 
         elastic_knn = ElasticKNN()
-        search_response = elastic_knn.search_vector(vector=search_vector)
+        search_response = elastic_knn.search_vector(vector=search_vector, indices=[INDEX_NAME])
 
         hits = search_response['hits']['hits']
         self.assertEqual(len(hits), 1)
@@ -193,7 +193,7 @@ class TestElasticCore(APITestCase):
         # Check the set (ignoring ordering) of returned documents
 
         search_response = elastic_knn.search_vector(
-            vector=search_vector, index_queries=[INDEX_TEST_INDEX_1_QUERY]
+            vector=search_vector, indices=[INDEX_TEST_INDEX_1_QUERY]
         )
         hits = search_response['hits']['hits']
         self.assertEqual(len(hits), INDEX_1_EXPECTED_HIT_COUNT)
@@ -201,7 +201,7 @@ class TestElasticCore(APITestCase):
         self.assertEqual(search_text_set, INDEX_1_EXPECTED_DOCUMENT_SET)
 
         search_response = elastic_knn.search_vector(
-            vector=search_vector, index_queries=[INDEX_TEST_INDEX_2_QUERY]
+            vector=search_vector, indices=[INDEX_TEST_INDEX_2_QUERY]
         )
         hits = search_response['hits']['hits']
         self.assertEqual(len(hits), INDEX_2_EXPECTED_HIT_COUNT)
@@ -209,7 +209,7 @@ class TestElasticCore(APITestCase):
         self.assertEqual(search_text_set, INDEX_2_EXPECTED_DOCUMENT_SET)
 
         search_response = elastic_knn.search_vector(
-            vector=search_vector, index_queries=[INDEX_TEST_INDEX_1_QUERY, INDEX_TEST_INDEX_2_QUERY]
+            vector=search_vector, indices=[INDEX_TEST_INDEX_1_QUERY, INDEX_TEST_INDEX_2_QUERY]
         )
         hits = search_response['hits']['hits']
         self.assertEqual(len(hits), BOTH_INDEXES_EXPECTED_HIT_COUNT)
@@ -246,7 +246,7 @@ class TestElasticCore(APITestCase):
 
         search_query = ElasticKNN.create_date_query(min_year=MAX_YEAR_ONLY_MIN_YEAR)
         search_response = elastic_knn.search_vector(
-            vector=search_vector, index_queries=[INDEX_NAME], search_query=search_query
+            vector=search_vector, indices=[INDEX_NAME], search_query=search_query
         )
         hits = search_response['hits']['hits']
         self.assertEqual(len(hits), MAX_YEAR_ONLY_EXPECTED_HIT_COUNT)
@@ -255,7 +255,7 @@ class TestElasticCore(APITestCase):
 
         search_query = ElasticKNN.create_date_query(max_year=MIN_YEAR_ONLY_MAX_YEAR)
         search_response = elastic_knn.search_vector(
-            vector=search_vector, index_queries=[INDEX_NAME], search_query=search_query
+            vector=search_vector, indices=[INDEX_NAME], search_query=search_query
         )
         hits = search_response['hits']['hits']
         self.assertEqual(len(hits), MIN_YEAR_ONLY_EXPECTED_HIT_COUNT)
@@ -266,7 +266,7 @@ class TestElasticCore(APITestCase):
             min_year=MIDDLE_YEAR_ONLY_MIN_YEAR, max_year=MIDDLE_YEAR_ONLY_MAX_YEAR
         )
         search_response = elastic_knn.search_vector(
-            vector=search_vector, index_queries=[INDEX_NAME], search_query=search_query
+            vector=search_vector, indices=[INDEX_NAME], search_query=search_query
         )
         hits = search_response['hits']['hits']
         self.assertEqual(len(hits), MIDDLE_YEAR_ONLY_EXPECTED_HIT_COUNT)

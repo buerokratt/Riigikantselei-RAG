@@ -1,4 +1,4 @@
-from typing import Any, List
+from typing import Any
 
 from django.conf import settings
 from rest_framework import serializers
@@ -48,8 +48,3 @@ class DatasetSerializer(serializers.ModelSerializer):
     class Meta:
         model = Dataset
         fields = '__all__'
-        read_only_fields = ('__all__',)
-
-
-def get_all_dataset_names() -> List[str]:
-    return list(Dataset.objects.values_list('name', flat=True))

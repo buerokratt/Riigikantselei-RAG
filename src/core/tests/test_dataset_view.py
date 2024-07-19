@@ -13,8 +13,8 @@ class TestDatasetView(APITestCase):
         cls.dataset_endpoint_url = reverse('v1:dataset-list')
 
     def setUp(self) -> None:  # pylint: disable=invalid-name
-        Dataset(name='a', type='', index_query='a_*', description='').save()
-        Dataset(name='b', type='', index_query='b_*', description='').save()
+        Dataset(name='a', type='', index='a_*', description='').save()
+        Dataset(name='b', type='', index='b_*', description='').save()
 
     def test_dataset_view(self) -> None:
         accepted_auth_user = create_test_user_with_user_profile(
@@ -32,14 +32,14 @@ class TestDatasetView(APITestCase):
                 'id': 1,
                 'name': 'a',
                 'type': '',
-                'index_query': 'a_*',
+                'index': 'a_*',
                 'description': '',
             },
             {
                 'id': 2,
                 'name': 'b',
                 'type': '',
-                'index_query': 'b_*',
+                'index': 'b_*',
                 'description': '',
             },
         ]

@@ -68,7 +68,7 @@ class DocumentSearchTestCase(APITransactionTestCase):
         token, _ = Token.objects.get_or_create(user=self.accepted_auth_user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
-        Dataset(name='RK test', type='', index_query='rk_test_index_*', description='').save()
+        Dataset(name='RK test', type='', index='rk_test_index_*', description='').save()
 
     def tearDown(self) -> None:
         elastic_core = ElasticCore()

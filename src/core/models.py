@@ -22,7 +22,7 @@ class Dataset(models.Model):
     type = models.CharField(max_length=100)
     # Elasticsearch wildcard string describing names of all indexes used by this dataset.
     # For example, to cover 'riigiteataja_1' and 'riigiteataja_2', use 'riigiteataja_*'.
-    index_query = models.CharField(max_length=100)
+    index = models.CharField(max_length=100)
     # Description of dataset contents
     description = models.TextField(default='')
 

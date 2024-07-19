@@ -44,9 +44,9 @@ class TestTextSearchNonChat(APITestCase):
         not_accepted_user_profile.is_accepted = False
         not_accepted_user_profile.save()
 
-        Dataset(name='a', type='', index_query='a_*', description='').save()
-        Dataset(name='b', type='', index_query='b_*', description='').save()
-        Dataset(name='c', type='', index_query='c_*', description='').save()
+        Dataset(name='a', type='', index='a_*', description='').save()
+        Dataset(name='b', type='', index='b_*', description='').save()
+        Dataset(name='c', type='', index='c_*', description='').save()
 
     # success
 

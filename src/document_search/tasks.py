@@ -1,5 +1,5 @@
 import logging
-from typing import List
+from typing import List, Optional
 
 from celery import Task
 from django.conf import settings
@@ -11,13 +11,15 @@ from api.utilities.elastic import ElasticKNN
 from api.utilities.gpt import ChatGPT
 from api.utilities.vectorizer import Vectorizer
 from core.exceptions import OPENAI_EXCEPTIONS
-from core.utilities import parse_gpt_question_and_references
+from core.models import Dataset
+from core.utilities import get_all_dataset_values, parse_gpt_question_and_references
 from document_search.models import (
     DocumentAggregationResult,
     DocumentSearchConversation,
     DocumentSearchQueryResult,
     DocumentTask,
 )
+from document_search.utilities import match_pattern
 
 # pylint: disable=unused-argument,too-many-arguments
 
@@ -43,12 +45,11 @@ def generate_aggregations(
             uuid=result_uuid, conversation=conversation
         )
         task = aggregation_result.celery_task
-
         task.set_started()
 
         knn = ElasticKNN()
         year_field = get_core_setting('ELASTICSEARCH_YEAR_FIELD')
-        dataset_name_field = get_core_setting('ELASTICSEARCH_DATASET_NAME_FIELD')
+        indices = get_all_dataset_values('index')
 
         vectorizer = Vectorizer(
             model_name=settings.VECTORIZATION_MODEL_NAME,
@@ -64,36 +65,41 @@ def generate_aggregations(
             k=output_count,
             num_candidates=500,
             size=output_count,
+            indices=indices,
         )
 
+        datasets = {}
+        for dataset in Dataset.objects.all():
+            datasets[dataset.index] = dataset
+
         index_years = {}
-        index_dataset_name = {}
         for hit in hits:
             index = hit.meta.index
             year = getattr(hit, year_field)
-            dataset_name = getattr(hit, dataset_name_field)
             if index not in index_years:
                 index_years[index] = [year]
             else:
                 index_years[index].append(year)
-            index_dataset_name[index] = dataset_name
 
         response = []
         for index, years in index_years.items():
-            response.append(
-                {
-                    'index': index,
-                    'min_year': min(years),
-                    'max_year': max(years),
-                    'count': len(years),
-                    'dataset_name': index_dataset_name[index],
-                }
-            )
+            dataset_orm: Optional[Dataset] = match_pattern(index, datasets)
+            item = {
+                'index': index,
+                'min_year': min(years),
+                'max_year': max(years),
+                'count': len(years),
+            }
 
-        aggregation_result.aggregations = response
-        aggregation_result.save()
+            if dataset_orm:
+                item['dataset_name'] = dataset_orm.name
 
-        task.set_success()
+            response.append(item)
+
+            aggregation_result.aggregations = response
+            aggregation_result.save()
+
+            task.set_success()
 
     except Exception as exception:
         logging.getLogger(settings.ERROR_LOGGER).exception('Failed to fetch aggregations!')
@@ -122,7 +128,7 @@ def generate_openai_prompt(
 
     question_vector = vectorizer.vectorize([conversation.user_input])['vectors'][0]
 
-    response = knn.search_vector(vector=question_vector, index_queries=dataset_index_queries)
+    response = knn.search_vector(vector=question_vector, indices=dataset_index_queries)
 
     hits = response['hits']['hits']
     context_and_references = parse_gpt_question_and_references(

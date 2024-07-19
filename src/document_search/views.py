@@ -2,6 +2,7 @@ from django.db import transaction
 from django.db.models import QuerySet
 from rest_framework import viewsets
 from rest_framework.decorators import action
+from rest_framework.generics import get_object_or_404
 from rest_framework.request import Request
 from rest_framework.response import Response
 
@@ -82,8 +83,8 @@ class DocumentSearchConversationViewset(viewsets.ModelViewSet):
         DocumentTask.objects.create(result=result)
 
         dataset_name = serializer.validated_data['dataset_name']
-        dataset = Dataset.objects.get(name=dataset_name)
-        dataset_index_query = dataset.index_query
+        dataset = get_object_or_404(Dataset.objects.all(), name=dataset_name)
+        dataset_index_query = dataset.index
 
         prompt_task = generate_openai_prompt.s(pk, [dataset_index_query])
         gpt_task = send_document_search.s(pk, user_input, result.uuid)

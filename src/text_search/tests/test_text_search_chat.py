@@ -49,9 +49,9 @@ class TestTextSearchChat(APITransactionTestCase):
         low_limit_user_profile.custom_usage_limit_euros = 0.1
         low_limit_user_profile.save()
 
-        Dataset(name='a', type='', index_query='a_*', description='').save()
-        Dataset(name='b', type='', index_query='b_*', description='').save()
-        Dataset(name='c', type='', index_query='c_*', description='').save()
+        Dataset(name='a', type='', index='a_*', description='').save()
+        Dataset(name='b', type='', index='b_*', description='').save()
+        Dataset(name='c', type='', index='c_*', description='').save()
 
     def _create_successful_conversation(self) -> Tuple[str, str]:
         response = self.client.post(self.create_endpoint_url, data=BASE_CREATE_INPUT)
