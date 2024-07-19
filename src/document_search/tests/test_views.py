@@ -15,7 +15,6 @@ from core.models import Dataset
 from document_search.tests.test_settings import DocumentSearchMockResponse
 from user_profile.utilities import create_test_user_with_user_profile
 
-
 # pylint: disable=invalid-name
 
 # TODO: copy tests from text_search, remove the irrelevant ones, add the document search-only ones.

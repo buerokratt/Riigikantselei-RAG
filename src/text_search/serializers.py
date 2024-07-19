@@ -4,7 +4,11 @@ from rest_framework import serializers
 from api.utilities.core_settings import get_core_setting
 from api.utilities.serializers import reasonable_character_with_spaces_validator
 from core.models import Dataset
-from core.utilities import get_all_dataset_values, validate_min_max_years, validate_dataset_names
+from core.utilities import (
+    get_all_dataset_values,
+    validate_dataset_names,
+    validate_min_max_years,
+)
 from text_search.models import TextSearchConversation, TextSearchQueryResult, TextTask
 from text_search.tasks import async_call_celery_task_chain
 

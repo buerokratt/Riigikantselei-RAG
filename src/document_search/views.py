@@ -30,7 +30,6 @@ from user_profile.permissions import (  # type: ignore
     IsAcceptedPermission,
 )
 
-
 # TODO: this file and its text_search sibling
 #  differ in unnecessary ways (code that does the same thing is written differently)
 #  and is way too similar in other ways (duplicated code).
