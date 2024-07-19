@@ -30,6 +30,7 @@ from user_profile.permissions import (  # type: ignore
     IsAcceptedPermission,
 )
 
+
 # TODO: this file and its text_search sibling
 #  differ in unnecessary ways (code that does the same thing is written differently)
 #  and is way too similar in other ways (duplicated code).
@@ -75,7 +76,15 @@ class DocumentSearchConversationViewset(viewsets.ModelViewSet):
         serializer = DocumentSearchChatSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        instance = self.get_object()
+        instance: DocumentSearchConversation = self.get_object()
+
+        min_year = serializer.validated_data['min_year']
+        max_year = serializer.validated_data['max_year']
+
+        instance.min_year = min_year
+        instance.max_year = max_year
+        instance.save()
+
         user_input = instance.user_input
         result = DocumentSearchQueryResult.objects.create(
             conversation=instance, user_input=user_input
@@ -88,7 +97,7 @@ class DocumentSearchConversationViewset(viewsets.ModelViewSet):
 
         prompt_task = generate_openai_prompt.s(pk, [dataset_index_query])
         gpt_task = send_document_search.s(pk, user_input, result.uuid)
-        save_task = save_openai_results_for_doc.s(pk, result.uuid)
+        save_task = save_openai_results_for_doc.s(pk, result.uuid, dataset_name)
 
         with transaction.atomic():
             chain = prompt_task | gpt_task | save_task

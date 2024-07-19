@@ -87,6 +87,7 @@ class TextSearchConversationViewset(viewsets.ViewSet):
         detail=True,
         methods=['post'],
         permission_classes=(CanSpendResourcesPermission,),
+        serializer_class=TextSearchQuerySubmitSerializer
     )
     def chat(self, request: Request, pk: int) -> Response:
         # Prevent anyone from changing other users' data.

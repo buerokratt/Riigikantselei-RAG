@@ -12,6 +12,7 @@ class DocumentSearchConversation(ConversationMixin):
 
 
 class DocumentSearchQueryResult(ResultMixin):
+    dataset_name = models.TextField(null=True, default=None)
     conversation = models.ForeignKey(
         DocumentSearchConversation, on_delete=models.CASCADE, related_name='query_results'
     )

@@ -1,12 +1,14 @@
 from rest_framework import serializers
 from rest_framework.authtoken.admin import User
 
+from core.utilities import validate_dataset_names, validate_min_max_years
 from document_search.models import (
     DocumentAggregationResult,
     DocumentSearchConversation,
     DocumentSearchQueryResult,
     DocumentTask,
 )
+
 
 # TODO: this file and its text_search sibling
 #  differ in unnecessary ways (code that does the same thing is written differently)
@@ -38,6 +40,7 @@ class DocumentSearchQueryResultSerializer(serializers.ModelSerializer):
             'title',
             'user_input',
             'response',
+            'dataset_name',
             'input_tokens',
             'output_tokens',
             'total_cost',
@@ -49,6 +52,15 @@ class DocumentSearchQueryResultSerializer(serializers.ModelSerializer):
 
 class DocumentSearchChatSerializer(serializers.Serializer):
     dataset_name = serializers.CharField()
+    min_year = serializers.IntegerField(min_value=1700, default=None)
+    max_year = serializers.IntegerField(min_value=1700, default=None)
+
+    def validate(self, data: dict) -> dict:
+        validate_min_max_years(data['min_year'], data['max_year'])
+
+        validate_dataset_names([data['dataset_name']])
+
+        return data
 
 
 class AggregationTaskSerializer(serializers.ModelSerializer):
@@ -84,6 +96,10 @@ class DocumentSearchConversationSerializer(serializers.ModelSerializer):
             'auth_user',
             'query_results',
             'aggregation_result',
+            # We set min and max year here because
+            # the value is only filled in chat extra action.
+            'min_year',
+            'max_year',
             'created_at',
             'modified_at',
         )

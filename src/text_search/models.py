@@ -6,9 +6,6 @@ from core.models import ConversationMixin, ResultMixin, TaskMixin
 
 
 class TextSearchConversation(ConversationMixin):
-    min_year = models.IntegerField(null=True, default=None)
-    max_year = models.IntegerField(null=True, default=None)
-
     dataset_names_string = models.TextField(null=True, default=None)
 
     @property

@@ -1,13 +1,10 @@
-import datetime
-
 from django.db import transaction
 from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
 
 from api.utilities.core_settings import get_core_setting
 from api.utilities.serializers import reasonable_character_with_spaces_validator
 from core.models import Dataset
-from core.utilities import get_all_dataset_values
+from core.utilities import get_all_dataset_values, validate_min_max_years, validate_dataset_names
 from text_search.models import TextSearchConversation, TextSearchQueryResult, TextTask
 from text_search.tasks import async_call_celery_task_chain
 
@@ -24,26 +21,9 @@ class TextSearchConversationCreateSerializer(serializers.Serializer):
     )
 
     def validate(self, data: dict) -> dict:
-        min_year = data['min_year']
-        if min_year and min_year > datetime.datetime.now().year:
-            raise ValidationError('min_year must be lesser than currently running year!')
+        validate_min_max_years(data['min_year'], data['max_year'])
 
-        max_year = data['max_year']
-        if max_year and max_year > datetime.datetime.now().year:
-            raise ValidationError('max_year must be lesser than currently running year!')
-
-        if min_year and max_year and min_year > max_year:
-            raise ValidationError('min_year must be lesser than max_year!')
-
-        if data['dataset_names']:
-            known_dataset_names = get_all_dataset_values()
-            bad_dataset_names = []
-            for dataset_name in data['dataset_names']:
-                if dataset_name not in known_dataset_names:
-                    bad_dataset_names.append(dataset_name)
-
-            if bad_dataset_names:
-                raise ValidationError(f'Unknown dataset names: [{", ".join(bad_dataset_names)}]')
+        validate_dataset_names(data['dataset_names'])
 
         return data
 

@@ -1,3 +1,4 @@
+from copy import deepcopy
 from unittest import mock
 
 from django.conf import settings
@@ -13,6 +14,7 @@ from core.choices import TaskStatus
 from core.models import Dataset
 from document_search.tests.test_settings import DocumentSearchMockResponse
 from user_profile.utilities import create_test_user_with_user_profile
+
 
 # pylint: disable=invalid-name
 
@@ -33,8 +35,13 @@ class DocumentSearchTestCase(APITransactionTestCase):
             vectorization_result = vectorizer.vectorize([document['text']])  # type: ignore
             document['vector'] = vectorization_result['vectors'][0]
 
+        # Lets do some funny business to avoid pointless vectorization
+        extra_documents = deepcopy(self.documents)
+        for count, extra_document in enumerate(extra_documents):
+            extra_document['index'] = f'rk_duos_index_{count}'
+
         elastic_core = ElasticCore()
-        for document in self.documents:
+        for document in self.documents + extra_documents:
             elastic_core.create_index(document['index'])
             elastic_core.add_vector_mapping(document['index'], field='vector')
             elastic_core.elasticsearch.index(index=document['index'], body=document)
@@ -47,7 +54,6 @@ class DocumentSearchTestCase(APITransactionTestCase):
                 'year': 2022,
                 'url': 'http://lihashaav.ee',
                 'title': 'Lihashaavad ja nende roll ühiskonnas',
-                'dataset_name': 'RK test',
             },
             {
                 'index': 'rk_test_index_2',
@@ -55,7 +61,6 @@ class DocumentSearchTestCase(APITransactionTestCase):
                 'year': 2019,
                 'url': 'http://kookus.ee',
                 'title': 'Migreeruvad kookused',
-                'dataset_name': 'RK test',
             },
         ]
 
@@ -69,6 +74,7 @@ class DocumentSearchTestCase(APITransactionTestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
         Dataset(name='RK test', type='', index='rk_test_index_*', description='').save()
+        Dataset(name='RK Duos', type='', index='rk_duos_index_*', description='').save()
 
     def tearDown(self) -> None:
         elastic_core = ElasticCore()
@@ -95,22 +101,23 @@ class DocumentSearchTestCase(APITransactionTestCase):
         aggregations = detail_response.data['aggregation_result']['aggregations']
         task = detail_response.data['aggregation_result']['celery_task']
         self.assertTrue(len(aggregations) >= 2)
-        self.assertTrue(aggregations[0]['count'] >= 1)
+        # This checks that two separate indices under a common Dataset
+        # are counted in one.
+        self.assertTrue(aggregations[0]['count'] >= 2)
         self.assertEqual(task['status'], TaskStatus.SUCCESS)
 
         # Mock the chat process with ChatGPT and check for state.
         target_dataset_name = aggregations[0]['dataset_name']
         chat_uri = reverse('v1:document_search-chat', kwargs={'pk': conversation_pk})
-        with mock.patch(
-            'document_search.tasks.ChatGPT.chat', return_value=DocumentSearchMockResponse()
-        ):
+        mock_path = 'document_search.tasks.ChatGPT.chat'
+        with mock.patch(mock_path, return_value=DocumentSearchMockResponse()):
             chat_response = self.client.post(chat_uri, data={'dataset_name': target_dataset_name})
             self.assertEqual(chat_response.status_code, status.HTTP_200_OK)
             query_results = chat_response.data['query_results']
             self.assertEqual(len(query_results), 1)
             result = query_results[0]
             self.assertEqual(result['celery_task']['status'], TaskStatus.SUCCESS)
-            self.assertEqual(len(result['references']), 2)
+            self.assertEqual(len(result['references']), 3)
 
     def test_chatting_being_denied_when_overreaching_spending_limit(self) -> None:
         self.accepted_auth_user.user_profile.used_cost = 5000

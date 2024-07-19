@@ -21,6 +21,7 @@ from document_search.models import (
 )
 from document_search.utilities import match_pattern
 
+
 # pylint: disable=unused-argument,too-many-arguments
 
 # TODO: this file and its text_search sibling
@@ -35,7 +36,7 @@ from document_search.utilities import match_pattern
 # Using bind=True sets the Celery Task object to the first argument, in this case celery_task.
 @app.task(name='generate_aggregations', bind=True)
 def generate_aggregations(
-    celery_task: Task, conversation_id: int, user_input: str, result_uuid: str
+        celery_task: Task, conversation_id: int, user_input: str, result_uuid: str
 ) -> None:
     try:
         conversation: DocumentSearchConversation = DocumentSearchConversation.objects.get(
@@ -72,27 +73,25 @@ def generate_aggregations(
         for dataset in Dataset.objects.all():
             datasets[dataset.index] = dataset
 
-        index_years = {}
+        dataset_years = {}
         for hit in hits:
             index = hit.meta.index
+            dataset_orm: Optional[Dataset] = match_pattern(index, datasets)
+            dataset_name = dataset_orm.name
             year = getattr(hit, year_field)
-            if index not in index_years:
-                index_years[index] = [year]
+            if dataset_name not in dataset_years:
+                dataset_years[dataset_name] = [year]
             else:
-                index_years[index].append(year)
+                dataset_years[dataset_name].append(year)
 
         response = []
-        for index, years in index_years.items():
-            dataset_orm: Optional[Dataset] = match_pattern(index, datasets)
+        for dataset, years in dataset_years.items():
             item = {
-                'index': index,
+                'dataset_name': dataset,
                 'min_year': min(years),
                 'max_year': max(years),
                 'count': len(years),
             }
-
-            if dataset_orm:
-                item['dataset_name'] = dataset_orm.name
 
             response.append(item)
 
@@ -114,7 +113,7 @@ def generate_aggregations(
 # Using bind=True sets the Celery Task object to the first argument, in this case celery_task.
 @app.task(name='generate_openai_prompt', bind=True)
 def generate_openai_prompt(
-    celery_task: Task, conversation_id: int, dataset_index_queries: List[str]
+        celery_task: Task, conversation_id: int, dataset_index_queries: List[str]
 ) -> dict:
     conversation = DocumentSearchConversation.objects.get(pk=conversation_id)
     knn = ElasticKNN()
@@ -127,8 +126,8 @@ def generate_openai_prompt(
     )
 
     question_vector = vectorizer.vectorize([conversation.user_input])['vectors'][0]
-
-    response = knn.search_vector(vector=question_vector, indices=dataset_index_queries)
+    search_query = knn.create_date_query(min_year=conversation.min_year, max_year=conversation.max_year)
+    response = knn.search_vector(vector=question_vector, indices=dataset_index_queries, search_query=search_query)
 
     hits = response['hits']['hits']
     context_and_references = parse_gpt_question_and_references(
@@ -146,11 +145,11 @@ def generate_openai_prompt(
     bind=True,
 )
 def send_document_search(
-    celery_task: Task,
-    context_and_references: dict,
-    conversation_id: int,
-    user_input: str,
-    result_uuid: str,
+        celery_task: Task,
+        context_and_references: dict,
+        conversation_id: int,
+        user_input: str,
+        result_uuid: str,
 ) -> dict:
     """
     Task for fetching the RAG context from pre-processed vectors in ElasticSearch.
@@ -210,13 +209,14 @@ def send_document_search(
 # Using bind=True sets the Celery Task object to the first argument, in this case celery_task.
 @app.task(name='save_openai_results_for_doc', bind=True, ignore_results=True)
 def save_openai_results_for_doc(
-    celery_task: Task, results: dict, conversation_id: int, result_uuid: str
+        celery_task: Task, results: dict, conversation_id: int, result_uuid: str, dataset_name: str
 ) -> None:
     conversation = DocumentSearchConversation.objects.get(id=conversation_id)
     result: DocumentSearchQueryResult = conversation.query_results.filter(uuid=result_uuid).first()
     document_task: DocumentTask = result.celery_task
 
     result.model = results['model']
+    result.dataset_name = dataset_name
     result.user_input = results['user_input']
     result.response = results['response']
     result.input_tokens = results['input_tokens']

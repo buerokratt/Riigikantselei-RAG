@@ -35,6 +35,9 @@ class ConversationMixin(models.Model):
     auth_user = models.ForeignKey(User, on_delete=models.RESTRICT)
     system_input = models.TextField()
 
+    min_year = models.IntegerField(null=True, default=None)
+    max_year = models.IntegerField(null=True, default=None)
+
     created_at = models.DateTimeField(auto_now_add=True)
     modified_at = models.DateTimeField(auto_now=True)
 
