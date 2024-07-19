@@ -96,6 +96,10 @@ class DocumentSearchTestCase(APITransactionTestCase):
         detail_response = self.client.get(detail_uri)
         self.assertEqual(detail_response.status_code, status.HTTP_200_OK)
 
+        # Check that min_year and max_year are set to null in the beginning.
+        self.assertEqual(detail_response.data['min_year'], None)
+        self.assertEqual(detail_response.data['max_year'], None)
+
         # Check that the aggregation state is as expected.
         aggregations = detail_response.data['aggregation_result']['aggregations']
         task = detail_response.data['aggregation_result']['celery_task']
@@ -109,12 +113,24 @@ class DocumentSearchTestCase(APITransactionTestCase):
         target_dataset_name = aggregations[0]['dataset_name']
         chat_uri = reverse('v1:document_search-chat', kwargs={'pk': conversation_pk})
         mock_path = 'document_search.tasks.ChatGPT.chat'
+        max_year = 2023
+        min_year = 2000
         with mock.patch(mock_path, return_value=DocumentSearchMockResponse()):
-            chat_response = self.client.post(chat_uri, data={'dataset_name': target_dataset_name})
+            chat_response = self.client.post(
+                chat_uri,
+                data={
+                    'dataset_name': target_dataset_name,
+                    'min_year': min_year,
+                    'max_year': max_year,
+                },
+            )
             self.assertEqual(chat_response.status_code, status.HTTP_200_OK)
+            self.assertEqual(chat_response.data['min_year'], min_year)
+            self.assertEqual(chat_response.data['max_year'], max_year)
             query_results = chat_response.data['query_results']
             self.assertEqual(len(query_results), 1)
             result = query_results[0]
+            self.assertEqual(result['dataset_name'], target_dataset_name)
             self.assertEqual(result['celery_task']['status'], TaskStatus.SUCCESS)
             self.assertEqual(len(result['references']), 3)
 
