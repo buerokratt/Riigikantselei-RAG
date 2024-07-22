@@ -1,7 +1,6 @@
 from django.db import transaction
 from rest_framework import serializers
 
-from api.utilities.serializers import reasonable_character_with_spaces_validator
 from core.models import CoreVariable, Dataset
 from core.utilities import validate_min_max_years
 from text_search.models import TextSearchConversation, TextSearchQueryResult, TextTask
@@ -83,12 +82,6 @@ class TextSearchConversationReadOnlySerializer(serializers.ModelSerializer):
             'query_results',
         )
         read_only_fields = ('__all__',)
-
-
-class ConversationSetTitleSerializer(serializers.Serializer):
-    title = serializers.CharField(
-        required=True, max_length=100, validators=[reasonable_character_with_spaces_validator]
-    )
 
 
 class TextSearchConversationBulkDeleteSerializer(serializers.Serializer):
