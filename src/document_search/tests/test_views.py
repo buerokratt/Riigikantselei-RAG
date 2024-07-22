@@ -159,10 +159,10 @@ class DocumentSearchTestCase(APITransactionTestCase):
         self.assertNotEqual(response.data['user_input'], response.data['title'])
         self.assertEqual(response.data['title'][0], input_text[0].upper())
 
+        # Do the actual changing.
         conversation_id = response.data['id']
-        detail_uri = reverse('v1:document_search-detail', kwargs={'pk': conversation_id})
+        detail_uri = reverse('v1:document_search-set-title', kwargs={'pk': conversation_id})
         patched_title = 'KOOKUS'
-        detail_response = self.client.patch(detail_uri, data={'title': patched_title})
+        detail_response = self.client.post(detail_uri, data={'title': patched_title})
         self.assertEqual(detail_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(detail_response.data['title'], patched_title)
-        self.assertNotEqual(detail_response.data['title'], detail_response.data['user_input'])
+        self.assertEqual(detail_response.data, None)

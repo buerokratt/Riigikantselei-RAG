@@ -1,12 +1,13 @@
 from django.db import transaction
 from django.db.models import QuerySet
-from rest_framework import viewsets
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
 from rest_framework.request import Request
 from rest_framework.response import Response
 
 from core.models import CoreVariable, Dataset
+from core.serializers import ConversationSetTitleSerializer
 from document_search.models import (
     AggregationTask,
     DocumentAggregationResult,
@@ -104,3 +105,22 @@ class DocumentSearchConversationViewset(viewsets.ModelViewSet):
         instance.refresh_from_db()
         data = DocumentSearchConversationSerializer(instance).data
         return Response(data)
+
+    @action(detail=True, methods=['post'])
+    def set_title(self, request: Request, pk: int) -> Response:
+        # Prevent anyone from changing other users' data.
+        # We do it here, not self.check_object_permissions, because we want to return 404, not 403,
+        # because 403 implies that the resource exists and a non-manager should not know even that.
+        queryset = DocumentSearchConversation.objects.filter(auth_user=request.user)
+        conversation = get_object_or_404(queryset, id=pk)
+
+        serializer = ConversationSetTitleSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        # Ensure only the first letter is capitalized.
+        title = serializer.validated_data['title']
+        conversation.title = title[0].upper() + title[1:]
+        conversation.save()
+
+        return Response()

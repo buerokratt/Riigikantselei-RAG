@@ -4,9 +4,9 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from core.serializers import ConversationSetTitleSerializer
 from text_search.models import TextSearchConversation
 from text_search.serializers import (
-    ConversationSetTitleSerializer,
     TextSearchConversationBulkDeleteSerializer,
     TextSearchConversationCreateSerializer,
     TextSearchConversationReadOnlySerializer,
@@ -78,9 +78,10 @@ class TextSearchConversationViewset(viewsets.ViewSet):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        conversation.title = serializer.validated_data['title']
+        # Ensure only the first letter is capitalized.
+        title = serializer.validated_data['title']
+        conversation.title = title[0].upper() + title[1:]
         conversation.save()
-
         return Response()
 
     @action(

@@ -4,6 +4,7 @@ from django.conf import settings
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 
+from api.utilities.serializers import reasonable_character_with_spaces_validator
 from core.choices import CORE_VARIABLE_CHOICES
 from core.models import CoreVariable, Dataset
 
@@ -48,3 +49,9 @@ class DatasetSerializer(serializers.ModelSerializer):
     class Meta:
         model = Dataset
         fields = '__all__'
+
+
+class ConversationSetTitleSerializer(serializers.Serializer):
+    title = serializers.CharField(
+        required=True, max_length=100, validators=[reasonable_character_with_spaces_validator]
+    )

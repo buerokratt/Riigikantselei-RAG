@@ -89,6 +89,7 @@ class DocumentSearchConversationSerializer(serializers.ModelSerializer):
         read_only_fields = (
             'auth_user',
             'query_results',
+            'title',
             'aggregation_result',
             # We set min and max year here because
             # the value is only filled in chat extra action.
