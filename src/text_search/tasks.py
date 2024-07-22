@@ -6,11 +6,8 @@ from django.conf import settings
 from django.db.models import F
 
 from api.celery_handler import app
-from api.utilities.elastic import ElasticKNN
 from api.utilities.gpt import ChatGPT
-from api.utilities.vectorizer import Vectorizer
 from core.exceptions import OPENAI_EXCEPTIONS
-from core.utilities import parse_gpt_question_and_references
 from text_search.models import TextSearchConversation, TextSearchQueryResult, TextTask
 
 # pylint: disable=unused-argument,too-many-arguments
@@ -21,16 +18,13 @@ from text_search.models import TextSearchConversation, TextSearchQueryResult, Te
 
 # TODO: unit test
 def async_call_celery_task_chain(
-    min_year: int,
-    max_year: int,
     user_input: str,
     dataset_index_queries: List[str],
     conversation_id: int,
     result_uuid: str,
 ) -> None:
     rag_task = query_and_format_rag_context.s(
-        min_year=min_year,
-        max_year=max_year,
+        conversation_id=conversation_id,
         user_input=user_input,
         dataset_index_queries=dataset_index_queries,
     )
@@ -49,40 +43,24 @@ def async_call_celery_task_chain(
 @app.task(name='query_and_format_rag_context', max_retries=5, bind=True)
 def query_and_format_rag_context(
     celery_task: Task,
-    min_year: int,
-    max_year: int,
+    conversation_id: int,
     user_input: str,
     dataset_index_queries: List[str],
 ) -> dict:
     """
     Task for fetching the RAG context from pre-processed vectors in ElasticSearch.
 
+    :param conversation_id:
     :param celery_task: Contains access to the Celery Task instance.
-    :param min_year: Earliest year to consider documents from.
-    :param max_year: Latest year to consider documents from.
     :param user_input: User sent input to add context to.
     :param dataset_index_queries: Which wildcarded indexes to search from in Elasticsearch.
     :return: Text containing user input and relevant context documents.
     """
-    vectorizer = Vectorizer(
-        model_name=settings.VECTORIZATION_MODEL_NAME,
-        system_configuration=settings.BGEM3_SYSTEM_CONFIGURATION,
-        inference_configuration=settings.BGEM3_INFERENCE_CONFIGURATION,
-        model_directory=settings.DATA_DIR,
+    conversation: TextSearchConversation = TextSearchConversation.objects.get(pk=conversation_id)
+    context_and_references = conversation.generate_conversations_and_references(
+        user_input=user_input, dataset_index_queries=dataset_index_queries
     )
-    input_vector = vectorizer.vectorize([user_input])['vectors'][0]
-
-    elastic_knn = ElasticKNN()
-
-    search_query = ElasticKNN.create_date_query(min_year=min_year, max_year=max_year)
-    search_query_wrapper = {'search_query': search_query} if search_query else {}
-    matching_documents = elastic_knn.search_vector(
-        vector=input_vector, indices=dataset_index_queries, **search_query_wrapper
-    )
-
-    hits = matching_documents['hits']['hits']
-    question_and_references = parse_gpt_question_and_references(user_input, hits)
-    return question_and_references
+    return context_and_references
 
 
 # TODO: unit test, mocking like in test_openai_components.py

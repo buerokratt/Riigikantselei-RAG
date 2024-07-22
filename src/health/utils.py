@@ -8,8 +8,8 @@ from urllib.parse import urlparse
 import redis
 
 from api.settings import BASE_DIR, CELERY_BROKER_URL
-from api.utilities.core_settings import get_core_setting
 from api.utilities.elastic import ElasticCore
+from core.models import CoreVariable
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ def get_elastic_status(uri: Optional[str] = None) -> dict:
     """
     Checks Elasticsearch connection status and version.
     """
-    es_url = uri or get_core_setting('ELASTICSEARCH_URL')
+    es_url = uri or CoreVariable.get_core_setting('ELASTICSEARCH_URL')
     es_info = {'alive': False, 'url': es_url}
     try:
         es_core = ElasticCore(es_url)

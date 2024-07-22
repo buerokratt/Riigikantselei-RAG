@@ -5,8 +5,8 @@ from rest_framework import status
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APITestCase
 
-from api.utilities.core_settings import get_core_setting
 from api.utilities.elastic import ELASTIC_NOT_FOUND_MESSAGE, ElasticCore
+from core.models import CoreVariable
 from user_profile.utilities import create_test_user_with_user_profile
 
 
@@ -31,7 +31,7 @@ class TestElasticDetailView(APITestCase):
         self.elastic_core.elasticsearch.index(
             index=self.test_index,
             id=self.document_id,
-            document={get_core_setting('ELASTICSEARCH_TEXT_CONTENT_FIELD'): self.text},
+            document={CoreVariable.get_core_setting('ELASTICSEARCH_TEXT_CONTENT_FIELD'): self.text},
             refresh='wait_for',
         )
 

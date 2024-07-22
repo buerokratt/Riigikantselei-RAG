@@ -4,15 +4,14 @@ from typing import List, Optional
 from celery import Task
 from django.conf import settings
 from django.db.models import F
+from elasticsearch_dsl.response import Hit
 
 from api.celery_handler import app
-from api.utilities.core_settings import get_core_setting
 from api.utilities.elastic import ElasticKNN
 from api.utilities.gpt import ChatGPT
 from api.utilities.vectorizer import Vectorizer
 from core.exceptions import OPENAI_EXCEPTIONS
-from core.models import Dataset
-from core.utilities import get_all_dataset_values, parse_gpt_question_and_references
+from core.models import CoreVariable, Dataset
 from document_search.models import (
     DocumentAggregationResult,
     DocumentSearchConversation,
@@ -31,6 +30,39 @@ from document_search.utilities import match_pattern
 #  and bugs will happen more easily.
 
 
+def parse_aggregation(hits: List[Hit]) -> List[dict]:
+    year_field = CoreVariable.get_core_setting('ELASTICSEARCH_YEAR_FIELD')
+
+    datasets = {}
+    for dataset in Dataset.objects.all():
+        datasets[dataset.index] = dataset
+
+    dataset_years = {}
+    for hit in hits:
+        index = hit.meta.index
+        dataset_orm: Optional[Dataset] = match_pattern(index, datasets)
+        if dataset_orm:
+            dataset_name = dataset_orm.name
+            year = getattr(hit, year_field)
+            if dataset_name not in dataset_years:
+                dataset_years[dataset_name] = [year]
+            else:
+                dataset_years[dataset_name].append(year)
+
+    response = []
+    for dataset, years in dataset_years.items():
+        item = {
+            'dataset_name': dataset,
+            'min_year': min(years),
+            'max_year': max(years),
+            'count': len(years),
+        }
+
+        response.append(item)
+
+    return response
+
+
 # TODO: unit test
 # Using bind=True sets the Celery Task object to the first argument, in this case celery_task.
 @app.task(name='generate_aggregations', bind=True)
@@ -38,18 +70,15 @@ def generate_aggregations(
     celery_task: Task, conversation_id: int, user_input: str, result_uuid: str
 ) -> None:
     try:
-        conversation: DocumentSearchConversation = DocumentSearchConversation.objects.get(
-            pk=conversation_id
-        )
-        aggregation_result: DocumentAggregationResult = DocumentAggregationResult.objects.get(
+        conversation = DocumentSearchConversation.objects.get(pk=conversation_id)
+        aggregation_result = DocumentAggregationResult.objects.get(
             uuid=result_uuid, conversation=conversation
         )
         task = aggregation_result.celery_task
         task.set_started()
 
         knn = ElasticKNN()
-        year_field = get_core_setting('ELASTICSEARCH_YEAR_FIELD')
-        indices = get_all_dataset_values('index')
+        indices = Dataset.get_all_dataset_values('index')
 
         vectorizer = Vectorizer(
             model_name=settings.VECTORIZATION_MODEL_NAME,
@@ -68,37 +97,12 @@ def generate_aggregations(
             indices=indices,
         )
 
-        datasets = {}
-        for dataset in Dataset.objects.all():
-            datasets[dataset.index] = dataset
+        aggregations = parse_aggregation(hits)
 
-        dataset_years = {}
-        for hit in hits:
-            index = hit.meta.index
-            dataset_orm: Optional[Dataset] = match_pattern(index, datasets)
-            if dataset_orm:
-                dataset_name = dataset_orm.name
-                year = getattr(hit, year_field)
-                if dataset_name not in dataset_years:
-                    dataset_years[dataset_name] = [year]
-                else:
-                    dataset_years[dataset_name].append(year)
+        aggregation_result.aggregations = aggregations
+        aggregation_result.save()
 
-        response = []
-        for dataset, years in dataset_years.items():
-            item = {
-                'dataset_name': dataset,
-                'min_year': min(years),
-                'max_year': max(years),
-                'count': len(years),
-            }
-
-            response.append(item)
-
-            aggregation_result.aggregations = response
-            aggregation_result.save()
-
-            task.set_success()
+        task.set_success()
 
     except Exception as exception:
         logging.getLogger(settings.ERROR_LOGGER).exception('Failed to fetch aggregations!')
@@ -116,26 +120,9 @@ def generate_openai_prompt(
     celery_task: Task, conversation_id: int, dataset_index_queries: List[str]
 ) -> dict:
     conversation = DocumentSearchConversation.objects.get(pk=conversation_id)
-    knn = ElasticKNN()
-
-    vectorizer = Vectorizer(
-        model_name=settings.VECTORIZATION_MODEL_NAME,
-        system_configuration=settings.BGEM3_SYSTEM_CONFIGURATION,
-        inference_configuration=settings.BGEM3_INFERENCE_CONFIGURATION,
-        model_directory=settings.DATA_DIR,
-    )
-
-    question_vector = vectorizer.vectorize([conversation.user_input])['vectors'][0]
-    search_query = knn.create_date_query(
-        min_year=conversation.min_year, max_year=conversation.max_year
-    )
-    response = knn.search_vector(
-        vector=question_vector, indices=dataset_index_queries, search_query=search_query
-    )
-
-    hits = response['hits']['hits']
-    context_and_references = parse_gpt_question_and_references(
-        user_input=conversation.user_input, hits=hits
+    user_input = conversation.user_input
+    context_and_references = conversation.generate_conversations_and_references(
+        user_input=user_input, dataset_index_queries=dataset_index_queries
     )
     return context_and_references
 
@@ -167,10 +154,8 @@ def send_document_search(
     """
     try:
         conversation = DocumentSearchConversation.objects.get(id=conversation_id)
-        result: DocumentSearchQueryResult = conversation.query_results.filter(
-            uuid=result_uuid
-        ).first()
-        document_task: DocumentTask = result.celery_task
+        result = conversation.query_results.filter(uuid=result_uuid).first()
+        document_task = result.celery_task
 
         document_task.set_started()
 

@@ -1,14 +1,9 @@
 from django.db import transaction
 from rest_framework import serializers
 
-from api.utilities.core_settings import get_core_setting
 from api.utilities.serializers import reasonable_character_with_spaces_validator
-from core.models import Dataset
-from core.utilities import (
-    get_all_dataset_values,
-    validate_dataset_names,
-    validate_min_max_years,
-)
+from core.models import CoreVariable, Dataset
+from core.utilities import validate_min_max_years
 from text_search.models import TextSearchConversation, TextSearchQueryResult, TextTask
 from text_search.tasks import async_call_celery_task_chain
 
@@ -20,15 +15,13 @@ class TextSearchConversationCreateSerializer(serializers.Serializer):
     max_year = serializers.IntegerField(default=None, min_value=1700)
     dataset_names = serializers.ListField(
         # By default include all datasets.
-        default=get_all_dataset_values,
+        default=Dataset.get_all_dataset_values,
         child=serializers.CharField(),
     )
 
     def validate(self, data: dict) -> dict:
         validate_min_max_years(data['min_year'], data['max_year'])
-
-        validate_dataset_names(data['dataset_names'])
-
+        Dataset.validate_dataset_names(data['dataset_names'])
         return data
 
     def create(self, validated_data: dict) -> TextSearchConversation:
@@ -38,7 +31,7 @@ class TextSearchConversationCreateSerializer(serializers.Serializer):
 
         conversation = TextSearchConversation.objects.create(
             auth_user=validated_data['auth_user'],
-            system_input=get_core_setting('OPENAI_SYSTEM_MESSAGE'),
+            system_input=CoreVariable.get_core_setting('OPENAI_SYSTEM_MESSAGE'),
             title=validated_data['user_input'],
             dataset_names_string=dataset_names_string,
             min_year=min_year,
@@ -125,8 +118,6 @@ class TextSearchQuerySubmitSerializer(serializers.Serializer):
             # before Celery starts working on it since it being quicker is a common occurrence.
             transaction.on_commit(
                 lambda: async_call_celery_task_chain(
-                    min_year=instance.min_year,
-                    max_year=instance.max_year,
                     user_input=user_input,
                     dataset_index_queries=dataset_index_queries,
                     conversation_id=conversation_id,

@@ -4,7 +4,7 @@ from rest_framework.authtoken.models import Token
 from rest_framework.reverse import reverse
 from rest_framework.test import APITestCase
 
-from api.utilities.core_settings import get_core_setting
+from core.models import CoreVariable
 from user_profile.utilities import create_test_user_with_user_profile
 
 
@@ -173,7 +173,7 @@ class TestUserProfileEdit(APITestCase):
 
         self.assertEqual(
             self.non_manager_reviewed_auth_user.user_profile.usage_limit,
-            get_core_setting('DEFAULT_USAGE_LIMIT_EUROS'),
+            CoreVariable.get_core_setting('DEFAULT_USAGE_LIMIT_EUROS'),
         )
 
         response = self.client.post(self.set_limit_endpoint_url, data=self.input_data)

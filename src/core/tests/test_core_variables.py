@@ -5,7 +5,7 @@ from rest_framework.authtoken.models import Token
 from rest_framework.reverse import reverse
 from rest_framework.test import APITestCase
 
-from api.utilities.core_settings import get_core_setting
+from core.models import CoreVariable
 from user_profile.utilities import create_test_user_with_user_profile
 
 SAMPLE_ES_VALUE = 'http://localhost:920000'
@@ -35,7 +35,7 @@ class TestCoreVariableViews(APITestCase):
         # Asserting that everything is empty.
         self.assertEqual(len(response.data), 0)
 
-        setting = get_core_setting('ELASTICSEARCH')
+        setting = CoreVariable.get_core_setting('ELASTICSEARCH')
         self.assertEqual(setting, SAMPLE_ES_VALUE)
 
     @override_settings(CORE_SETTINGS={'ELASTICSEARCH_URL': SAMPLE_ES_VALUE})
@@ -46,7 +46,7 @@ class TestCoreVariableViews(APITestCase):
         response = self.client.post(self.list_url, data=data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-        setting = get_core_setting('ELASTICSEARCH_URL')
+        setting = CoreVariable.get_core_setting('ELASTICSEARCH_URL')
         self.assertEqual(setting, new_value)
 
     def test_floats_and_integers_being_parsed_as_numbers_and_not_strings(self) -> None:
@@ -56,7 +56,7 @@ class TestCoreVariableViews(APITestCase):
         response = self.client.post(self.list_url, data=data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-        setting = get_core_setting('OPENAI_API_TIMEOUT')
+        setting = CoreVariable.get_core_setting('OPENAI_API_TIMEOUT')
         self.assertTrue(isinstance(setting, float))
         self.assertEqual(setting, float_value)
 
@@ -77,7 +77,7 @@ class TestCoreVariableViews(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
         # Setting we fetch must be the original value.
-        setting = get_core_setting('OPENAI_API_KEY')
+        setting = CoreVariable.get_core_setting('OPENAI_API_KEY')
         self.assertEqual(setting, key_value)
 
         # Let's check the representations in list/detail views.
@@ -133,7 +133,7 @@ class TestCoreVariableViews(APITestCase):
         patch_response = self.client.patch(patch_url, data={'value': new_value})
         self.assertEqual(patch_response.status_code, status.HTTP_200_OK)
 
-        setting = get_core_setting(key_name)
+        setting = CoreVariable.get_core_setting(key_name)
         self.assertEqual(setting, new_value)
 
     @override_settings(CORE_SETTINGS={'ELASTICSEARCH_URL': SAMPLE_ES_VALUE})
@@ -155,7 +155,7 @@ class TestCoreVariableViews(APITestCase):
 
         # Since there is no more core variable set,
         # it should revert to the default value in the settings file.
-        setting = get_core_setting(key_name)
+        setting = CoreVariable.get_core_setting(key_name)
         self.assertEqual(setting, SAMPLE_ES_VALUE)
 
     def test_non_manager_users_not_having_access(self) -> None:

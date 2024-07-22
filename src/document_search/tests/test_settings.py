@@ -1,6 +1,6 @@
 from typing import Dict
 
-from api.utilities.core_settings import get_core_setting
+from core.models import CoreVariable
 
 
 class DocumentSearchMockResponse:
@@ -43,6 +43,6 @@ class DocumentSearchMockResponse:
 
     @property
     def total_cost(self) -> float:
-        return self.input_tokens * get_core_setting(
+        return self.input_tokens * CoreVariable.get_core_setting(
             'EURO_COST_PER_INPUT_TOKEN'
-        ) + self.response_tokens * get_core_setting('EURO_COST_PER_OUTPUT_TOKEN')
+        ) + self.response_tokens * CoreVariable.get_core_setting('EURO_COST_PER_OUTPUT_TOKEN')

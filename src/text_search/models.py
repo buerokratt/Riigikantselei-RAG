@@ -2,7 +2,7 @@ from typing import List, Optional
 
 from django.db import models
 
-from core.models import ConversationMixin, ResultMixin, TaskMixin
+from core.mixins import ConversationMixin, ResultMixin, TaskMixin
 
 
 class TextSearchConversation(ConversationMixin):

@@ -10,7 +10,7 @@ from elasticsearch_dsl import Search
 from rest_framework import status
 from rest_framework.exceptions import APIException
 
-from api.utilities.core_settings import get_core_setting
+from core.models import CoreVariable
 
 logger = logging.getLogger(__name__)
 
@@ -74,8 +74,10 @@ def _elastic_connection(func: Callable) -> Callable:
 
 class ElasticCore:
     def __init__(self, elasticsearch_url: Optional[str] = None, timeout: Optional[int] = None):
-        self.timeout = timeout or get_core_setting('ELASTICSEARCH_TIMEOUT')
-        self.elasticsearch_url = elasticsearch_url or get_core_setting('ELASTICSEARCH_URL')
+        self.timeout = timeout or CoreVariable.get_core_setting('ELASTICSEARCH_TIMEOUT')
+        self.elasticsearch_url = elasticsearch_url or CoreVariable.get_core_setting(
+            'ELASTICSEARCH_URL'
+        )
         self.elasticsearch = Elasticsearch(self.elasticsearch_url, timeout=self.timeout)
 
     @_elastic_connection
@@ -115,7 +117,7 @@ class ElasticCore:
     @_elastic_connection
     def get_document_content(self, index: str, document_id: str) -> Dict:
         document = self.elasticsearch.get(index=index, id=document_id)
-        text_field = get_core_setting('ELASTICSEARCH_TEXT_CONTENT_FIELD')
+        text_field = CoreVariable.get_core_setting('ELASTICSEARCH_TEXT_CONTENT_FIELD')
         text = document.body['_source'].get(text_field, '')
         return text
 
@@ -130,9 +132,11 @@ class ElasticKNN:
         timeout: Optional[int] = None,
         field: Optional[str] = None,
     ):
-        self.timeout = timeout or get_core_setting('ELASTICSEARCH_TIMEOUT')
-        self.field = field or get_core_setting('ELASTICSEARCH_VECTOR_FIELD')
-        self.elasticsearch_url = elasticsearch_url or get_core_setting('ELASTICSEARCH_URL')
+        self.timeout = timeout or CoreVariable.get_core_setting('ELASTICSEARCH_TIMEOUT')
+        self.field = field or CoreVariable.get_core_setting('ELASTICSEARCH_VECTOR_FIELD')
+        self.elasticsearch_url = elasticsearch_url or CoreVariable.get_core_setting(
+            'ELASTICSEARCH_URL'
+        )
         self.elasticsearch = Elasticsearch(self.elasticsearch_url, timeout=self.timeout)
 
     @staticmethod
@@ -140,7 +144,7 @@ class ElasticKNN:
         min_year: Optional[int] = None, max_year: Optional[int] = None
     ) -> Optional[dict]:
         search = elasticsearch_dsl.Search()
-        date_field = get_core_setting('ELASTICSEARCH_YEAR_FIELD')
+        date_field = CoreVariable.get_core_setting('ELASTICSEARCH_YEAR_FIELD')
 
         date_filter = {}
         if min_year is None and max_year is None:

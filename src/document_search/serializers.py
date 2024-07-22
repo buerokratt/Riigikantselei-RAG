@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from rest_framework.authtoken.admin import User
 
-from core.utilities import validate_dataset_names, validate_min_max_years
+from core.models import Dataset
+from core.utilities import validate_min_max_years
 from document_search.models import (
     DocumentAggregationResult,
     DocumentSearchConversation,
@@ -56,9 +57,7 @@ class DocumentSearchChatSerializer(serializers.Serializer):
 
     def validate(self, data: dict) -> dict:
         validate_min_max_years(data['min_year'], data['max_year'])
-
-        validate_dataset_names([data['dataset_name']])
-
+        Dataset.validate_dataset_names([data['dataset_name']])
         return data
 
 

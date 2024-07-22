@@ -1,7 +1,7 @@
 from typing import Any, Dict
 
-from api.utilities.core_settings import get_core_setting
 from api.utilities.testing import IsType
+from core.models import CoreVariable
 
 # GPT
 
@@ -74,12 +74,11 @@ GPT_STATUS_CODE = 200
 INDEX_NAME = 'test_index'
 SEARCH_TEXT = 'Search text'
 
-VECTOR_FIELD_NAME = get_core_setting('ELASTICSEARCH_VECTOR_FIELD')
-TEXT_FIELD_NAME = get_core_setting('ELASTICSEARCH_TEXT_CONTENT_FIELD')
-TITLE_FIELD_NAME = get_core_setting('ELASTICSEARCH_TITLE_FIELD')
-URL_FIELD_NAME = get_core_setting('ELASTICSEARCH_URL_FIELD')
-YEAR_FIELD_NAME = get_core_setting('ELASTICSEARCH_YEAR_FIELD')
-DATASET_NAME_FIELD_NAME = get_core_setting('ELASTICSEARCH_DATASET_NAME_FIELD')
+VECTOR_FIELD_NAME = CoreVariable.get_core_setting('ELASTICSEARCH_VECTOR_FIELD')
+TEXT_FIELD_NAME = CoreVariable.get_core_setting('ELASTICSEARCH_TEXT_CONTENT_FIELD')
+TITLE_FIELD_NAME = CoreVariable.get_core_setting('ELASTICSEARCH_TITLE_FIELD')
+URL_FIELD_NAME = CoreVariable.get_core_setting('ELASTICSEARCH_URL_FIELD')
+YEAR_FIELD_NAME = CoreVariable.get_core_setting('ELASTICSEARCH_YEAR_FIELD')
 
 DOCUMENT_TEXT = 'Text string'
 DOCUMENT_TITLE = 'title_string'
@@ -95,7 +94,6 @@ EXPECTED_DOCUMENT_SUBSET = {
         TITLE_FIELD_NAME: DOCUMENT_TITLE,
         URL_FIELD_NAME: DOCUMENT_STRING,
         YEAR_FIELD_NAME: DOCUMENT_YEAR,
-        DATASET_NAME_FIELD_NAME: DOCUMENT_DATASET_NAME,
     },
 }
 

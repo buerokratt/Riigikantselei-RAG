@@ -2,7 +2,7 @@ from django.contrib.auth.models import User
 from django.db import models
 from rest_framework.authtoken.models import Token
 
-from api.utilities.core_settings import get_core_setting
+from core.models import CoreVariable
 
 
 class UserProfile(models.Model):
@@ -45,7 +45,7 @@ class UserProfile(models.Model):
     def usage_limit(self) -> float:
         if self.custom_usage_limit_euros is not None:
             return self.custom_usage_limit_euros
-        return get_core_setting('DEFAULT_USAGE_LIMIT_EUROS')
+        return CoreVariable.get_core_setting('DEFAULT_USAGE_LIMIT_EUROS')
 
     def __str__(self) -> str:
         if self.auth_user.first_name and self.auth_user.last_name:
