@@ -26,7 +26,8 @@ class ConversationMixin(models.Model):
     def __str__(self) -> str:
         return f"'{self.title}' by {self.auth_user.username}"
 
-    def format_gpt_question(self, user_input: str, context: str) -> str:
+    @staticmethod
+    def format_gpt_question(user_input: str, context: str) -> str:
         missing_context = CoreVariable.get_core_setting('OPENAI_MISSING_CONTEXT_MESSAGE')
         prompt = CoreVariable.get_core_setting('OPENAI_OPENING_QUESTION')
 
@@ -40,7 +41,8 @@ class ConversationMixin(models.Model):
 
         return message
 
-    def parse_gpt_question_and_references(self, user_input: str, hits: List[dict]) -> dict:
+    @staticmethod
+    def parse_gpt_question_and_references(user_input: str, hits: List[dict]) -> dict:
         url_field = CoreVariable.get_core_setting('ELASTICSEARCH_URL_FIELD')
         title_field = CoreVariable.get_core_setting('ELASTICSEARCH_TITLE_FIELD')
         text_field = CoreVariable.get_core_setting('ELASTICSEARCH_TEXT_CONTENT_FIELD')
@@ -60,7 +62,7 @@ class ConversationMixin(models.Model):
                 context_documents_contents.append(reference)
 
         context = '\n\n'.join([document[text_field] for document in context_documents_contents])
-        query_with_context = self.format_gpt_question(user_input, context)
+        query_with_context = ConversationMixin.format_gpt_question(user_input, context)
 
         for reference in context_documents_contents:
             reference.pop('text', None)

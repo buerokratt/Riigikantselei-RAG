@@ -26,10 +26,6 @@ class DocumentTaskSerializer(serializers.ModelSerializer):
 
 
 class DocumentSearchQueryResultSerializer(serializers.ModelSerializer):
-    title = serializers.CharField(
-        default='',
-        help_text="Display value for history, no need to fill this as it's automatically set",
-    )
     celery_task = DocumentTaskSerializer(read_only=True, many=False)
 
     class Meta:
@@ -37,7 +33,6 @@ class DocumentSearchQueryResultSerializer(serializers.ModelSerializer):
         fields = (
             'id',
             'uuid',
-            'title',
             'user_input',
             'response',
             'dataset_name',
@@ -51,6 +46,7 @@ class DocumentSearchQueryResultSerializer(serializers.ModelSerializer):
 
 
 class DocumentSearchChatSerializer(serializers.Serializer):
+    user_input = serializers.CharField()
     dataset_name = serializers.CharField()
     min_year = serializers.IntegerField(min_value=1700, default=None)
     max_year = serializers.IntegerField(min_value=1700, default=None)

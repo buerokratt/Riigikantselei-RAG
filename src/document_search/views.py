@@ -76,6 +76,7 @@ class DocumentSearchConversationViewset(viewsets.ModelViewSet):
 
         instance: DocumentSearchConversation = self.get_object()
 
+        user_input = serializer.validated_data['user_input']
         min_year = serializer.validated_data['min_year']
         max_year = serializer.validated_data['max_year']
 
@@ -83,7 +84,6 @@ class DocumentSearchConversationViewset(viewsets.ModelViewSet):
         instance.max_year = max_year
         instance.save()
 
-        user_input = instance.user_input
         result = DocumentSearchQueryResult.objects.create(
             conversation=instance, user_input=user_input
         )

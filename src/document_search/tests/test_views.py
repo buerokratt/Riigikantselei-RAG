@@ -85,7 +85,8 @@ class DocumentSearchTestCase(APITransactionTestCase):
         self._index_test_dataset()
 
         # Create the conversation which also creates the aggregations automatically.
-        payload = {'user_input': 'Kuidas saab piim kookuse sisse?'}
+        user_input = 'Kuidas saab piim kookuse sisse?'
+        payload = {'user_input': user_input}
         post_response = self.client.post(self.conversation_uri, data=payload)
         self.assertEqual(post_response.status_code, status.HTTP_201_CREATED)
 
@@ -119,6 +120,7 @@ class DocumentSearchTestCase(APITransactionTestCase):
             chat_response = self.client.post(
                 chat_uri,
                 data={
+                    'user_input': user_input,
                     'dataset_name': target_dataset_name,
                     'min_year': min_year,
                     'max_year': max_year,

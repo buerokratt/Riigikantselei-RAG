@@ -28,8 +28,7 @@ if env_file_path:
 
 env = environ.Env()
 
-GPT_SYSTEM_PROMPT_DEFAULT = """
-Kontekst: {}
+GPT_SYSTEM_PROMPT_DEFAULT = """Kontekst: {}
 Palun vasta järgnevale küsimusele sellega samas keeles.
 Kasuta küsimusele vastamiseks AINULT ülaltoodud konteksti.
 Kui kontekstis pole vastamiseks piisavalt ja/või sobivat infot, vasta: "{}".
