@@ -6,7 +6,7 @@ import django
 import openai
 from rest_framework.exceptions import APIException
 
-from api.utilities.core_settings import get_core_setting
+from core.models import CoreVariable
 
 logger = logging.getLogger(__name__)
 
@@ -59,9 +59,9 @@ class LLMResponse:
 
     @property
     def total_cost(self) -> float:
-        return self.input_tokens * get_core_setting(
+        return self.input_tokens * CoreVariable.get_core_setting(
             'EURO_COST_PER_INPUT_TOKEN'
-        ) + self.response_tokens * get_core_setting('EURO_COST_PER_OUTPUT_TOKEN')
+        ) + self.response_tokens * CoreVariable.get_core_setting('EURO_COST_PER_OUTPUT_TOKEN')
 
     def __str__(self) -> str:
         return f'{self.message} / {self.total_tokens} tokens used'
@@ -107,11 +107,11 @@ class ChatGPT:
         timeout: Optional[int] = None,
         max_retries: Optional[int] = None,
     ):
-        api_key = api_key or get_core_setting('OPENAI_API_KEY')
-        timeout = timeout or get_core_setting('OPENAI_API_TIMEOUT')
-        max_retries = max_retries or get_core_setting('OPENAI_API_MAX_RETRIES')
+        api_key = api_key or CoreVariable.get_core_setting('OPENAI_API_KEY')
+        timeout = timeout or CoreVariable.get_core_setting('OPENAI_API_TIMEOUT')
+        max_retries = max_retries or CoreVariable.get_core_setting('OPENAI_API_MAX_RETRIES')
 
-        self.model = model or get_core_setting('OPENAI_API_CHAT_MODEL')
+        self.model = model or CoreVariable.get_core_setting('OPENAI_API_CHAT_MODEL')
 
         if api_key is not None:
             self.gpt = openai.OpenAI(api_key=api_key, timeout=timeout, max_retries=max_retries)

@@ -28,6 +28,15 @@ if env_file_path:
 
 env = environ.Env()
 
+GPT_SYSTEM_PROMPT_DEFAULT = """
+Kontekst: {}
+Palun vasta järgnevale küsimusele sellega samas keeles.
+Kasuta küsimusele vastamiseks AINULT ülaltoodud konteksti.
+Kui kontekstis pole vastamiseks piisavalt ja/või sobivat infot, vasta: "{}".
+
+Küsimus: {}
+"""
+
 # TODO: why are some parameters in core settings and some not?
 #  Does anything other than default usage limit or cost need to be here?
 PROTECTED_CORE_KEYS = ('SECRET', 'KEY', 'PASSWORD')
@@ -42,14 +51,17 @@ CORE_SETTINGS = {
     'ELASTICSEARCH_YEAR_FIELD': env('RK_ELASTICSEARCH_YEAR_FIELD', default='year'),
     'ELASTICSEARCH_URL_FIELD': env('RK_ELASTICSEARCH_URL_FIELD', default='url'),
     'ELASTICSEARCH_TITLE_FIELD': env('RK_ELASTICSEARCH_TITLE_FIELD', default='title'),
-    'ELASTICSEARCH_DATASET_NAME_FIELD': env(
-        'RK_ELASTICSEARCH_DATASET_NAME_FIELD', default='dataset_name'
-    ),
     # OpenAI integration
     # TODO: obtain key
     'OPENAI_API_KEY': env('RK_OPENAI_API_KEY', default=None),
     'OPENAI_SYSTEM_MESSAGE': env.str(
         'RK_OPENAI_SYSTEM_MESSAGE', default='You are a helpful assistant.'
+    ),
+    'OPENAI_MISSING_CONTEXT_MESSAGE': env.str(
+        'RK_OPENAI_MISSING_CONTEXT_MESSAGE', default='Teadmusbaasis info puudub!'
+    ),
+    'OPENAI_OPENING_QUESTION': env.str(
+        'RK_OPENAI_OPENING_QUESTION', default=GPT_SYSTEM_PROMPT_DEFAULT
     ),
     'OPENAI_API_TIMEOUT': env.int('RK_OPENAI_API_TIMEOUT', default=10),
     'OPENAI_API_MAX_RETRIES': env.int('RK_OPENAI_API_MAX_RETRIES', default=5),

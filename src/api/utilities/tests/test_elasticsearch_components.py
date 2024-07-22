@@ -14,8 +14,6 @@ from api.utilities.testing import set_core_setting
 from api.utilities.tests.test_settings import (
     BOTH_INDEX_EXPECTED_DOCUMENT_SET,
     BOTH_INDEXES_EXPECTED_HIT_COUNT,
-    DATASET_NAME_FIELD_NAME,
-    DOCUMENT_DATASET_NAME,
     DOCUMENT_STRING,
     DOCUMENT_TEXT,
     DOCUMENT_TITLE,
@@ -94,7 +92,6 @@ class TestElasticCore(APITestCase):
         title: str,
         url: str,
         year: int,
-        dataset_name: str,
     ) -> str:
         # Save document to database
         document_id = uuid.uuid4().hex
@@ -106,7 +103,6 @@ class TestElasticCore(APITestCase):
                 TITLE_FIELD_NAME: title,
                 URL_FIELD_NAME: url,
                 YEAR_FIELD_NAME: year,
-                DATASET_NAME_FIELD_NAME: dataset_name,
             },
         )
         self.assertEqual(index_response['result'], 'created')
@@ -142,7 +138,6 @@ class TestElasticCore(APITestCase):
             DOCUMENT_TITLE,
             DOCUMENT_STRING,
             DOCUMENT_YEAR,
-            DOCUMENT_DATASET_NAME,
         )
 
         # Check that the document exists in the expected form
@@ -184,7 +179,6 @@ class TestElasticCore(APITestCase):
                 '',
                 '',
                 2024,
-                '',
             )
 
         search_vector = vectorizer.vectorize([SEARCH_TEXT])['vectors'][0]
@@ -236,7 +230,6 @@ class TestElasticCore(APITestCase):
                 '',
                 '',
                 year,
-                '',
             )
 
         search_vector = vectorizer.vectorize([SEARCH_TEXT])['vectors'][0]

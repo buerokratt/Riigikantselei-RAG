@@ -5,10 +5,9 @@ from rest_framework.authtoken.models import Token
 from rest_framework.reverse import reverse
 from rest_framework.test import APITestCase
 
-from api.utilities.core_settings import get_core_setting
 from api.utilities.testing import IsType
 from core.choices import TaskStatus
-from core.models import Dataset
+from core.models import CoreVariable, Dataset
 from text_search.models import TextSearchConversation, TextSearchQueryResult, TextTask
 from text_search.tests.test_settings import (
     BASE_CREATE_INPUT,
@@ -78,7 +77,7 @@ class TestTextSearchNonChat(APITestCase):
         model_only_expected_data = {
             'created_at': IsType(datetime),
             'auth_user': self.accepted_auth_user,
-            'system_input': get_core_setting('OPENAI_SYSTEM_MESSAGE'),
+            'system_input': CoreVariable.get_core_setting('OPENAI_SYSTEM_MESSAGE'),
         }
 
         response_expected_data = shared_expected_data | response_only_expected_data
@@ -188,7 +187,7 @@ class TestTextSearchNonChat(APITestCase):
         expected_messages = [
             {
                 'role': 'system',
-                'content': get_core_setting('OPENAI_SYSTEM_MESSAGE'),
+                'content': CoreVariable.get_core_setting('OPENAI_SYSTEM_MESSAGE'),
             },
             {
                 'role': 'user',

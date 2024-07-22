@@ -48,8 +48,6 @@ CHAT_INPUT_2 = {
 }
 
 CHAT_CHAIN_EXPECTED_ARGUMENTS_1 = {
-    'min_year': BASE_CREATE_INPUT['min_year'],
-    'max_year': BASE_CREATE_INPUT['max_year'],
     'user_input': CHAT_INPUT_1['user_input'],
     'dataset_index_queries': ['a_*', 'c_*'],
     'conversation_id': IsType(str),
@@ -119,8 +117,6 @@ CHAT_CHAIN_EXPECTED_QUERY_RESULTS_2 = CHAT_CHAIN_EXPECTED_QUERY_RESULTS_1 | {
 
 
 def chat_chain_side_effect_1(
-    min_year: int,
-    max_year: int,
     user_input: str,
     dataset_index_queries: List[str],
     conversation_id: int,
@@ -132,8 +128,6 @@ def chat_chain_side_effect_1(
 
 
 def chat_chain_side_effect_2(
-    min_year: int,
-    max_year: int,
     user_input: str,
     dataset_index_queries: List[str],
     conversation_id: int,

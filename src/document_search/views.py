@@ -6,8 +6,7 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.request import Request
 from rest_framework.response import Response
 
-from api.utilities.core_settings import get_core_setting
-from core.models import Dataset
+from core.models import CoreVariable, Dataset
 from document_search.models import (
     AggregationTask,
     DocumentAggregationResult,
@@ -52,7 +51,7 @@ class DocumentSearchConversationViewset(viewsets.ModelViewSet):
         system_input = serializer.validated_data['system_input']
         user_input = serializer.validated_data['user_input']
 
-        system_input = system_input or get_core_setting('OPENAI_SYSTEM_MESSAGE')
+        system_input = system_input or CoreVariable.get_core_setting('OPENAI_SYSTEM_MESSAGE')
         instance = serializer.save(
             title=user_input.capitalize(), auth_user=self.request.user, system_input=system_input
         )

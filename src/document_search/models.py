@@ -2,7 +2,7 @@ import uuid
 
 from django.db import models
 
-from core.models import ConversationMixin, ResultMixin, TaskMixin
+from core.mixins import ConversationMixin, ResultMixin, TaskMixin
 
 
 # Create your models here.
