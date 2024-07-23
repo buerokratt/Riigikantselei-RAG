@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('text_search', '0002_remove_textsearchconversation_indices_and_more'),
     ]
