@@ -63,7 +63,7 @@ class ConversationMixin(models.Model):
 
         context_documents_contents = []
         for hit in hits:
-            source = hit['_source'].to_dict()
+            source = dict(hit['_source'])
             content = source.get(text_field, '')
             reference = {
                 'text': content,
@@ -75,8 +75,14 @@ class ConversationMixin(models.Model):
             if content:
                 context_documents_contents.append(reference)
 
-        context = '\n\n'.join([document[text_field] for document in context_documents_contents])
-        context, is_pruned = ConversationMixin.prune_context(context)
+        is_pruned_container = []
+        context_container = []
+        for document in context_documents_contents:
+            text, is_pruned = ConversationMixin.prune_context(document.get(text_field, ''))
+            context_container.append(text)
+            is_pruned_container.append(is_pruned)
+
+        context = '\n\n'.join(context_container)
         query_with_context = ConversationMixin.format_gpt_question(user_input, context)
 
         for reference in context_documents_contents:
@@ -85,7 +91,7 @@ class ConversationMixin(models.Model):
         return {
             'context': query_with_context,
             'references': context_documents_contents,
-            'is_context_pruned': is_pruned,
+            'is_context_pruned': any(is_pruned_container),
         }
 
     @property
