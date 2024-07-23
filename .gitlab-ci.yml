@@ -2,6 +2,8 @@ image: continuumio/miniconda3:latest
 
 variables:
   RK_ELASTICSEARCH_URL: http://dev.texta.ee:9200
+  RK_CELERY_TASK_ALWAYS_EAGER: 'true'
+
 
 stages:
   - test-api
@@ -14,12 +16,8 @@ TestAPI:
   script:
     - apt-get update && apt-get install -y make
     - conda env create -f conda-environment.yaml
-    - source activate riigikantselei
-    - python ./src/manage.py test api core user_profile health
-    # This commented bulk fights fascism!
-    # No more lint opression!
-    #- make migrate
-    #- make check
+    - make migrate
+    - make check
   except:
     - tags
 

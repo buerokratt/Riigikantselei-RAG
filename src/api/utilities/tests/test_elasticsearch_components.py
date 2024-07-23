@@ -1,5 +1,4 @@
 import uuid
-from typing import Tuple
 
 from django.conf import settings
 from rest_framework.exceptions import APIException
@@ -12,65 +11,118 @@ from api.utilities.elastic import (
     ElasticKNN,
 )
 from api.utilities.testing import set_core_setting
+from api.utilities.tests.test_settings import (
+    BOTH_INDEX_EXPECTED_DOCUMENT_SET,
+    BOTH_INDEXES_EXPECTED_HIT_COUNT,
+    DOCUMENT_STRING,
+    DOCUMENT_TEXT,
+    DOCUMENT_TITLE,
+    DOCUMENT_YEAR,
+    EXPECTED_DOCUMENT_SUBSET,
+    INDEX_1_EXPECTED_DOCUMENT_SET,
+    INDEX_1_EXPECTED_HIT_COUNT,
+    INDEX_2_EXPECTED_DOCUMENT_SET,
+    INDEX_2_EXPECTED_HIT_COUNT,
+    INDEX_NAME,
+    INDEX_TEST_DOCUMENT_LIST,
+    INDEX_TEST_INDEX_1_QUERY,
+    INDEX_TEST_INDEX_2_QUERY,
+    INDEX_TEST_INDEX_NAME_LIST,
+    MAX_YEAR_ONLY_EXPECTED_DOCUMENT_SET,
+    MAX_YEAR_ONLY_EXPECTED_HIT_COUNT,
+    MAX_YEAR_ONLY_MIN_YEAR,
+    MIDDLE_YEAR_ONLY_EXPECTED_DOCUMENT_SET,
+    MIDDLE_YEAR_ONLY_EXPECTED_HIT_COUNT,
+    MIDDLE_YEAR_ONLY_MAX_YEAR,
+    MIDDLE_YEAR_ONLY_MIN_YEAR,
+    MIN_YEAR_ONLY_EXPECTED_DOCUMENT_SET,
+    MIN_YEAR_ONLY_EXPECTED_HIT_COUNT,
+    MIN_YEAR_ONLY_MAX_YEAR,
+    SEARCH_TEXT,
+    TEXT_FIELD_NAME,
+    TITLE_FIELD_NAME,
+    URL_FIELD_NAME,
+    VECTOR_FIELD_NAME,
+    YEAR_FIELD_NAME,
+    YEAR_TEST_DOCUMENT_LIST,
+    YEAR_TEST_YEAR_LIST,
+)
 from api.utilities.vectorizer import Vectorizer
+
+# pylint: disable=too-many-instance-attributes,too-many-arguments
 
 
 class TestElasticCore(APITestCase):
     def setUp(self) -> None:  # pylint: disable=invalid-name
-        self.index_name = 'test_ci_rk_vectors'
-        self.vector_field_name = 'vector'
+        self.elastic_core = ElasticCore()
 
         # We wipe out all previous indices that have been created for the purpose of the test
         # because improper shutdowns etc may not reach tearDown and can cause stragglers.
-        self.elastic_core = ElasticCore()
-        self.elastic_core.elasticsearch.indices.delete(index=self.index_name, ignore=[404])
+        self.tearDown()
+
+    def tearDown(self) -> None:  # pylint: disable=invalid-name
+        self.elastic_core.elasticsearch.indices.delete(index=INDEX_NAME, ignore=[404])
+        for index in INDEX_TEST_INDEX_NAME_LIST:
+            self.elastic_core.elasticsearch.indices.delete(index=index, ignore=[404])
 
     def test_creating_index(self) -> None:
-        response = self.elastic_core.create_index(self.index_name, shards=1, replicas=1)
+        response = self.elastic_core.create_index(INDEX_NAME, shards=1, replicas=0)
         self.assertEqual(response['acknowledged'], True)
-        self.assertEqual(response['index'], self.index_name)
-
-    def _index_document_and_add_vector(self, text: str, vectorizer: Vectorizer) -> Tuple[str, dict]:
-        document_id = uuid.uuid4().hex
-        index_response = self.elastic_core.elasticsearch.index(
-            index=self.index_name, id=document_id, document={'text': text}
-        )
-        self.assertEqual(index_response['result'], 'created')
-
-        vector = vectorizer.vectorize([text])['vectors'][0]
-        update_response = self.elastic_core.add_vector(
-            index=self.index_name,
-            vector=vector,
-            document_id=document_id,
-            field=self.vector_field_name,
-        )
-        self.assertEqual(update_response['result'], 'updated')
-
-        return document_id, index_response
-
-    def _check_document_integrity(self, document_id: str, text: str) -> None:
-        # Let's check just in case the document follows the same integrity as expected.
-        document = self.elastic_core.elasticsearch.get(index=self.index_name, id=document_id)
-        self.assertTrue('text' in document['_source'] and document['_source']['text'] == text)
-        self.assertTrue(self.vector_field_name in document['_source'])
+        self.assertEqual(response['index'], INDEX_NAME)
 
     def test_errors_being_handled(self) -> None:
         try:
             set_core_setting('ELASTICSEARCH_URL', f'http://{uuid.uuid4().hex}:8888')
-            ElasticCore().create_index(self.index_name, shards=1, replicas=1)
+            ElasticCore().create_index(INDEX_NAME, shards=1, replicas=0)
         except APIException as exception:
             self.assertTrue(ELASTIC_CONNECTION_ERROR_MESSAGE in str(exception))
 
     def test_timeout_setting_being_respected(self) -> None:
         try:
             set_core_setting('ELASTICSEARCH_TIMEOUT', 0.001)
-            ElasticCore().create_index(self.index_name, shards=1, replicas=1)
+            ElasticCore().create_index(INDEX_NAME, shards=1, replicas=0)
         except APIException as exception:
             self.assertEqual(ELASTIC_CONNECTION_TIMEOUT_MESSAGE, str(exception))
 
-    def test_that_adding_query_to_vector_limits_search_context(self) -> None:
-        self.elastic_core.create_index(self.index_name, shards=1, replicas=0)
-        self.elastic_core.add_vector_mapping(index=self.index_name, field=self.vector_field_name)
+    def _save_document(
+        self,
+        vectorizer: Vectorizer,
+        index: str,
+        text: str,
+        title: str,
+        url: str,
+        year: int,
+    ) -> str:
+        # Save document to database
+        document_id = uuid.uuid4().hex
+        index_response = self.elastic_core.elasticsearch.index(
+            index=index,
+            id=document_id,
+            document={
+                TEXT_FIELD_NAME: text,
+                TITLE_FIELD_NAME: title,
+                URL_FIELD_NAME: url,
+                YEAR_FIELD_NAME: year,
+            },
+        )
+        self.assertEqual(index_response['result'], 'created')
+
+        # Vectorize it and save the vector as well
+        vector = vectorizer.vectorize([text])['vectors'][0]
+        update_response = self.elastic_core.add_vector(
+            index=index,
+            vector=vector,
+            document_id=document_id,
+            field=VECTOR_FIELD_NAME,
+        )
+        self.assertEqual(update_response['result'], 'updated')
+
+        return document_id
+
+    def test_saving_and_searching_vectors(self) -> None:
+        self.elastic_core.create_index(INDEX_NAME, shards=1, replicas=0)
+        self.elastic_core.add_vector_mapping(index=INDEX_NAME, field=VECTOR_FIELD_NAME)
+
         vectorizer = Vectorizer(
             model_name=settings.VECTORIZATION_MODEL_NAME,
             system_configuration=settings.BGEM3_SYSTEM_CONFIGURATION,
@@ -78,42 +130,40 @@ class TestElasticCore(APITestCase):
             model_directory=settings.DATA_DIR,
         )
 
-        # Add a document that we could search.
-        original_text = 'Kas sa tahad öelda, et kookosed migreeruvad'
-        document_id, _ = self._index_document_and_add_vector(original_text, vectorizer)
-
-        self._check_document_integrity(document_id, original_text)
-
-        texts = [
-            'See on ainult lihashaav ja ortograafia on oluline!',
-            'Mingi märg eit kes loobib mõõku ei ole korralik alus valitsuse loomiseks!',
-        ]
-
-        for text in texts:
-            self._index_document_and_add_vector(text, vectorizer)
-
-        search_text = 'Miks sa tahad öelda, et kookosed migreeruvad'
-        search_vector = vectorizer.vectorize([search_text])['vectors'][0]
-
-        elastic_knn = ElasticKNN(self.index_name)
-
-        search_response = elastic_knn.search_vector(
-            search_query={'query': {'match': {'text': 'kookosed'}}},
-            vector=search_vector,
+        # Add a document
+        document_id = self._save_document(
+            vectorizer,
+            INDEX_NAME,
+            DOCUMENT_TEXT,
+            DOCUMENT_TITLE,
+            DOCUMENT_STRING,
+            DOCUMENT_YEAR,
         )
 
-        # Assert we only get a single hit with the query.
+        # Check that the document exists in the expected form
+        document = self.elastic_core.elasticsearch.get(index=INDEX_NAME, id=document_id)
+
+        for key, expected_value in EXPECTED_DOCUMENT_SUBSET.items():
+            self.assertEquals(document[key], expected_value)
+
+        # Check that a query returns the document in the expected form
+        search_vector = vectorizer.vectorize([SEARCH_TEXT])['vectors'][0]
+
+        elastic_knn = ElasticKNN()
+        search_response = elastic_knn.search_vector(vector=search_vector, indices=[INDEX_NAME])
+
         hits = search_response['hits']['hits']
         self.assertEqual(len(hits), 1)
 
-        # Integrity check that without the query limitation we get more.
-        search_response = elastic_knn.search_vector(vector=search_vector)
-        hits = search_response['hits']['hits']
-        self.assertTrue(len(hits) > 1)
+        document = hits[0]
+        for key, expected_value in EXPECTED_DOCUMENT_SUBSET.items():
+            self.assertEquals(document[key], expected_value)
 
-    def test_adding_vectors_and_searching_vectors(self) -> None:
-        self.elastic_core.create_index(self.index_name, shards=1, replicas=0)
-        self.elastic_core.add_vector_mapping(index=self.index_name, field=self.vector_field_name)
+    def test_index_filtering(self) -> None:
+        for index_name in INDEX_TEST_INDEX_NAME_LIST:
+            self.elastic_core.create_index(index_name, shards=1, replicas=0)
+            self.elastic_core.add_vector_mapping(index=index_name, field=VECTOR_FIELD_NAME)
+
         vectorizer = Vectorizer(
             model_name=settings.VECTORIZATION_MODEL_NAME,
             system_configuration=settings.BGEM3_SYSTEM_CONFIGURATION,
@@ -121,17 +171,97 @@ class TestElasticCore(APITestCase):
             model_directory=settings.DATA_DIR,
         )
 
-        # Add a document that we could search.
-        text = 'Kas sa tahad öelda, et kookosed migreeruvad'
-        document_id, _ = self._index_document_and_add_vector(text, vectorizer)
+        for index_number, index_name in enumerate(INDEX_TEST_INDEX_NAME_LIST):
+            self._save_document(
+                vectorizer,
+                index_name,
+                INDEX_TEST_DOCUMENT_LIST[index_number],
+                '',
+                '',
+                2024,
+            )
 
-        self._check_document_integrity(document_id, text)
+        search_vector = vectorizer.vectorize([SEARCH_TEXT])['vectors'][0]
+        elastic_knn = ElasticKNN()
 
-        text = 'Miks sa tahad öelda, et kookosed migreeruvad'
-        search_vector = vectorizer.vectorize([text])['vectors'][0]
+        # Check the set (ignoring ordering) of returned documents
 
-        elastic_knn = ElasticKNN(self.index_name)
-        search_response = elastic_knn.search_vector(vector=search_vector)
-
+        search_response = elastic_knn.search_vector(
+            vector=search_vector, indices=[INDEX_TEST_INDEX_1_QUERY]
+        )
         hits = search_response['hits']['hits']
-        self.assertTrue(len(hits) > 0)
+        self.assertEqual(len(hits), INDEX_1_EXPECTED_HIT_COUNT)
+        search_text_set = {hit['_source'][TEXT_FIELD_NAME] for hit in hits}
+        self.assertEqual(search_text_set, INDEX_1_EXPECTED_DOCUMENT_SET)
+
+        search_response = elastic_knn.search_vector(
+            vector=search_vector, indices=[INDEX_TEST_INDEX_2_QUERY]
+        )
+        hits = search_response['hits']['hits']
+        self.assertEqual(len(hits), INDEX_2_EXPECTED_HIT_COUNT)
+        search_text_set = {hit['_source'][TEXT_FIELD_NAME] for hit in hits}
+        self.assertEqual(search_text_set, INDEX_2_EXPECTED_DOCUMENT_SET)
+
+        search_response = elastic_knn.search_vector(
+            vector=search_vector, indices=[INDEX_TEST_INDEX_1_QUERY, INDEX_TEST_INDEX_2_QUERY]
+        )
+        hits = search_response['hits']['hits']
+        self.assertEqual(len(hits), BOTH_INDEXES_EXPECTED_HIT_COUNT)
+        search_text_set = {hit['_source'][TEXT_FIELD_NAME] for hit in hits}
+        # Less texts returned than eligible
+        self.assertTrue(search_text_set.issubset(BOTH_INDEX_EXPECTED_DOCUMENT_SET))
+
+    def test_year_filtering(self) -> None:
+        self.elastic_core.create_index(INDEX_NAME, shards=1, replicas=0)
+        self.elastic_core.add_vector_mapping(index=INDEX_NAME, field=VECTOR_FIELD_NAME)
+
+        vectorizer = Vectorizer(
+            model_name=settings.VECTORIZATION_MODEL_NAME,
+            system_configuration=settings.BGEM3_SYSTEM_CONFIGURATION,
+            inference_configuration=settings.BGEM3_INFERENCE_CONFIGURATION,
+            model_directory=settings.DATA_DIR,
+        )
+
+        for index_number, year in enumerate(YEAR_TEST_YEAR_LIST):
+            self._save_document(
+                vectorizer,
+                INDEX_NAME,
+                YEAR_TEST_DOCUMENT_LIST[index_number],
+                '',
+                '',
+                year,
+            )
+
+        search_vector = vectorizer.vectorize([SEARCH_TEXT])['vectors'][0]
+        elastic_knn = ElasticKNN()
+
+        # Check the set (ignoring ordering) of returned documents
+
+        search_query = ElasticKNN.create_date_query(min_year=MAX_YEAR_ONLY_MIN_YEAR)
+        search_response = elastic_knn.search_vector(
+            vector=search_vector, indices=[INDEX_NAME], search_query=search_query
+        )
+        hits = search_response['hits']['hits']
+        self.assertEqual(len(hits), MAX_YEAR_ONLY_EXPECTED_HIT_COUNT)
+        search_text_set = {hit['_source'][TEXT_FIELD_NAME] for hit in hits}
+        self.assertEqual(search_text_set, MAX_YEAR_ONLY_EXPECTED_DOCUMENT_SET)
+
+        search_query = ElasticKNN.create_date_query(max_year=MIN_YEAR_ONLY_MAX_YEAR)
+        search_response = elastic_knn.search_vector(
+            vector=search_vector, indices=[INDEX_NAME], search_query=search_query
+        )
+        hits = search_response['hits']['hits']
+        self.assertEqual(len(hits), MIN_YEAR_ONLY_EXPECTED_HIT_COUNT)
+        search_text_set = {hit['_source'][TEXT_FIELD_NAME] for hit in hits}
+        self.assertEqual(search_text_set, MIN_YEAR_ONLY_EXPECTED_DOCUMENT_SET)
+
+        search_query = ElasticKNN.create_date_query(
+            min_year=MIDDLE_YEAR_ONLY_MIN_YEAR, max_year=MIDDLE_YEAR_ONLY_MAX_YEAR
+        )
+        search_response = elastic_knn.search_vector(
+            vector=search_vector, indices=[INDEX_NAME], search_query=search_query
+        )
+        hits = search_response['hits']['hits']
+        self.assertEqual(len(hits), MIDDLE_YEAR_ONLY_EXPECTED_HIT_COUNT)
+        search_text_set = {hit['_source'][TEXT_FIELD_NAME] for hit in hits}
+        self.assertEqual(search_text_set, MIDDLE_YEAR_ONLY_EXPECTED_DOCUMENT_SET)

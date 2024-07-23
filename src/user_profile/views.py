@@ -6,9 +6,14 @@ from django.template.loader import render_to_string
 from rest_framework import status, viewsets
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import action
-from rest_framework.exceptions import APIException, AuthenticationFailed, ParseError
+from rest_framework.exceptions import (
+    APIException,
+    AuthenticationFailed,
+    ParseError,
+    ValidationError,
+)
 from rest_framework.generics import get_object_or_404
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.renderers import TemplateHTMLRenderer
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -109,6 +114,40 @@ class UserProfileViewSet(viewsets.ViewSet):
     @action(detail=True, methods=['post'])
     def decline(self, request: Request, pk: int) -> Response:
         return _set_acceptance(pk, False)
+
+    @action(detail=True, methods=['post'], permission_classes=(IsAdminUser,))
+    def set_superuser(self, request: Request, pk: int) -> Response:
+        auth_user = get_object_or_404(User.objects.all(), id=pk)
+
+        if auth_user == request.user:
+            raise ValidationError('You can not change your own status!')
+
+        # Ensure the two are equal and not mismatched.
+        auth_user.is_staff = not auth_user.is_staff
+        auth_user.is_superuser = auth_user.is_staff
+
+        auth_user.save()
+
+        # Since the IsAdminUser looks for is_staff it's the more relevant one out of these.
+        # hence we display mostly it.
+        response = {
+            'detail': f'Set user {auth_user.username} admin status to {auth_user.is_staff}!',
+            'state': auth_user.is_staff,
+        }
+        return Response(response)
+
+    @action(detail=True, methods=['post'], permission_classes=(IsAdminUser,))
+    def set_manager(self, request: Request, pk: int) -> Response:
+        auth_user = get_object_or_404(User.objects.all(), id=pk)
+        user_profile = auth_user.user_profile
+        # We just switch whatever the state is.
+        user_profile.is_manager = not user_profile.is_manager
+        user_profile.save()
+        response = {
+            'detail': f'Set user {auth_user.username} manager status to {user_profile.is_manager}!',
+            'state': user_profile.is_manager,
+        }
+        return Response(response)
 
     @action(detail=True, methods=['post'])
     def ban(self, request: Request, pk: int) -> Response:

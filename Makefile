@@ -13,7 +13,7 @@ test:
 
 
 makemigrations:
-	cd src && conda run -n riigikantselei python manage.py makemigrations
+	cd src && conda run -n riigikantselei python manage.py makemigrations --noinput
 
 migrate:
 	cd src && conda run -n riigikantselei python manage.py migrate

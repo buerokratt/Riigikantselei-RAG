@@ -8,9 +8,9 @@ from elasticsearch import ConnectionError as ElasticsearchConnectionError
 from elasticsearch import ConnectionTimeout, Elasticsearch, NotFoundError, RequestError
 from elasticsearch_dsl import Search
 from rest_framework import status
-from rest_framework.exceptions import APIException, AuthenticationFailed, NotFound
+from rest_framework.exceptions import APIException
 
-from api.utilities.core_settings import get_core_setting
+from core.models import CoreVariable
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +26,9 @@ ELASTIC_CONNECTION_ERROR_MESSAGE = (
     'Could not connect to Elasticsearch, is the location properly configured?'
 )
 
+K_DEFAULT = 3
+NUM_CANDIDATES_DEFAULT = 25
+
 
 def _elastic_connection(func: Callable) -> Callable:
     @functools.wraps(func)
@@ -33,16 +36,20 @@ def _elastic_connection(func: Callable) -> Callable:
         try:
             return func(*args, **kwargs)
         except NotFoundError as exception:
-            raise NotFound(ELASTIC_NOT_FOUND_MESSAGE) from exception
+            logger.exception(ELASTIC_NOT_FOUND_MESSAGE)
+            raise APIException(ELASTIC_NOT_FOUND_MESSAGE) from exception
 
         except RequestError as exception:
+            logger.exception(ELASTIC_REQUEST_ERROR_MESSAGE)
             raise APIException(ELASTIC_REQUEST_ERROR_MESSAGE) from exception
 
         except ConnectionTimeout as exception:
+            logger.exception(ELASTIC_CONNECTION_TIMEOUT_MESSAGE)
             raise APIException(ELASTIC_CONNECTION_TIMEOUT_MESSAGE) from exception
 
         except AuthenticationException as exception:
-            raise AuthenticationFailed(ELASTIC_AUTHENTICATION_ERROR_MESSAGE) from exception
+            logger.exception(ELASTIC_AUTHENTICATION_ERROR_MESSAGE)
+            raise APIException(ELASTIC_AUTHENTICATION_ERROR_MESSAGE) from exception
 
         # Important to set the ConnectionError to the bottom of the chain
         # as it's one of the superclasses the other exceptions inherit.
@@ -53,9 +60,11 @@ def _elastic_connection(func: Callable) -> Callable:
                 # but we'd like to treat timing out separately
                 raise APIException(ELASTIC_CONNECTION_TIMEOUT_MESSAGE) from exception
 
+            logger.exception(ELASTIC_CONNECTION_ERROR_MESSAGE)
             raise APIException(ELASTIC_CONNECTION_ERROR_MESSAGE) from exception
 
         except Exception as exception:
+            logger.exception(ELASTIC_UNKNOWN_ERROR_MESSAGE)
             raise APIException(
                 ELASTIC_UNKNOWN_ERROR_MESSAGE, code=status.HTTP_500_INTERNAL_SERVER_ERROR
             ) from exception
@@ -65,8 +74,10 @@ def _elastic_connection(func: Callable) -> Callable:
 
 class ElasticCore:
     def __init__(self, elasticsearch_url: Optional[str] = None, timeout: Optional[int] = None):
-        self.timeout = timeout or get_core_setting('ELASTICSEARCH_TIMEOUT')
-        self.elasticsearch_url = elasticsearch_url or get_core_setting('ELASTICSEARCH_URL')
+        self.timeout = timeout or CoreVariable.get_core_setting('ELASTICSEARCH_TIMEOUT')
+        self.elasticsearch_url = elasticsearch_url or CoreVariable.get_core_setting(
+            'ELASTICSEARCH_URL'
+        )
         self.elasticsearch = Elasticsearch(self.elasticsearch_url, timeout=self.timeout)
 
     @_elastic_connection
@@ -77,12 +88,12 @@ class ElasticCore:
 
     @_elastic_connection
     def create_index(
-            self,
-            index_name: str,
-            shards: int = 3,
-            replicas: int = 1,
-            settings: Optional[dict] = None,
-            ignore: Tuple[int] = (400,),
+        self,
+        index_name: str,
+        shards: int = 3,
+        replicas: int = 1,
+        settings: Optional[dict] = None,
+        ignore: Tuple[int] = (400,),
     ) -> Dict:
         body = settings or {
             'number_of_shards': shards,
@@ -92,7 +103,7 @@ class ElasticCore:
 
     @_elastic_connection
     def add_vector_mapping(
-            self, index: str, field: str, body: Optional[dict] = None, dims: int = 1024
+        self, index: str, field: str, body: Optional[dict] = None, dims: int = 1024
     ) -> Dict:
         mapping = body or {'properties': {field: {'type': 'dense_vector', 'dims': dims}}}
         return self.elasticsearch.indices.put_mapping(body=mapping, index=index)
@@ -106,7 +117,7 @@ class ElasticCore:
     @_elastic_connection
     def get_document_content(self, index: str, document_id: str) -> Dict:
         document = self.elasticsearch.get(index=index, id=document_id)
-        text_field = get_core_setting('ELASTICSEARCH_TEXT_CONTENT_FIELD')
+        text_field = CoreVariable.get_core_setting('ELASTICSEARCH_TEXT_CONTENT_FIELD')
         text = document.body['_source'].get(text_field, '')
         return text
 
@@ -116,22 +127,24 @@ class ElasticCore:
 
 class ElasticKNN:
     def __init__(
-            self,
-            indices: str,
-            elasticsearch_url: Optional[str] = None,
-            timeout: Optional[int] = None,
-            field: Optional[str] = None,
+        self,
+        elasticsearch_url: Optional[str] = None,
+        timeout: Optional[int] = None,
+        field: Optional[str] = None,
     ):
-        self.indices = indices
-        self.timeout = timeout or get_core_setting('ELASTICSEARCH_TIMEOUT')
-        self.field = field or get_core_setting('ELASTICSEARCH_VECTOR_FIELD')
-        self.elasticsearch_url = elasticsearch_url or get_core_setting('ELASTICSEARCH_URL')
+        self.timeout = timeout or CoreVariable.get_core_setting('ELASTICSEARCH_TIMEOUT')
+        self.field = field or CoreVariable.get_core_setting('ELASTICSEARCH_VECTOR_FIELD')
+        self.elasticsearch_url = elasticsearch_url or CoreVariable.get_core_setting(
+            'ELASTICSEARCH_URL'
+        )
         self.elasticsearch = Elasticsearch(self.elasticsearch_url, timeout=self.timeout)
 
     @staticmethod
-    def create_date_query(min_year: Optional[int], max_year: Optional[int]) -> Optional[dict]:
+    def create_date_query(
+        min_year: Optional[int] = None, max_year: Optional[int] = None
+    ) -> Optional[dict]:
         search = elasticsearch_dsl.Search()
-        date_field = get_core_setting('ELASTICSEARCH_YEAR_FIELD')
+        date_field = CoreVariable.get_core_setting('ELASTICSEARCH_YEAR_FIELD')
 
         date_filter = {}
         if min_year is None and max_year is None:
@@ -144,40 +157,74 @@ class ElasticKNN:
         search = search.query('range', **{date_field: date_filter})
         return search.to_dict()
 
-    @_elastic_connection
-    def search_vector(
-            self,
-            vector: List[float],
-            search_query: Optional[dict] = None,
-            k: Optional[int] = 5,
-            num_candidates: Optional[int] = 25,
-    ) -> Dict:
-        # Define search interface
-        search = Search(using=self.elasticsearch, index=self.indices)
-
-        # Add search query to limit results if not None
+    def _apply_filter_to_knn(
+        self, index: str, search_query: Optional[dict] = None
+    ) -> Optional[dict]:
         if search_query:
-            filter_search = Search(using=self.elasticsearch, index=self.indices)
+            filter_search = Search(using=self.elasticsearch, index=index)
             filter_search.update_from_dict(search_query)
             # Applying some pre-filtering.
             # https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-knn-query.html#knn-query-filtering
             pre_knn_filter = filter_search.query.to_dict()
-            search = search.knn(
-                field=self.field,
-                k=k,
-                num_candidates=num_candidates,
-                query_vector=vector,
-                filter=pre_knn_filter,
-            )
+            return pre_knn_filter
 
+        return None
+
+    def _generate_knn_with_filter(
+        self,
+        vector: List[float],
+        indices: str,
+        search_query: Optional[dict] = None,
+        num_candidates: int = NUM_CANDIDATES_DEFAULT,
+        k: int = K_DEFAULT,
+    ) -> elasticsearch_dsl.Search:
+        search = Search(using=self.elasticsearch, index=indices)
+
+        search_filter = self._apply_filter_to_knn(indices, search_query)
+        filter_kwargs = {'filter': search_filter} if search_filter else {}
+        search = search.knn(
+            field=self.field,
+            k=k,
+            num_candidates=num_candidates,
+            query_vector=vector,
+            **filter_kwargs
+        )
+
+        return search
+
+    @_elastic_connection
+    def search_vector(  # pylint: disable=too-many-arguments
+        self,
+        vector: List[float],
+        indices: Optional[List[str]] = None,
+        search_query: Optional[dict] = None,
+        k: int = K_DEFAULT,
+        num_candidates: int = NUM_CANDIDATES_DEFAULT,
+        source: Optional[list] = None,
+        size: Optional[int] = None,
+    ) -> Dict:
+        if indices is None:
+            indices_str = '*'
         else:
-            search = search.knn(
-                field=self.field, k=k, num_candidates=num_candidates, query_vector=vector
-            )
+            indices_str = ','.join(indices)
 
-        # Limit the responses to 3 documents as per the project requirements.
-        # TODO: Check if this is subject to change.
-        search = search[:3]
+        # Define search interface
+        search = self._generate_knn_with_filter(
+            vector=vector,
+            indices=indices_str,
+            search_query=search_query,
+            num_candidates=num_candidates,
+            k=k,
+        )
+
+        # Which fields to include in case we want to save bandwidth (for the second workflow).
+        if source:
+            search = search.source(source)
+
+        if size:
+            search = search[:size]
+
+        # Execute the query
         response = search.execute()
         return response
 

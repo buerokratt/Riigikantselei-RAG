@@ -4,17 +4,9 @@ from typing import List, Optional, Tuple
 
 import django
 import openai
-from rest_framework.exceptions import (
-    APIException,
-    AuthenticationFailed,
-    NotFound,
-    PermissionDenied,
-    ValidationError,
-)
+from rest_framework.exceptions import APIException
 
-from api.utilities.core_settings import get_core_setting
-
-from .gpt_mocks import MOCK_HEADERS, MOCK_RESPONSE_DICT, MOCK_STATUS_CODE
+from core.models import CoreVariable
 
 logger = logging.getLogger(__name__)
 
@@ -67,9 +59,9 @@ class LLMResponse:
 
     @property
     def total_cost(self) -> float:
-        return self.input_tokens * get_core_setting(
+        return self.input_tokens * CoreVariable.get_core_setting(
             'EURO_COST_PER_INPUT_TOKEN'
-        ) + self.response_tokens * get_core_setting('EURO_COST_PER_OUTPUT_TOKEN')
+        ) + self.response_tokens * CoreVariable.get_core_setting('EURO_COST_PER_OUTPUT_TOKEN')
 
     def __str__(self) -> str:
         return f'{self.message} / {self.total_tokens} tokens used'
@@ -115,16 +107,16 @@ class ChatGPT:
         timeout: Optional[int] = None,
         max_retries: Optional[int] = None,
     ):
-        api_key = api_key or get_core_setting('OPENAI_API_KEY')
-        timeout = timeout or get_core_setting('OPENAI_API_TIMEOUT')
-        max_retries = max_retries or get_core_setting('OPENAI_API_MAX_RETRIES')
+        api_key = api_key or CoreVariable.get_core_setting('OPENAI_API_KEY')
+        timeout = timeout or CoreVariable.get_core_setting('OPENAI_API_TIMEOUT')
+        max_retries = max_retries or CoreVariable.get_core_setting('OPENAI_API_MAX_RETRIES')
 
-        self.model = model or get_core_setting('OPENAI_API_CHAT_MODEL')
+        self.model = model or CoreVariable.get_core_setting('OPENAI_API_CHAT_MODEL')
 
         if api_key is not None:
             self.gpt = openai.OpenAI(api_key=api_key, timeout=timeout, max_retries=max_retries)
         else:
-            logger.warning('No OpenAI API key found, using mocked API connection to allow testing!')
+            logger.warning('No OpenAI API key found, this better be testing!')
             self.gpt = None
 
     def _parse_results(self, user_input: str, response: dict, headers: dict) -> LLMResponse:
@@ -141,7 +133,7 @@ class ChatGPT:
 
     def _commit_api(self, messages: List[dict]) -> Tuple[dict, dict, int]:
         if self.gpt is None:
-            return MOCK_HEADERS, MOCK_RESPONSE_DICT, MOCK_STATUS_CODE
+            raise APIException("No OpenAI API key given, can't query API!")
 
         try:
             response = self.gpt.chat.completions.with_raw_response.create(
@@ -154,10 +146,10 @@ class ChatGPT:
             return headers, response_dict, status_code
 
         except openai.AuthenticationError as exception:
-            raise AuthenticationFailed("Couldn't authenticate with OpenAI API!") from exception
+            raise APIException("Couldn't authenticate with OpenAI API!") from exception
 
         except openai.BadRequestError as exception:
-            raise ValidationError('OpenAI request is not correct!') from exception
+            raise APIException('OpenAI request is not correct!') from exception
 
         # TODO: We will be handling this exception with retries later,
         #  either through Celery or something else.
@@ -166,12 +158,12 @@ class ChatGPT:
             raise exception
 
         except openai.NotFoundError as exception:
-            raise NotFound(
+            raise APIException(
                 'Requested resource was not found! Is the right model configured?'
             ) from exception
 
         except openai.PermissionDeniedError as exception:
-            raise PermissionDenied('Requested resource was denied!') from exception
+            raise APIException('Requested resource was denied!') from exception
 
         # TODO: We will be handling this exception with retries later,
         #  either through Celery or something else.
@@ -197,7 +189,7 @@ class ChatGPT:
 
     def chat(self, messages: List[dict]) -> LLMResponse:
         user_input = messages[-1]['content']
-        headers, response, _ = self._commit_api(messages)
+        headers, response, _ = self._commit_api(messages=messages)
         llm_result = self._parse_results(user_input=user_input, response=response, headers=headers)
         return llm_result
 

@@ -38,7 +38,7 @@ repos:
           "--max-line-length=100",
           "--max-statements=60",
           "--max-args=6",
-          "--ignore-path=src/core/migrations/,src/user_profile/migrations/",
+          "--ignore-path=src/core/migrations/,src/user_profile/migrations/,src/text_search/migrations/,src/document_search/migrations/",
           "--load-plugins=pylint.extensions.bad_builtin",
           "--bad-functions=print",
           "--disable=R0801,E0611,W0511,C0114,C0115,C0116,E0401,R0903,R0914,W1203",
@@ -89,6 +89,7 @@ repos:
     hooks:
       - id: mypy
         pass_filenames: false
+        additional_dependencies: [types-redis]
         args: [ --disallow-untyped-defs, --ignore-missing-imports, 'src' ]
         # --disallow-untyped-defs - This flag reports an error whenever it encounters a function definition without type annotations.
         # --ignore-missing-imports - This flag makes mypy ignore all missing imports. It is equivalent to adding # type: ignore comments to all unresolved imports within your codebase.

@@ -7,7 +7,12 @@ from rest_framework.test import APITestCase
 # Creates the most common (permissive) manager or non manager user
 # Restrictions can be applied later through auth_user.user_profile.update()
 def create_test_user_with_user_profile(
-    testcase: APITestCase, username: str, email: str, password: str, is_manager: bool = False
+    testcase: APITestCase,
+    username: str,
+    email: str,
+    password: str,
+    is_manager: bool = False,
+    is_admin: bool = False,
 ) -> User:
     _url = reverse('v1:user_profile-list')
     _input = {
@@ -35,5 +40,10 @@ def create_test_user_with_user_profile(
     if is_manager:
         user_profile.is_manager = True
         user_profile.save()
+
+    if is_admin:
+        auth_user.is_superuser = is_admin
+        auth_user.is_staff = is_admin
+        auth_user.save()
 
     return auth_user

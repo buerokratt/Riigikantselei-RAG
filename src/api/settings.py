@@ -28,6 +28,14 @@ if env_file_path:
 
 env = environ.Env()
 
+GPT_SYSTEM_PROMPT_DEFAULT = """Kontekst: {}
+Palun vasta järgnevale küsimusele sellega samas keeles.
+Kasuta küsimusele vastamiseks AINULT ülaltoodud konteksti.
+Kui kontekstis pole vastamiseks piisavalt ja/või sobivat infot, vasta: "{}".
+
+Küsimus: {}
+"""
+
 # TODO: why are some parameters in core settings and some not?
 #  Does anything other than default usage limit or cost need to be here?
 PROTECTED_CORE_KEYS = ('SECRET', 'KEY', 'PASSWORD')
@@ -47,6 +55,12 @@ CORE_SETTINGS = {
     'OPENAI_API_KEY': env('RK_OPENAI_API_KEY', default=None),
     'OPENAI_SYSTEM_MESSAGE': env.str(
         'RK_OPENAI_SYSTEM_MESSAGE', default='You are a helpful assistant.'
+    ),
+    'OPENAI_MISSING_CONTEXT_MESSAGE': env.str(
+        'RK_OPENAI_MISSING_CONTEXT_MESSAGE', default='Teadmusbaasis info puudub!'
+    ),
+    'OPENAI_OPENING_QUESTION': env.str(
+        'RK_OPENAI_OPENING_QUESTION', default=GPT_SYSTEM_PROMPT_DEFAULT
     ),
     'OPENAI_API_TIMEOUT': env.int('RK_OPENAI_API_TIMEOUT', default=10),
     'OPENAI_API_MAX_RETRIES': env.int('RK_OPENAI_API_MAX_RETRIES', default=5),
@@ -97,6 +111,8 @@ INSTALLED_APPS = [
     'corsheaders',
     'core',
     'health',
+    'text_search',
+    'document_search',
     'user_profile.apps.UserProfileConfig',
 ]
 
@@ -231,7 +247,7 @@ LOGGING = {
     'formatters': {
         'simple': {
             'format': '\n'
-                      + LOGGING_SEPARATOR.join(
+            + LOGGING_SEPARATOR.join(
                 [
                     '%(levelname)s',
                     '%(module)s',
@@ -259,7 +275,7 @@ LOGGING = {
         },
         'detailed_error': {
             'format': '\n'
-                      + LOGGING_SEPARATOR.join(
+            + LOGGING_SEPARATOR.join(
                 [
                     '%(levelname)s',
                     '%(module)s',
@@ -346,7 +362,7 @@ CELERY_DEFAULT_ROUTING_KEY = CELERY_DEFAULT_QUEUE
 
 #### VECTORIZATION CONFIGURATIONS ####
 VECTORIZATION_MODEL_NAME = 'BAAI/bge-m3'
-BGEM3_SYSTEM_CONFIGURATION = {'use_fp16': True, 'device': None, 'normalize_embeddings': True}
+BGEM3_SYSTEM_CONFIGURATION = {'use_fp16': True, 'device': 'cpu', 'normalize_embeddings': True}
 BGEM3_INFERENCE_CONFIGURATION = {'batch_size': 12, 'return_dense': True, 'max_length': 8192}
 
 # DOWNLOAD MODEL DEPENDENCIES
@@ -374,8 +390,3 @@ EMAIL_BACKEND = 'django.core.mail.backends.dummy.EmailBackend'
 
 SERVICE_NAME = 'Riigikantselei semantiline tekstiotsing'
 BASE_URL = env('RK_BASE_URL', default='http://localhost')
-
-# TODO: populate based on how documents get inserted into the real elasticsearch
-DOCUMENT_CATEGORY_TO_INDICES_MAP = {
-    'rk_test': ['rk_riigi_teataja_kehtivad_vectorized']
-}

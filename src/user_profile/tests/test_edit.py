@@ -4,11 +4,11 @@ from rest_framework.authtoken.models import Token
 from rest_framework.reverse import reverse
 from rest_framework.test import APITestCase
 
-from api.utilities.core_settings import get_core_setting
+from core.models import CoreVariable
 from user_profile.utilities import create_test_user_with_user_profile
 
 
-# pylint: disable=too-many-instance-attributes
+# pylint: disable=too-many-instance-attributes,too-many-public-methods
 class TestUserProfileEdit(APITestCase):
     def setUp(self) -> None:  # pylint: disable=invalid-name
         self.manager_auth_user = create_test_user_with_user_profile(
@@ -173,7 +173,7 @@ class TestUserProfileEdit(APITestCase):
 
         self.assertEqual(
             self.non_manager_reviewed_auth_user.user_profile.usage_limit,
-            get_core_setting('DEFAULT_USAGE_LIMIT_EUROS'),
+            CoreVariable.get_core_setting('DEFAULT_USAGE_LIMIT_EUROS'),
         )
 
         response = self.client.post(self.set_limit_endpoint_url, data=self.input_data)
@@ -211,4 +211,81 @@ class TestUserProfileEdit(APITestCase):
         input_data = {'limit': 10_000.0}
 
         response = self.client.post(self.set_limit_endpoint_url, data=input_data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_setting_user_to_manager(self) -> None:
+        admin = create_test_user_with_user_profile(
+            self, 'admin', email='admin@gmail.com', password='1234', is_admin=True
+        )
+        plebian = create_test_user_with_user_profile(
+            self,
+            'plebian',
+            email='plebian@gmail.com',
+            password='1234',
+            is_admin=False,
+            is_manager=False,
+        )
+
+        # Login as admin
+        token, _ = Token.objects.get_or_create(user=admin)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
+
+        # Make the request
+        uri = reverse('v1:user_profile-set-manager', kwargs={'pk': plebian.id})
+        response = self.client.post(uri, data={})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Check the state.
+        plebian.refresh_from_db()
+        self.assertEqual(plebian.user_profile.is_manager, True)
+
+        # Lets try switching it again.
+        response = self.client.post(uri, data={})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        plebian.refresh_from_db()
+        self.assertEqual(plebian.user_profile.is_manager, False)
+
+    def test_setting_user_to_superuser(self) -> None:
+        admin = create_test_user_with_user_profile(
+            self, 'admin', email='admin@gmail.com', password='1234', is_admin=True
+        )
+        plebian = create_test_user_with_user_profile(
+            self,
+            'plebian',
+            email='plebian@gmail.com',
+            password='1234',
+            is_admin=False,
+            is_manager=False,
+        )
+
+        # Login as admin
+        token, _ = Token.objects.get_or_create(user=admin)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
+
+        # Make the request
+        uri = reverse('v1:user_profile-set-superuser', kwargs={'pk': plebian.id})
+        response = self.client.post(uri, data={})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Check the state.
+        plebian.refresh_from_db()
+        self.assertEqual(plebian.is_staff, True)
+        self.assertEqual(plebian.is_superuser, True)
+
+        # Lets try switching it again.
+        response = self.client.post(uri, data={})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        plebian.refresh_from_db()
+        self.assertEqual(plebian.is_staff, False)
+        self.assertEqual(plebian.is_superuser, False)
+
+    def test_superusers_not_being_able_to_change_their_status(self) -> None:
+        admin = create_test_user_with_user_profile(
+            self, 'admin', email='admin@gmail.com', password='1234', is_admin=True
+        )
+        token, _ = Token.objects.get_or_create(user=admin)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
+
+        uri = reverse('v1:user_profile-set-superuser', kwargs={'pk': admin.id})
+        response = self.client.post(uri, data={})
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

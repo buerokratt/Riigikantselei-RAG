@@ -5,10 +5,7 @@ import os
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
-    '-p',
-    '--path',
-    help='Output path of the front configuration file.',
-    default='config.json'
+    '-p', '--path', help='Output path of the front configuration file.', default='config.json'
 )
 
 args = parser.parse_args()

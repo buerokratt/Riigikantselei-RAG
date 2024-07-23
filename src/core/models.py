@@ -1,10 +1,10 @@
-import uuid
-from typing import List, Optional
+from typing import Any, List, Optional
 
-from django.contrib.auth.models import User
+from django.conf import settings
 from django.db import models
+from rest_framework.exceptions import ValidationError
 
-from core.choices import TASK_STATUS_CHOICES, TaskStatus
+from api.utilities.core_settings import is_float
 
 
 class CoreVariable(models.Model):
@@ -14,95 +14,59 @@ class CoreVariable(models.Model):
     def __str__(self) -> str:
         return f'{self.name} - {self.value}'
 
+    @staticmethod
+    def get_core_setting(setting_name: str) -> Any:
+        """
+        Retrieves value for a variable from core settings.
+        :param: str variable_name: Name for the variable whose value will be returned.
+        """
+        # pylint: disable=too-many-return-statements
+        variable_match: Optional[CoreVariable] = CoreVariable.objects.filter(
+            name=setting_name
+        ).first()
 
-class TextSearchConversation(models.Model):
-    auth_user = models.ForeignKey(User, on_delete=models.RESTRICT)
-    system_input = models.TextField()
-    title = models.CharField(max_length=100)
+        if not variable_match:
+            # return value from env if no setting record in db
+            if setting_name in settings.CORE_SETTINGS:
+                return settings.CORE_SETTINGS[setting_name]
+            return None
 
-    min_year = models.IntegerField(null=True, default=None)
-    max_year = models.IntegerField(null=True, default=None)
-    document_types_string = models.TextField(null=True, default=None)
+        # return value from db
+        value = variable_match.value
 
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    @property
-    def messages(self) -> List[dict]:
-        container = [{'role': 'system', 'content': self.system_input}]
-        query = (
-            self.query_results.filter(celery_task__status=TaskStatus.SUCCESS)
-            .exclude(response=None)
-            .order_by('created_at')
-        )
-        if query.exists():
-            for query_result in query:
-                container.extend(query_result.messages)
-        return container
-
-    @property
-    def document_types(self) -> Optional[List[str]]:
-        if self.document_types_string:
-            return self.document_types_string.split(',')
-
-        return None
+        if is_float(value):
+            return float(value)
+        if str.isnumeric(value):
+            return int(value)
+        if value.lower() == 'false':
+            return False
+        if value.lower() == 'true':
+            return True
+        return value
 
 
-class TextSearchQueryResult(models.Model):
-    uuid = models.UUIDField(default=uuid.uuid4, editable=False)
+class Dataset(models.Model):
+    # Name of the dataset, for example 'Riigi teataja'
+    name = models.CharField(max_length=100, unique=True)
+    # Type of dataset, for example 'Arengukava'
+    type = models.CharField(max_length=100)
+    # Elasticsearch wildcard string describing names of all indexes used by this dataset.
+    # For example, to cover 'riigiteataja_1' and 'riigiteataja_2', use 'riigiteataja_*'.
+    index = models.CharField(max_length=100)
+    # Description of dataset contents
+    description = models.TextField(default='')
 
-    conversation = models.ForeignKey(
-        TextSearchConversation, on_delete=models.CASCADE, related_name='query_results'
-    )
+    @staticmethod
+    def get_all_dataset_values(field: str = 'name') -> List[str]:
+        return list(Dataset.objects.values_list(field, flat=True))
 
-    model = models.CharField(max_length=100, null=True, default=None)
+    @staticmethod
+    def validate_dataset_names(dataset_names: List[str]) -> None:
+        known_dataset_names = Dataset.get_all_dataset_values()
+        bad_dataset_names = []
+        for dataset_name in dataset_names:
+            if dataset_name not in known_dataset_names:
+                bad_dataset_names.append(dataset_name)
 
-    user_input = models.TextField(null=True, default=None)
-    response = models.TextField(null=True, default=None)
-
-    input_tokens = models.PositiveIntegerField(null=True, default=None)
-    output_tokens = models.PositiveIntegerField(null=True, default=None)
-    total_cost = models.FloatField(null=True, default=None)
-
-    response_headers = models.JSONField(null=True, default=None)
-    references = models.JSONField(null=True, default=None)
-
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    @property
-    def messages(self) -> List[dict]:
-        return [
-            {'role': 'user', 'content': self.user_input},
-            {'role': 'assistant', 'content': self.response},
-        ]
-
-    def __str__(self) -> str:
-        return f"'{self.conversation.title.title()}' @ {self.conversation.auth_user.username}"
-
-
-class Task(models.Model):
-    status = models.CharField(
-        choices=TASK_STATUS_CHOICES, max_length=50, default=TaskStatus.PENDING
-    )
-    error = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
-    modified_at = models.DateTimeField(auto_now=True)
-
-    result = models.OneToOneField(
-        TextSearchQueryResult, on_delete=models.CASCADE, related_name='celery_task'
-    )
-
-    def set_success(self) -> None:
-        self.status = TaskStatus.SUCCESS
-        self.save()
-
-    def set_failed(self, error: str) -> None:
-        self.status = TaskStatus.FAILURE
-        self.error = error
-        self.save()
-
-    def set_started(self) -> None:
-        self.status = TaskStatus.STARTED
-        self.save()
-
-    def __str__(self) -> str:
-        return f'Task {self.status} @ {self.modified_at}'
+        if bad_dataset_names:
+            raise ValidationError(f'Unknown dataset names: [{", ".join(bad_dataset_names)}]')
