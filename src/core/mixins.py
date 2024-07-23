@@ -1,6 +1,6 @@
 import logging
 import uuid
-from typing import List
+from typing import List, Tuple
 
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -10,6 +10,7 @@ from api.utilities.elastic import ElasticKNN
 from api.utilities.vectorizer import Vectorizer
 from core.choices import TASK_STATUS_CHOICES, TaskStatus
 from core.models import CoreVariable
+from core.utilities import exceeds_token_limit, prune_context
 
 
 class ConversationMixin(models.Model):
@@ -42,6 +43,19 @@ class ConversationMixin(models.Model):
         return message
 
     @staticmethod
+    def prune_context(context: str) -> Tuple[str, bool]:
+        model = CoreVariable.get_core_setting('OPENAI_API_CHAT_MODEL')
+        token_limit = CoreVariable.get_core_setting('OPENAI_CONTEXT_MAX_TOKEN_LIMIT')
+
+        exceeds_limit = exceeds_token_limit(text=context, model=model, token_limit=token_limit)
+
+        if exceeds_limit:
+            pruned_context = prune_context(text=context, model=model, token_limit=token_limit)
+            return pruned_context, True
+
+        return context, False
+
+    @staticmethod
     def parse_gpt_question_and_references(user_input: str, hits: List[dict]) -> dict:
         url_field = CoreVariable.get_core_setting('ELASTICSEARCH_URL_FIELD')
         title_field = CoreVariable.get_core_setting('ELASTICSEARCH_TITLE_FIELD')
@@ -62,12 +76,17 @@ class ConversationMixin(models.Model):
                 context_documents_contents.append(reference)
 
         context = '\n\n'.join([document[text_field] for document in context_documents_contents])
+        context, is_pruned = ConversationMixin.prune_context(context)
         query_with_context = ConversationMixin.format_gpt_question(user_input, context)
 
         for reference in context_documents_contents:
             reference.pop('text', None)
 
-        return {'context': query_with_context, 'references': context_documents_contents}
+        return {
+            'context': query_with_context,
+            'references': context_documents_contents,
+            'is_context_pruned': is_pruned,
+        }
 
     @property
     def messages(self) -> List[dict]:
@@ -119,6 +138,8 @@ class ResultMixin(models.Model):
 
     user_input = models.TextField(null=True, default=None)
     response = models.TextField(null=True, default=None)
+
+    is_context_pruned = models.BooleanField(default=False)
 
     input_tokens = models.PositiveIntegerField(null=True, default=None)
     output_tokens = models.PositiveIntegerField(null=True, default=None)

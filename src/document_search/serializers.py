@@ -36,6 +36,7 @@ class DocumentSearchQueryResultSerializer(serializers.ModelSerializer):
             'user_input',
             'response',
             'dataset_name',
+            'is_context_pruned',
             'input_tokens',
             'output_tokens',
             'total_cost',

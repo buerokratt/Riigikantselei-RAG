@@ -53,8 +53,9 @@ class DocumentSearchConversationViewset(viewsets.ModelViewSet):
         user_input = serializer.validated_data['user_input']
 
         system_input = system_input or CoreVariable.get_core_setting('OPENAI_SYSTEM_MESSAGE')
+        title = user_input[0].upper() + user_input[1:]
         instance = serializer.save(
-            title=user_input.capitalize(), auth_user=self.request.user, system_input=system_input
+            title=title, auth_user=self.request.user, system_input=system_input
         )
 
         result = DocumentAggregationResult.objects.create(conversation=serializer.instance)
