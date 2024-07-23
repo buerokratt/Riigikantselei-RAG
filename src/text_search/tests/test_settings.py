@@ -62,6 +62,7 @@ CHAT_CHAIN_RESULTS_DICT_1 = {
     'model': 'model_name',
     'user_input': CHAT_INPUT_1['user_input'],
     'response': 'response_text_1',
+    'is_context_pruned': False,
     'input_tokens': 10,
     'output_tokens': 20,
     'total_cost': 0.05,
@@ -99,6 +100,7 @@ CHAT_CHAIN_EXPECTED_QUERY_RESULTS_1 = {
     'response': CHAT_CHAIN_RESULTS_DICT_1['response'],
     'references': CHAT_CHAIN_RESULTS_DICT_1['references'],
     'total_cost': CHAT_CHAIN_RESULTS_DICT_1['total_cost'],
+    'is_context_pruned': CHAT_CHAIN_RESULTS_DICT_1['is_context_pruned'],
     'created_at': IsType(str),
     'celery_task': {
         'status': TaskStatus.SUCCESS,

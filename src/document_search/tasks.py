@@ -41,13 +41,16 @@ def parse_aggregation(hits: List[Hit]) -> List[dict]:
     for hit in hits:
         index = hit.meta.index
         dataset_orm: Optional[Dataset] = match_pattern(index, datasets)
-        if dataset_orm:
+        year = getattr(hit, year_field, None)
+        int_year = int(year) if year else None
+
+        if dataset_orm and int_year:
             dataset_name = dataset_orm.name
-            year = getattr(hit, year_field)
+
             if dataset_name not in dataset_years:
-                dataset_years[dataset_name] = [year]
+                dataset_years[dataset_name] = [int_year]
             else:
-                dataset_years[dataset_name].append(year)
+                dataset_years[dataset_name].append(int_year)
 
     response = []
     for dataset, years in dataset_years.items():
@@ -98,7 +101,6 @@ def generate_aggregations(
         )
 
         aggregations = parse_aggregation(hits)
-
         aggregation_result.aggregations = aggregations
         aggregation_result.save()
 
@@ -161,6 +163,7 @@ def send_document_search(
 
         user_input_with_context = context_and_references['context']
         references = context_and_references['references']
+        is_pruned = context_and_references['is_context_pruned']
 
         messages = conversation.messages + [{'role': 'user', 'content': user_input_with_context}]
 
@@ -179,6 +182,7 @@ def send_document_search(
             'total_cost': llm_response.total_cost,
             'response_headers': llm_response.headers,
             'references': references,
+            'is_context_pruned': is_pruned,
         }
 
     # Reraise these since they'd be necessary for a retry.
@@ -207,6 +211,7 @@ def save_openai_results_for_doc(
     result.model = results['model']
     result.dataset_name = dataset_name
     result.user_input = results['user_input']
+    result.is_context_pruned = results['is_context_pruned']
     result.response = results['response']
     result.input_tokens = results['input_tokens']
     result.output_tokens = results['output_tokens']

@@ -97,6 +97,7 @@ def call_openai_api(
 
         user_input_with_context = context_and_references['context']
         references = context_and_references['references']
+        is_context_pruned = context_and_references['is_context_pruned']
 
         messages = conversation.messages + [{'role': 'user', 'content': user_input_with_context}]
 
@@ -115,6 +116,7 @@ def call_openai_api(
             'total_cost': llm_response.total_cost,
             'response_headers': llm_response.headers,
             'references': references,
+            'is_context_pruned': is_context_pruned,
         }
 
     # Reraise these since they'd be necessary for a retry.
@@ -142,6 +144,7 @@ def save_openai_results(
 
     result.model = results['model']
     result.user_input = results['user_input']
+    result.is_context_pruned = results['is_context_pruned']
     result.response = results['response']
     result.input_tokens = results['input_tokens']
     result.output_tokens = results['output_tokens']

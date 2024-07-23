@@ -112,3 +112,4 @@ virtualenv==20.26.3
 wcwidth==0.2.13
 xxhash==3.4.1
 yarl==1.9.4
+tiktoken==0.7.0

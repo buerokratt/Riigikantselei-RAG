@@ -28,10 +28,13 @@ class TextSearchConversationCreateSerializer(serializers.Serializer):
         max_year = self.validated_data['max_year']
         dataset_names_string = ','.join(self.validated_data['dataset_names'])
 
+        user_input = validated_data['user_input']
+        title = user_input[0].upper() + user_input[1:]
+
         conversation = TextSearchConversation.objects.create(
             auth_user=validated_data['auth_user'],
             system_input=CoreVariable.get_core_setting('OPENAI_SYSTEM_MESSAGE'),
-            title=validated_data['user_input'],
+            title=title,
             dataset_names_string=dataset_names_string,
             min_year=min_year,
             max_year=max_year,
@@ -57,6 +60,7 @@ class TextSearchQueryResultReadOnlySerializer(serializers.ModelSerializer):
         fields = (
             'user_input',
             'response',
+            'is_context_pruned',
             'references',
             'total_cost',
             'created_at',
