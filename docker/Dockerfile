@@ -19,7 +19,7 @@ COPY docker/create_front_config.py /var/rk_api/create_front_config.py
 
 ENV UWSGI_INI /var/rk_api/uwsgi_rk.ini
 
-#COPY VERSION /var/VERSION
+COPY VERSION /var/VERSION
 
 # Create  dir for data & logs
 RUN mkdir /var/data && mkdir /var/data/logs
