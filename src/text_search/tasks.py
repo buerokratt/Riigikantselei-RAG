@@ -7,6 +7,7 @@ from django.db.models import F
 
 from api.celery_handler import app
 from api.utilities.gpt import ChatGPT
+from core.base_task import ResourceTask
 from core.exceptions import OPENAI_EXCEPTIONS
 from text_search.models import TextSearchConversation, TextSearchQueryResult, TextTask
 
@@ -40,9 +41,9 @@ def async_call_celery_task_chain(
 
 # TODO: implement real RAG logic, then unit test
 # Using bind=True sets the Celery Task object to the first argument, in this case celery_task.
-@app.task(name='query_and_format_rag_context', max_retries=5, bind=True)
+@app.task(name='query_and_format_rag_context', max_retries=5, bind=True, base=ResourceTask)
 def query_and_format_rag_context(
-    celery_task: Task,
+    celery_task: ResourceTask,
     conversation_id: int,
     user_input: str,
     dataset_index_queries: List[str],
@@ -58,7 +59,10 @@ def query_and_format_rag_context(
     """
     conversation: TextSearchConversation = TextSearchConversation.objects.get(pk=conversation_id)
     context_and_references = conversation.generate_conversations_and_references(
-        user_input=user_input, dataset_index_queries=dataset_index_queries
+        user_input=user_input,
+        dataset_index_queries=dataset_index_queries,
+        vectorizer=celery_task.vectorizer,
+        encoder=celery_task.encoder,
     )
     return context_and_references
 
