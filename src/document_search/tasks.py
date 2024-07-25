@@ -9,7 +9,7 @@ from elasticsearch_dsl.response import Hit
 from api.celery_handler import app
 from api.utilities.elastic import ElasticKNN
 from api.utilities.gpt import ChatGPT
-from api.utilities.vectorizer import Vectorizer
+from core.base_task import ResourceTask
 from core.exceptions import OPENAI_EXCEPTIONS
 from core.models import CoreVariable, Dataset
 from document_search.models import (
@@ -68,9 +68,9 @@ def parse_aggregation(hits: List[Hit]) -> List[dict]:
 
 # TODO: unit test
 # Using bind=True sets the Celery Task object to the first argument, in this case celery_task.
-@app.task(name='generate_aggregations', bind=True)
+@app.task(name='generate_aggregations', bind=True, base=ResourceTask)
 def generate_aggregations(
-    celery_task: Task, conversation_id: int, user_input: str, result_uuid: str
+    celery_task: ResourceTask, conversation_id: int, user_input: str, result_uuid: str
 ) -> None:
     try:
         conversation = DocumentSearchConversation.objects.get(pk=conversation_id)
@@ -83,14 +83,7 @@ def generate_aggregations(
         knn = ElasticKNN()
         indices = Dataset.get_all_dataset_values('index')
 
-        vectorizer = Vectorizer(
-            model_name=settings.VECTORIZATION_MODEL_NAME,
-            system_configuration=settings.BGEM3_SYSTEM_CONFIGURATION,
-            inference_configuration=settings.BGEM3_INFERENCE_CONFIGURATION,
-            model_directory=settings.DATA_DIR,
-        )
-
-        question_vector = vectorizer.vectorize([user_input])['vectors'][0]
+        question_vector = celery_task.vectorizer.vectorize([user_input])['vectors'][0]
         output_count = 100
         hits = knn.search_vector(
             vector=question_vector,
@@ -117,14 +110,17 @@ def generate_aggregations(
 
 # TODO: implement real RAG logic, then unit test
 # Using bind=True sets the Celery Task object to the first argument, in this case celery_task.
-@app.task(name='generate_openai_prompt', bind=True)
+@app.task(name='generate_openai_prompt', bind=True, base=ResourceTask)
 def generate_openai_prompt(
-    celery_task: Task, conversation_id: int, dataset_index_queries: List[str]
+    celery_task: ResourceTask, conversation_id: int, dataset_index_queries: List[str]
 ) -> dict:
     conversation = DocumentSearchConversation.objects.get(pk=conversation_id)
     user_input = conversation.user_input
     context_and_references = conversation.generate_conversations_and_references(
-        user_input=user_input, dataset_index_queries=dataset_index_queries
+        user_input=user_input,
+        dataset_index_queries=dataset_index_queries,
+        vectorizer=celery_task.vectorizer,
+        encoder=celery_task.encoder,
     )
     return context_and_references
 

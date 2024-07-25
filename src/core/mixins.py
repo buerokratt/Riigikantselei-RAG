@@ -5,6 +5,7 @@ from typing import Dict, List, Tuple
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.db import models
+from tiktoken import Encoding
 
 from api.utilities.elastic import ElasticKNN
 from api.utilities.vectorizer import Vectorizer
@@ -43,23 +44,25 @@ class ConversationMixin(models.Model):
         return message
 
     @staticmethod
-    def prune_context(context: str) -> Tuple[str, bool]:
-        model = CoreVariable.get_core_setting('OPENAI_API_CHAT_MODEL')
+    def prune_context(context: str, encoder: Encoding) -> Tuple[str, bool]:
         token_limit = CoreVariable.get_core_setting('OPENAI_CONTEXT_MAX_TOKEN_LIMIT')
 
-        exceeds_limit = exceeds_token_limit(text=context, model=model, token_limit=token_limit)
+        exceeds_limit = exceeds_token_limit(text=context, encoder=encoder, token_limit=token_limit)
 
         if exceeds_limit:
-            pruned_context = prune_context(text=context, model=model, token_limit=token_limit)
+            pruned_context = prune_context(text=context, encoder=encoder, token_limit=token_limit)
             return pruned_context, True
 
         return context, False
 
     @staticmethod
-    def parse_gpt_question_and_references(user_input: str, hits: List[dict]) -> dict:
+    def parse_gpt_question_and_references(
+        user_input: str, hits: List[dict], encoder: Encoding
+    ) -> dict:
         url_field = CoreVariable.get_core_setting('ELASTICSEARCH_URL_FIELD')
         title_field = CoreVariable.get_core_setting('ELASTICSEARCH_TITLE_FIELD')
         text_field = CoreVariable.get_core_setting('ELASTICSEARCH_TEXT_CONTENT_FIELD')
+        year_field = CoreVariable.get_core_setting('ELASTICSEARCH_YEAR_FIELD')
 
         context_documents_contents = []
         for hit in hits:
@@ -71,6 +74,7 @@ class ConversationMixin(models.Model):
                 'index': hit['_index'],
                 'title': source.get(title_field, ''),
                 'url': source.get(url_field, ''),
+                'year': source.get(year_field, ''),
             }
             if content:
                 context_documents_contents.append(reference)
@@ -78,7 +82,9 @@ class ConversationMixin(models.Model):
         is_pruned_container = []
         context_container = []
         for document in context_documents_contents:
-            text, is_pruned = ConversationMixin.prune_context(document.get(text_field, ''))
+            text, is_pruned = ConversationMixin.prune_context(
+                document.get(text_field, ''), encoder=encoder
+            )
             context_container.append(text)
             is_pruned_container.append(is_pruned)
 
@@ -134,15 +140,12 @@ class ConversationMixin(models.Model):
         return container
 
     def generate_conversations_and_references(
-        self, user_input: str, dataset_index_queries: List[str]
+        self,
+        user_input: str,
+        dataset_index_queries: List[str],
+        vectorizer: Vectorizer,
+        encoder: Encoding,
     ) -> dict:
-        vectorizer = Vectorizer(
-            model_name=settings.VECTORIZATION_MODEL_NAME,
-            system_configuration=settings.BGEM3_SYSTEM_CONFIGURATION,
-            inference_configuration=settings.BGEM3_INFERENCE_CONFIGURATION,
-            model_directory=settings.DATA_DIR,
-        )
-
         input_vector = vectorizer.vectorize([user_input])['vectors'][0]
 
         knn = ElasticKNN()
@@ -155,7 +158,7 @@ class ConversationMixin(models.Model):
 
         hits = matching_documents['hits']['hits']
         question_and_references = self.parse_gpt_question_and_references(
-            user_input=user_input, hits=hits
+            user_input=user_input, hits=hits, encoder=encoder
         )
         return question_and_references
 
