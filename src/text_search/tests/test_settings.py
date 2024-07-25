@@ -4,6 +4,7 @@ from uuid import UUID
 
 from api.utilities.testing import IsType
 from core.choices import TaskStatus
+from core.models import CoreVariable
 from text_search.tasks import save_openai_results
 
 # pylint: disable=unused-argument
@@ -11,8 +12,11 @@ from text_search.tasks import save_openai_results
 
 # Conversation
 
+CHAT_QUESTION_1 = 'Kuidas sai Eesti iseseisvuse?'
+CHAT_QUESTION_2 = 'Ok, aga anna siis infot Läti iseseivuse kohta.'
+
 BASE_CREATE_INPUT = {
-    'user_input': 'Kuidas sai Eesti iseseisvuse?',
+    'user_input': CHAT_QUESTION_1,
     'min_year': 2020,
     'max_year': 2024,
     'dataset_names': ['a', 'c'],
@@ -40,11 +44,11 @@ NEITHER_DATE_CREATE_INPUT.pop('max_year')
 # Chat
 
 CHAT_INPUT_1 = {
-    'user_input': BASE_CREATE_INPUT['user_input'],
+    'user_input': CHAT_QUESTION_1,
 }
 
 CHAT_INPUT_2 = {
-    'user_input': 'Ok, aga anna siis infot Läti iseseivuse kohta.',
+    'user_input': CHAT_QUESTION_2,
 }
 
 CHAT_CHAIN_EXPECTED_ARGUMENTS_1 = {
@@ -58,38 +62,43 @@ CHAT_CHAIN_EXPECTED_ARGUMENTS_2 = CHAT_CHAIN_EXPECTED_ARGUMENTS_1 | {
     'user_input': CHAT_INPUT_2['user_input'],
 }
 
+CHAT_ANSWER_1 = 'response_text_1'
+CHAT_ANSWER_2 = 'response_text_2'
+
+CHAT_REFERENCES_1 = [
+    {
+        'text': 'reference_text_1',
+        'elastic_id': 'elastic_id_1',
+        'index': 'elastic_id_1',
+        'title': 'title_1',
+        'url': 'url_1',
+        'dataset_name': 'Dataset Name',
+    },
+    {
+        'text': 'reference_text_2',
+        'elastic_id': 'elastic_id_2',
+        'index': 'elastic_id_2',
+        'title': 'title_2',
+        'url': 'url_2',
+        'dataset_name': 'Dataset Name',
+    },
+]
+
 CHAT_CHAIN_RESULTS_DICT_1 = {
     'model': 'model_name',
     'user_input': CHAT_INPUT_1['user_input'],
-    'response': 'response_text_1',
+    'response': CHAT_ANSWER_1,
     'is_context_pruned': False,
     'input_tokens': 10,
     'output_tokens': 20,
     'total_cost': 0.05,
     'response_headers': {},
-    'references': [
-        {
-            'text': 'reference_text_1',
-            'elastic_id': 'elastic_id_1',
-            'index': 'elastic_id_1',
-            'title': 'title_1',
-            'url': 'url_1',
-            'dataset_name': 'Dataset Name',
-        },
-        {
-            'text': 'reference_text_2',
-            'elastic_id': 'elastic_id_2',
-            'index': 'elastic_id_2',
-            'title': 'title_2',
-            'url': 'url_2',
-            'dataset_name': 'Dataset Name',
-        },
-    ],
+    'references': CHAT_REFERENCES_1,
 }
 
 CHAT_CHAIN_RESULTS_DICT_2 = CHAT_CHAIN_RESULTS_DICT_1 | {
     'user_input': CHAT_INPUT_2['user_input'],
-    'response': 'response_text_2',
+    'response': CHAT_ANSWER_2,
     'input_tokens': 20,
     'output_tokens': 40,
     'total_cost': 0.10,
@@ -138,3 +147,30 @@ def chat_chain_side_effect_2(
     # type: ignore
     # pylint: disable=no-value-for-parameter
     save_openai_results.apply([CHAT_CHAIN_RESULTS_DICT_2, conversation_id, result_uuid])
+
+
+# Messages and references (@property)
+
+EXPECTED_MESSAGES = [
+    {
+        'role': 'system',
+        'content': CoreVariable.get_core_setting('OPENAI_SYSTEM_MESSAGE'),
+    },
+    {
+        'role': 'user',
+        'content': CHAT_QUESTION_1,
+    },
+    {
+        'role': 'assistant',
+        'content': CHAT_ANSWER_1,
+    },
+]
+
+EXPECTED_MESSAGES_FOR_PDF = [
+    {
+        'user': CHAT_QUESTION_1,
+        'assistant': CHAT_ANSWER_1,
+    },
+]
+
+EXPECTED_REFERENCES_FOR_PDF = [CHAT_REFERENCES_1]
