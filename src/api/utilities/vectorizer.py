@@ -63,7 +63,7 @@ class Vectorizer:
                 ignore_patterns=['flax_model.msgpack', 'rust_model.ot', 'tf_model.h5'],
             )
 
-    def _load_model_interface(self, **kwargs: Any) -> None:
+    def load_model_interface(self, **kwargs: Any) -> None:
         self.model_interface = BGEM3FlagModel(
             str(self._model_path), **self.system_configuration, **kwargs
         )
@@ -75,7 +75,7 @@ class Vectorizer:
                 'Trying to vectorize without initialising the interference interface, '
                 'loading it automatically!'
             )
-            self._load_model_interface()
+            self.load_model_interface()
 
         if self.model_interface is None:
             raise RuntimeError
