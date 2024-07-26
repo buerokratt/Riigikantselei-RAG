@@ -1,0 +1,22 @@
+<h1 style="color:black" >{{ conversation_title }}</h1>
+
+{% for message in messages_with_references %}
+
+    <h2 style="color:black" >{{ message.role }}:</h2>
+
+    {% for paragraph in message.paragraphs %}
+        <p style="color:black" >{{ paragraph }}</p>
+    {% endfor %}
+
+    {% if message.references %}
+        <h4 style="color:black" >Viited:</h4>
+
+        {% for reference in message.references %}
+            <ol style="color:black" >
+                <li>{{ reference.title }}, <a href="{{ reference.url }}" >LINK</a></li>
+            </ol>
+        {% endfor %}
+
+    {% endif %}
+
+{% endfor %}

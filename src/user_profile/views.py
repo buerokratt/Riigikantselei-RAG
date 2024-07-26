@@ -202,7 +202,7 @@ class UserProfileViewSet(viewsets.ViewSet):
         )
         password_reset_url = settings.BASE_URL + password_reset_endpoint
         content = render_to_string(
-            'password_reset_email.txt',
+            template_name='password_reset_email.txt',
             context={
                 'service_name': settings.SERVICE_NAME,
                 'password_reset_url': password_reset_url,

@@ -1,5 +1,6 @@
 from django.db import transaction
 from django.db.models import QuerySet
+from django.http import FileResponse
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
@@ -7,6 +8,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from core.models import CoreVariable, Dataset
+from core.pdf import pdf_file_bytes_from_conversation
 from core.serializers import ConversationSetTitleSerializer
 from document_search.models import (
     AggregationTask,
@@ -125,3 +127,16 @@ class DocumentSearchConversationViewset(viewsets.ModelViewSet):
         conversation.save()
 
         return Response()
+
+    @action(detail=True, methods=['get'])
+    def pdf(self, request: Request, pk: int) -> FileResponse:
+        # Prevent anyone from changing other users' data.
+        # We do it here, not self.check_object_permissions, because we want to return 404, not 403,
+        # because 403 implies that the resource exists and a non-manager should not know even that.
+        queryset = DocumentSearchConversation.objects.filter(auth_user=request.user)
+        conversation = get_object_or_404(queryset, id=pk)
+
+        filename = f'riigikantselei_vestlus_{pk}.pdf'
+        pdf_file_bytes = pdf_file_bytes_from_conversation(conversation)
+
+        return FileResponse(pdf_file_bytes, as_attachment=True, filename=filename)
