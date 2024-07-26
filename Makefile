@@ -40,4 +40,4 @@ logs:
 
 
 celery:
-	cd src && celery -A api.celery_handler worker -l DEBUG
+	cd src && celery -A api.celery_handler worker -l DEBUG --concurrency=3 -Ofair
