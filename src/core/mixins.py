@@ -63,6 +63,7 @@ class ConversationMixin(models.Model):
         title_field = CoreVariable.get_core_setting('ELASTICSEARCH_TITLE_FIELD')
         text_field = CoreVariable.get_core_setting('ELASTICSEARCH_TEXT_CONTENT_FIELD')
         year_field = CoreVariable.get_core_setting('ELASTICSEARCH_YEAR_FIELD')
+        parent_field = CoreVariable.get_core_setting('ELASTICSEARCH_PARENT_FIELD')
 
         context_documents_contents = []
         for hit in hits:
@@ -74,7 +75,8 @@ class ConversationMixin(models.Model):
                 'index': hit['_index'],
                 'title': source.get(title_field, ''),
                 'url': source.get(url_field, ''),
-                'year': source.get(year_field, ''),
+                'year': source.get(year_field, None),
+                'parent': source.get(parent_field, ''),
             }
             if content:
                 context_documents_contents.append(reference)
