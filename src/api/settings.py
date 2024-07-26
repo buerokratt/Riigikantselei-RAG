@@ -50,6 +50,9 @@ CORE_SETTINGS = {
     'ELASTICSEARCH_YEAR_FIELD': env('RK_ELASTICSEARCH_YEAR_FIELD', default='year'),
     'ELASTICSEARCH_URL_FIELD': env('RK_ELASTICSEARCH_URL_FIELD', default='url'),
     'ELASTICSEARCH_TITLE_FIELD': env('RK_ELASTICSEARCH_TITLE_FIELD', default='title'),
+    # For the field which references the parent document (actual paper document)
+    # the segment belongs to.
+    'ELASTICSEARCH_PARENT_FIELD': env('RK_ELASTICSEARCH_PARENT_FIELD', default='parent'),
     # OpenAI integration
     # TODO: obtain key
     'OPENAI_API_KEY': env('RK_OPENAI_API_KEY', default=None),
