@@ -39,6 +39,8 @@ class UserProfile(models.Model):
     # If this is None, the usage limit should be read from the default value.
     custom_usage_limit_euros = models.FloatField(default=None, null=True)
 
+    is_deleted = models.BooleanField(default=False)
+
     used_cost = models.FloatField(default=0.0)
 
     @property

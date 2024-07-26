@@ -102,10 +102,39 @@ class UserProfileViewSet(viewsets.ViewSet):
         return Response(serializer.data)
 
     def list(self, request: Request) -> Response:
-        user_profiles = UserProfile.objects.all()
+        user_profiles = UserProfile.objects.filter(is_deleted=False)
 
         serializer = UserProfileReadOnlySerializer(user_profiles, many=True)
         return Response(serializer.data)
+
+    def destroy(self, request: Request, pk: int) -> Response:
+        # Prevent non-manager user from accessing other users' data.
+        # We do it here, not self.check_object_permissions, because we want to return 404, not 403,
+        # because 403 implies that the resource exists and a non-manager should not know even that.
+        queryset = User.objects.all()
+        if not request.user.user_profile.is_manager:
+            queryset = User.objects.filter(id=request.user.id)
+
+        auth_user = get_object_or_404(queryset, id=pk)
+        user_profile = auth_user.user_profile
+
+        if auth_user.is_staff:
+            raise ValidationError('You can not destroy a superuser! Remove permissions first!')
+
+        user_profile.is_manager = False
+        user_profile.is_accepted = False
+        user_profile.is_allowed_to_spend_resources = False
+        user_profile.is_deleted = True
+        user_profile.save()
+
+        auth_user.username = str(pk)
+        auth_user.email = ''
+        auth_user.first_name = ''
+        auth_user.last_name = ''
+        auth_user.set_unusable_password()
+        auth_user.save()
+
+        return Response()
 
     @action(detail=True, methods=['post'])
     def accept(self, request: Request, pk: int) -> Response:
