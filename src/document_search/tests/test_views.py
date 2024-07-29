@@ -12,6 +12,7 @@ from api.utilities.elastic import ElasticCore
 from api.utilities.vectorizer import Vectorizer
 from core.choices import TaskStatus
 from core.models import Dataset
+from document_search.models import DocumentSearchConversation, DocumentSearchQueryResult
 from document_search.tests.test_settings import DocumentSearchMockResponse
 from user_profile.utilities import create_test_user_with_user_profile
 
@@ -135,6 +136,16 @@ class DocumentSearchTestCase(APITransactionTestCase):
             self.assertEqual(result['dataset_name'], target_dataset_name)
             self.assertEqual(result['celery_task']['status'], TaskStatus.SUCCESS)
             self.assertEqual(len(result['references']), 3)
+
+        # Delete and assert nothing remains.
+        delete_uri = reverse('v1:document_search-bulk-destroy')
+        response = self.client.delete(delete_uri, data={'ids': [conversation_pk]})
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+        self.assertFalse(DocumentSearchConversation.objects.filter(id=conversation_pk).exists())
+        self.assertFalse(
+            DocumentSearchQueryResult.objects.filter(conversation__id=conversation_pk).exists()
+        )
 
     def test_chatting_being_denied_when_overreaching_spending_limit(self) -> None:
         self.accepted_auth_user.user_profile.used_cost = 5000

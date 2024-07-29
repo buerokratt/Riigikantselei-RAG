@@ -49,6 +49,10 @@ class UserProfile(models.Model):
             return self.custom_usage_limit_euros
         return CoreVariable.get_core_setting('DEFAULT_USAGE_LIMIT_EUROS')
 
+    @property
+    def is_superuser(self) -> bool:
+        return self.auth_user.is_superuser
+
     def __str__(self) -> str:
         if self.auth_user.first_name and self.auth_user.last_name:
             return f'{self.auth_user.first_name} {self.auth_user.last_name}'
