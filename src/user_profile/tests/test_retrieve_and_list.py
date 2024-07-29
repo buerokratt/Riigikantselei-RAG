@@ -18,6 +18,9 @@ class TestUserProfileRetrieveAndList(APITestCase):
         self.non_manager_auth_user = create_test_user_with_user_profile(
             self, 'tester', 'tester@email.com', 'password', is_manager=False
         )
+        self.superuser = create_test_user_with_user_profile(
+            self, 'superman', 'superman@email.com', 'password', is_admin=True
+        )
         self.retrieve_endpoint_url_manager = reverse(
             'v1:user_profile-detail', kwargs={'pk': self.manager_auth_user.id}
         )
@@ -39,6 +42,7 @@ class TestUserProfileRetrieveAndList(APITestCase):
                 'email': 'tester@email.com',
                 'first_name': 'tester',
                 'last_name': 'tester',
+                'is_superuser': False,
                 'id': self.non_manager_auth_user.id,
                 'is_manager': False,
                 'is_reviewed': True,
@@ -97,6 +101,7 @@ class TestUserProfileRetrieveAndList(APITestCase):
                 'email': 'manager@email.com',
                 'first_name': 'tester',
                 'last_name': 'tester',
+                'is_superuser': False,
                 'id': self.manager_auth_user.id,
                 'is_manager': True,
                 'is_reviewed': True,
@@ -111,7 +116,23 @@ class TestUserProfileRetrieveAndList(APITestCase):
                 'email': 'tester@email.com',
                 'first_name': 'tester',
                 'last_name': 'tester',
+                'is_superuser': False,
                 'id': self.non_manager_auth_user.id,
+                'is_manager': False,
+                'is_reviewed': True,
+                'is_accepted': True,
+                'is_allowed_to_spend_resources': True,
+                'custom_usage_limit_euros': None,
+                'usage_limit': 10.0,
+                'used_cost': 0.0,
+            },
+            {
+                'username': 'superman',
+                'email': 'superman@email.com',
+                'first_name': 'tester',
+                'last_name': 'tester',
+                'is_superuser': True,
+                'id': self.superuser.id,
                 'is_manager': False,
                 'is_reviewed': True,
                 'is_accepted': True,
@@ -133,3 +154,16 @@ class TestUserProfileRetrieveAndList(APITestCase):
 
         response = self.client.get(self.list_endpoint_url)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_superuser_status_is_visible(self) -> None:
+        token, _ = Token.objects.get_or_create(user=self.superuser)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
+
+        response = self.client.get(self.list_endpoint_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        users = response.data
+        # Check that it matches three users.
+        self.assertEqual(len(users), 3)
+        superusers = [user for user in users if user['is_superuser'] is True]
+        self.assertEqual(len(superusers), 1)
