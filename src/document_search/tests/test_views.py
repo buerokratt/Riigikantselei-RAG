@@ -142,8 +142,8 @@ class DocumentSearchTestCase(APITransactionTestCase):
         response = self.client.delete(delete_uri, data={'ids': [conversation_pk]})
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
-        self.assertFalse(DocumentSearchConversation.objects.filter(id=conversation_pk).exists())
-        self.assertFalse(
+        self.assertTrue(DocumentSearchConversation.objects.get(id=conversation_pk).is_deleted)
+        self.assertTrue(
             DocumentSearchQueryResult.objects.filter(conversation__id=conversation_pk).exists()
         )
 

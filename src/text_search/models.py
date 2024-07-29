@@ -18,7 +18,7 @@ class TextSearchConversation(ConversationMixin):
 
 class TextSearchQueryResult(ResultMixin):
     conversation = models.ForeignKey(
-        TextSearchConversation, on_delete=models.CASCADE, related_name='query_results'
+        TextSearchConversation, on_delete=models.PROTECT, related_name='query_results'
     )
 
     def __str__(self) -> str:
@@ -27,5 +27,5 @@ class TextSearchQueryResult(ResultMixin):
 
 class TextTask(TaskMixin):
     result = models.OneToOneField(
-        TextSearchQueryResult, on_delete=models.CASCADE, related_name='celery_task'
+        TextSearchQueryResult, on_delete=models.PROTECT, related_name='celery_task'
     )

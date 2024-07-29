@@ -16,7 +16,7 @@ from core.utilities import exceeds_token_limit, prune_context
 
 class ConversationMixin(models.Model):
     title = models.CharField(max_length=100)
-    auth_user = models.ForeignKey(User, on_delete=models.RESTRICT)
+    auth_user = models.ForeignKey(User, on_delete=models.PROTECT)
     system_input = models.TextField()
 
     min_year = models.IntegerField(null=True, default=None)
@@ -24,6 +24,8 @@ class ConversationMixin(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     modified_at = models.DateTimeField(auto_now=True)
+
+    is_deleted = models.BooleanField(default=False)
 
     def __str__(self) -> str:
         return f"'{self.title}' by {self.auth_user.username}"

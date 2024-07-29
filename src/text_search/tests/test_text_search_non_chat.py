@@ -35,6 +35,7 @@ class TestTextSearchNonChat(APITestCase):
     def setUpTestData(cls) -> None:  # pylint: disable=invalid-name
         cls.create_endpoint_url = reverse('v1:text_search-list')
         cls.list_endpoint_url = reverse('v1:text_search-list')
+        cls.bulk_destroy_endpoint_url = reverse('v1:text_search-bulk-destroy')
 
     def setUp(self) -> None:  # pylint: disable=invalid-name
         self.accepted_auth_user = create_test_user_with_user_profile(
@@ -56,7 +57,7 @@ class TestTextSearchNonChat(APITestCase):
 
     # success
 
-    def test_create_retrieve_list(self) -> None:
+    def test_create_retrieve_list_delete(self) -> None:
         token, _ = Token.objects.get_or_create(user=self.accepted_auth_user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
@@ -87,6 +88,7 @@ class TestTextSearchNonChat(APITestCase):
             'created_at': IsType(datetime),
             'auth_user': self.accepted_auth_user,
             'system_input': CoreVariable.get_core_setting('OPENAI_SYSTEM_MESSAGE'),
+            'is_deleted': False,
         }
         response_expected_data = shared_expected_data | response_only_expected_data
         model_expected_data = shared_expected_data | model_only_expected_data
@@ -112,6 +114,25 @@ class TestTextSearchNonChat(APITestCase):
 
         self.assertEqual(response.data, [response_expected_data])
 
+        # Bulk destroy
+        delete_input_data = {'ids': [conversation_id]}
+
+        response = self.client.delete(self.bulk_destroy_endpoint_url, data=delete_input_data)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+        conversation.refresh_from_db()
+        self.assertTrue(conversation.is_deleted)
+
+        # Retrieve again
+        response = self.client.get(retrieve_endpoint_url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+        # List again
+        response = self.client.get(self.list_endpoint_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.assertEqual(response.data, [])
+
     def test_create_uses_default_datasets(self) -> None:
         token, _ = Token.objects.get_or_create(user=self.accepted_auth_user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
@@ -133,6 +154,28 @@ class TestTextSearchNonChat(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         self.assertEqual(response.data['dataset_names'], ['a', 'b', 'c'])
+
+    def test_bulk_destroy_does_not_touch_other_user(self) -> None:
+        token, _ = Token.objects.get_or_create(user=self.accepted_auth_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
+
+        # Create
+        response = self.client.post(self.create_endpoint_url, data=BASE_CREATE_INPUT)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn('id', response.data)
+        conversation_id = response.data['id']
+
+        # Set title
+        token, _ = Token.objects.get_or_create(user=self.accepted_auth_user_2)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
+
+        bulk_destroy_input = {'ids': [conversation_id]}
+
+        response = self.client.delete(self.bulk_destroy_endpoint_url, data=bulk_destroy_input)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+        conversation = TextSearchConversation.objects.get(id=conversation_id)
+        self.assertFalse(conversation.is_deleted)
 
     def test_set_title(self) -> None:
         token, _ = Token.objects.get_or_create(user=self.accepted_auth_user)
@@ -299,6 +342,23 @@ class TestTextSearchNonChat(APITestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
         response = self.client.get(self.list_endpoint_url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    # bulk destroy fails
+
+    def test_bulk_destroy_fails_because_not_authed(self) -> None:
+        bulk_destroy_input = {'ids': [1]}
+
+        response = self.client.delete(self.bulk_destroy_endpoint_url, data=bulk_destroy_input)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_bulk_destroy_fails_because_not_accepted(self) -> None:
+        token, _ = Token.objects.get_or_create(user=self.not_accepted_auth_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
+
+        bulk_destroy_input = {'ids': [1]}
+
+        response = self.client.delete(self.bulk_destroy_endpoint_url, data=bulk_destroy_input)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     # set title fails

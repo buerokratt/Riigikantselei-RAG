@@ -1,3 +1,5 @@
+from typing import Any
+
 from django.db import transaction
 from django.db.models import QuerySet
 from django.http import FileResponse
@@ -44,14 +46,19 @@ from user_profile.permissions import (  # type: ignore
 
 
 class DocumentSearchConversationViewset(viewsets.ModelViewSet):
-    queryset = DocumentSearchConversation.objects.all()
     permission_classes = (IsAcceptedPermission,)
     serializer_class = DocumentSearchConversationSerializer
 
-    # pylint: disable=invalid-name
+    # pylint: disable=unused-argument,invalid-name
 
     def get_queryset(self) -> QuerySet:
-        return DocumentSearchConversation.objects.filter(auth_user=self.request.user)
+        # Never return conversations that are deleted or that are someone else's.
+        # 404 will be returned in both situations,
+        # as no user should know about the existence of these conversations
+        # (403 would imply that it exists).
+        return DocumentSearchConversation.objects.filter(
+            auth_user=self.request.user, is_deleted=False
+        )
 
     def perform_create(self, serializer: DocumentSearchConversationSerializer) -> None:
         system_input = serializer.validated_data['system_input']
@@ -114,11 +121,7 @@ class DocumentSearchConversationViewset(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def set_title(self, request: Request, pk: int) -> Response:
-        # Prevent anyone from changing other users' data.
-        # We do it here, not self.check_object_permissions, because we want to return 404, not 403,
-        # because 403 implies that the resource exists and a non-manager should not know even that.
-        queryset = DocumentSearchConversation.objects.filter(auth_user=request.user)
-        conversation = get_object_or_404(queryset, id=pk)
+        conversation = get_object_or_404(self.get_queryset(), id=pk)
 
         serializer = ConversationSetTitleSerializer(data=request.data)
         if not serializer.is_valid():
@@ -144,17 +147,18 @@ class DocumentSearchConversationViewset(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
 
         ids = serializer.validated_data['ids']
-        DocumentSearchConversation.objects.filter(auth_user=request.user, id__in=ids).delete()
+        self.get_queryset().filter(id__in=ids).update(is_deleted=True)
 
         return Response({'detail': 'Deleted chosen objects!'}, status=status.HTTP_204_NO_CONTENT)
 
+    # We don't intend for this to be used, but it is created via ModelViewSet,
+    # so we have to override it to make it impossible to use
+    def destroy(self, request: Request, *args: Any, **kwargs: Any) -> None:
+        raise NotImplementedError
+
     @action(detail=True, methods=['get'])
     def pdf(self, request: Request, pk: int) -> FileResponse:
-        # Prevent anyone from changing other users' data.
-        # We do it here, not self.check_object_permissions, because we want to return 404, not 403,
-        # because 403 implies that the resource exists and a non-manager should not know even that.
-        queryset = DocumentSearchConversation.objects.filter(auth_user=request.user)
-        conversation = get_object_or_404(queryset, id=pk)
+        conversation = get_object_or_404(self.get_queryset(), id=pk)
 
         filename = f'riigikantselei_vestlus_{pk}.pdf'
         pdf_file_bytes = pdf_file_bytes_from_conversation(conversation)

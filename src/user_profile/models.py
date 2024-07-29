@@ -14,7 +14,7 @@ class UserProfile(models.Model):
     # - first_name
     # - last_name
     # Set on creation.
-    auth_user = models.OneToOneField(User, on_delete=models.RESTRICT, related_name='user_profile')
+    auth_user = models.OneToOneField(User, on_delete=models.PROTECT, related_name='user_profile')
     # Whether the user is allowed to manage other users.
     # Separate from Django superuser or staff as administering the web application is our job
     # and managing the users' rights is the customers' job.
@@ -61,5 +61,5 @@ class UserProfile(models.Model):
 
 
 class PasswordResetToken(models.Model):
-    auth_user = models.ForeignKey(User, on_delete=models.RESTRICT)
+    auth_user = models.ForeignKey(User, on_delete=models.PROTECT)
     key = models.CharField(default=Token.generate_key, max_length=50)
