@@ -12,7 +12,14 @@ from text_search.models import TextSearchConversation, TextSearchQueryResult, Te
 from text_search.tests.test_settings import (
     BASE_CREATE_INPUT,
     BASE_SET_TITLE_INPUT,
+    CHAT_ANSWER_1,
+    CHAT_QUESTION_1,
+    CHAT_QUESTION_2,
+    CHAT_REFERENCES_1,
     EQUAL_DATES_CREATE_INPUT,
+    EXPECTED_MESSAGES,
+    EXPECTED_MESSAGES_FOR_PDF,
+    EXPECTED_REFERENCES_FOR_PDF,
     INVALID_DATASET_NAME_CREATE_INPUT,
     INVALID_MAX_YEAR_CREATE_INPUT,
     INVALID_MIN_YEAR_CREATE_INPUT,
@@ -65,6 +72,8 @@ class TestTextSearchNonChat(APITestCase):
         self.assertIn('id', response.data)
 
         conversation_id = response.data['id']
+
+        # TODO: Consider moving all this to test_settings.py
         shared_expected_data = {
             'id': conversation_id,
             'title': BASE_CREATE_INPUT['user_input'],
@@ -79,7 +88,6 @@ class TestTextSearchNonChat(APITestCase):
             'auth_user': self.accepted_auth_user,
             'system_input': CoreVariable.get_core_setting('OPENAI_SYSTEM_MESSAGE'),
         }
-
         response_expected_data = shared_expected_data | response_only_expected_data
         model_expected_data = shared_expected_data | model_only_expected_data
 
@@ -156,7 +164,7 @@ class TestTextSearchNonChat(APITestCase):
 
         self.assertEqual(response.data['title'], BASE_SET_TITLE_INPUT['title'])
 
-    def test_messages_only_uses_successful_results(self) -> None:
+    def test_messages_and_references_only_use_successful_results(self) -> None:
         token, _ = Token.objects.get_or_create(user=self.accepted_auth_user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
@@ -166,39 +174,27 @@ class TestTextSearchNonChat(APITestCase):
         conversation_id = response.data['id']
 
         failed_result = TextSearchQueryResult.objects.create(
-            conversation_id=conversation_id, user_input='Why are you like this?'
+            conversation_id=conversation_id, user_input=CHAT_QUESTION_2
         )
-        TextTask.objects.create(
-            result=failed_result, status=TaskStatus.FAILURE, error='Something went wrong!'
-        )
+        TextTask.objects.create(result=failed_result, status=TaskStatus.FAILURE, error='')
 
-        success_input = 'What is your purpose?'
-        response_message = 'This is the OpenAPI response etc etc.'
         success_instance = TextSearchQueryResult.objects.create(
-            conversation_id=conversation_id, user_input=success_input, response=response_message
+            conversation_id=conversation_id,
+            user_input=CHAT_QUESTION_1,
+            response=CHAT_ANSWER_1,
+            references=CHAT_REFERENCES_1,
         )
         TextTask.objects.create(result=success_instance, status=TaskStatus.SUCCESS)
 
         # Check the context that the conversation instance creates.
         conversation = TextSearchConversation.objects.get(id=conversation_id)
         messages = conversation.messages
+        messages_for_pdf = conversation.messages_for_pdf
+        references_for_pdf = conversation.references_for_pdf
 
-        # System message, question message for success, response message.
-        expected_messages = [
-            {
-                'role': 'system',
-                'content': CoreVariable.get_core_setting('OPENAI_SYSTEM_MESSAGE'),
-            },
-            {
-                'role': 'user',
-                'content': success_input,
-            },
-            {
-                'role': 'assistant',
-                'content': response_message,
-            },
-        ]
-        self.assertEqual(messages, expected_messages)
+        self.assertEqual(messages, EXPECTED_MESSAGES)
+        self.assertEqual(messages_for_pdf, EXPECTED_MESSAGES_FOR_PDF)
+        self.assertEqual(references_for_pdf, EXPECTED_REFERENCES_FOR_PDF)
 
     # create fails
 
@@ -364,3 +360,47 @@ class TestTextSearchNonChat(APITestCase):
         data = {'title': 'asdf\0'}
         response = self.client.post(set_title_endpoint_url, data=data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    # PDF fails
+
+    def test_pdf_fails_because_not_authed(self) -> None:
+        pdf_endpoint_url = reverse('v1:text_search-pdf', kwargs={'pk': 1})
+
+        response = self.client.get(pdf_endpoint_url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_pdf_fails_because_not_accepted(self) -> None:
+        token, _ = Token.objects.get_or_create(user=self.not_accepted_auth_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
+
+        pdf_endpoint_url = reverse('v1:text_search-pdf', kwargs={'pk': 1})
+
+        response = self.client.get(pdf_endpoint_url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_pdf_fails_because_not_exists(self) -> None:
+        token, _ = Token.objects.get_or_create(user=self.accepted_auth_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
+
+        pdf_endpoint_url = reverse('v1:text_search-pdf', kwargs={'pk': 999})
+
+        response = self.client.get(pdf_endpoint_url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_pdf_fails_because_other_user(self) -> None:
+        token, _ = Token.objects.get_or_create(user=self.accepted_auth_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
+
+        # Create
+        response = self.client.post(self.create_endpoint_url, data=BASE_CREATE_INPUT)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn('id', response.data)
+        conversation_id = response.data['id']
+
+        # PDF
+        token, _ = Token.objects.get_or_create(user=self.accepted_auth_user_2)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
+
+        pdf_endpoint_url = reverse('v1:text_search-pdf', kwargs={'pk': conversation_id})
+        response = self.client.get(pdf_endpoint_url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)

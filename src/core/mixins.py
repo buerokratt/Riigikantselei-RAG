@@ -1,6 +1,6 @@
 import logging
 import uuid
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -103,7 +103,7 @@ class ConversationMixin(models.Model):
         }
 
     @property
-    def messages(self) -> List[dict]:
+    def messages(self) -> List[Dict[str, str]]:
         container = [{'role': 'system', 'content': self.system_input}]
         query = (
             self.query_results.filter(celery_task__status=TaskStatus.SUCCESS)
@@ -113,6 +113,32 @@ class ConversationMixin(models.Model):
         if query.exists():
             for query_result in query:
                 container.extend(query_result.messages)
+        return container
+
+    @property
+    def messages_for_pdf(self) -> List[Dict[str, str]]:
+        container = []
+        query = (
+            self.query_results.filter(celery_task__status=TaskStatus.SUCCESS)
+            .exclude(response=None)
+            .order_by('created_at')
+        )
+        if query.exists():
+            for query_result in query:
+                container.append(query_result.messages_for_pdf)
+        return container
+
+    @property
+    def references_for_pdf(self) -> List[List[Dict[str, str]]]:
+        container = []
+        query = (
+            self.query_results.filter(celery_task__status=TaskStatus.SUCCESS)
+            .exclude(response=None)
+            .order_by('created_at')
+        )
+        if query.exists():
+            for query_result in query:
+                container.append(query_result.references)
         return container
 
     def generate_conversations_and_references(
@@ -162,11 +188,18 @@ class ResultMixin(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     @property
-    def messages(self) -> List[dict]:
+    def messages(self) -> List[Dict[str, str]]:
         return [
             {'role': 'user', 'content': self.user_input},
             {'role': 'assistant', 'content': self.response},
         ]
+
+    @property
+    def messages_for_pdf(self) -> Dict[str, str]:
+        return {
+            'user': self.user_input,
+            'assistant': self.response,
+        }
 
     class Meta:
         abstract = True

@@ -1,3 +1,5 @@
+from typing import Optional
+
 import celery
 import tiktoken
 from django.conf import settings
@@ -5,13 +7,6 @@ from tiktoken import Encoding
 
 from api.utilities.vectorizer import Vectorizer
 from core.models import CoreVariable
-
-# Mypy for some reason can not handle the fact that the
-# variables are None in the beginning but get initialized
-# during the property. Heck it.
-
-# mypy: ignore-errors
-
 
 # Ye who hark this path from the wilderness, beware the dangers within
 # Celery tasks are initiated as a singleton during worker boot-up
@@ -27,8 +22,8 @@ class ResourceTask(celery.Task):
         # The cache is initialized here. It can be access though all child
         # tasks whose base is ResourceTask.
         # The cache will get initialized when celery is initialized.
-        self._vectorizer = None
-        self._encoder = None
+        self._vectorizer: Optional[Vectorizer] = None
+        self._encoder: Optional[Encoding] = None
 
     @property
     def vectorizer(self) -> Vectorizer:

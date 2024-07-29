@@ -106,6 +106,11 @@ class TestTextSearchChat(APITransactionTestCase):
         response = self.client.get(retrieve_endpoint_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
+        # PDF
+        pdf_endpoint_url = reverse('v1:text_search-pdf', kwargs={'pk': conversation_id})
+        response = self.client.get(pdf_endpoint_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
     # Chat failure
 
     def test_chat_fails_because_not_authed(self) -> None:
