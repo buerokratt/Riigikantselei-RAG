@@ -88,10 +88,6 @@ class TextSearchConversationReadOnlySerializer(serializers.ModelSerializer):
         read_only_fields = ('__all__',)
 
 
-class TextSearchConversationBulkDeleteSerializer(serializers.Serializer):
-    ids = serializers.ListField(child=serializers.IntegerField())
-
-
 class TextSearchQuerySubmitSerializer(serializers.Serializer):
     user_input = serializers.CharField()
 

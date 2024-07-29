@@ -4,10 +4,12 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.request import Request
 from rest_framework.response import Response
 
-from core.serializers import ConversationSetTitleSerializer
+from core.serializers import (
+    ConversationBulkDeleteSerializer,
+    ConversationSetTitleSerializer,
+)
 from text_search.models import TextSearchConversation
 from text_search.serializers import (
-    TextSearchConversationBulkDeleteSerializer,
     TextSearchConversationCreateSerializer,
     TextSearchConversationReadOnlySerializer,
     TextSearchQuerySubmitSerializer,
@@ -42,10 +44,10 @@ class TextSearchConversationViewset(viewsets.ViewSet):
     @action(
         detail=False,
         methods=['DELETE'],
-        serializer_class=TextSearchConversationBulkDeleteSerializer,
+        serializer_class=ConversationBulkDeleteSerializer,
     )
     def bulk_destroy(self, request: Request) -> Response:
-        serializer = TextSearchConversationBulkDeleteSerializer(data=request.data)
+        serializer = ConversationBulkDeleteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         ids = serializer.validated_data['ids']
