@@ -3,7 +3,6 @@ from typing import List
 
 from celery import Task
 from django.conf import settings
-from django.db.models import F
 
 from api.celery_handler import app
 from api.utilities.gpt import ChatGPT
@@ -156,11 +155,5 @@ def save_openai_results(
     result.response_headers = results['response_headers']
     result.references = results['references']
     result.save()
-
-    # Increment the counter for cost in the user profile to prevent
-    # it from lowering when deleting old records. Issue #23
-    user = conversation.auth_user
-    user.user_profile.used_cost = F('used_cost') + results['total_cost']
-    user.user_profile.save(update_fields=['used_cost'])
 
     task.set_success()

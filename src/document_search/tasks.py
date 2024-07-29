@@ -3,7 +3,6 @@ from typing import List, Optional
 
 from celery import Task
 from django.conf import settings
-from django.db.models import F
 from elasticsearch_dsl.response import Hit
 
 from api.celery_handler import app
@@ -215,11 +214,5 @@ def save_openai_results_for_doc(
     result.response_headers = results['response_headers']
     result.references = results['references']
     result.save()
-
-    # Increment the counter for cost in the user profile to prevent
-    # it from lowering when deleting old records. Issue #23
-    user = conversation.auth_user
-    user.user_profile.used_cost = F('used_cost') + results['total_cost']
-    user.user_profile.save(update_fields=['used_cost'])
 
     document_task.set_success()

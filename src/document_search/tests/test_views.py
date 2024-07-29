@@ -148,8 +148,7 @@ class DocumentSearchTestCase(APITransactionTestCase):
         )
 
     def test_chatting_being_denied_when_overreaching_spending_limit(self) -> None:
-        self.accepted_auth_user.user_profile.used_cost = 5000
-        self.accepted_auth_user.user_profile.custom_usage_limit_euros = 1
+        self.accepted_auth_user.user_profile.custom_usage_limit_euros = 0
         self.accepted_auth_user.user_profile.save()
 
         payload = {'user_input': 'Kuidas saab piim kookuse sisse?'}

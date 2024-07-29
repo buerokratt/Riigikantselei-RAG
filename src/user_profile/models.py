@@ -1,8 +1,11 @@
 from django.contrib.auth.models import User
 from django.db import models
+from django.db.models import Sum
 from rest_framework.authtoken.models import Token
 
 from core.models import CoreVariable
+from document_search.models import DocumentSearchQueryResult
+from text_search.models import TextSearchQueryResult
 
 
 class UserProfile(models.Model):
@@ -41,7 +44,17 @@ class UserProfile(models.Model):
 
     is_deleted = models.BooleanField(default=False)
 
-    used_cost = models.FloatField(default=0.0)
+    @property
+    def used_cost(self) -> float:
+        text_queries = TextSearchQueryResult.objects.filter(conversation__auth_user=self.auth_user)
+        document_queries = DocumentSearchQueryResult.objects.filter(
+            conversation__auth_user=self.auth_user
+        )
+        text_cost = text_queries.aggregate(Sum('total_cost', default=0.0))['total_cost__sum']
+        document_cost = document_queries.aggregate(Sum('total_cost', default=0.0))[
+            'total_cost__sum'
+        ]
+        return text_cost + document_cost
 
     @property
     def usage_limit(self) -> float:
