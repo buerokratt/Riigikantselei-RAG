@@ -55,3 +55,7 @@ class ConversationSetTitleSerializer(serializers.Serializer):
     title = serializers.CharField(
         required=True, max_length=100, validators=[reasonable_character_with_spaces_validator]
     )
+
+
+class ConversationBulkDeleteSerializer(serializers.Serializer):
+    ids = serializers.ListField(child=serializers.IntegerField())

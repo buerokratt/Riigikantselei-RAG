@@ -32,6 +32,7 @@ class TestUserProfileCreate(APITestCase):
             'is_manager': False,
             'is_reviewed': False,
             'is_accepted': False,
+            'is_superuser': False,
             'is_allowed_to_spend_resources': False,
             'custom_usage_limit_euros': None,
             'usage_limit': 10.0,

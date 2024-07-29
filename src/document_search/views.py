@@ -9,7 +9,10 @@ from rest_framework.response import Response
 
 from core.models import CoreVariable, Dataset
 from core.pdf import pdf_file_bytes_from_conversation
-from core.serializers import ConversationSetTitleSerializer
+from core.serializers import (
+    ConversationBulkDeleteSerializer,
+    ConversationSetTitleSerializer,
+)
 from document_search.models import (
     AggregationTask,
     DocumentAggregationResult,
@@ -127,6 +130,23 @@ class DocumentSearchConversationViewset(viewsets.ModelViewSet):
         conversation.save()
 
         return Response()
+
+    # Since the destroy() function for the viewset only takes a single id for an
+    # argument it's better to make deletion through an extra action as you can do
+    # single and multiple deletes in one go.
+    @action(
+        detail=False,
+        methods=['DELETE'],
+        serializer_class=ConversationBulkDeleteSerializer,
+    )
+    def bulk_destroy(self, request: Request) -> Response:
+        serializer = ConversationBulkDeleteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        ids = serializer.validated_data['ids']
+        DocumentSearchConversation.objects.filter(auth_user=request.user, id__in=ids).delete()
+
+        return Response({'detail': 'Deleted chosen objects!'}, status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=['get'])
     def pdf(self, request: Request, pk: int) -> FileResponse:
