@@ -44,6 +44,8 @@ class UserProfile(models.Model):
 
     is_deleted = models.BooleanField(default=False)
 
+    created_at = models.DateTimeField(auto_now_add=True)
+
     @property
     def used_cost(self) -> float:
         text_queries = TextSearchQueryResult.objects.filter(conversation__auth_user=self.auth_user)
