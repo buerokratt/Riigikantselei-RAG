@@ -1,3 +1,4 @@
+import io
 from typing import Any, Dict, List
 
 from django.template.loader import render_to_string
@@ -46,7 +47,7 @@ def _build_conversation_html(
     return render_to_string(template_name='conversation.html', context=context)
 
 
-def pdf_file_bytes_from_conversation(conversation: ConversationMixin) -> bytes:
+def pdf_file_bytes_from_conversation(conversation: ConversationMixin) -> io.BytesIO:
     html = _build_conversation_html(
         conversation_title=conversation.title,
         message_dict_list=conversation.messages_for_pdf,
@@ -63,4 +64,9 @@ def pdf_file_bytes_from_conversation(conversation: ConversationMixin) -> bytes:
     # if conversation.references_for_pdf:
     #     pdf.output('messages.pdf')
 
-    return pdf.output()
+    # Necessary for Djangos FileResponse class to return a
+    # proper file towards the front-end.
+    buffer = io.BytesIO(pdf.output())
+    buffer.seek(0)
+
+    return buffer
