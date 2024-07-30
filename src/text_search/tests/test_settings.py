@@ -30,8 +30,6 @@ INVALID_DATASET_NAME_CREATE_INPUT = BASE_CREATE_INPUT | {'dataset_names': ['a', 
 
 INVALID_MIN_YEAR_CREATE_INPUT = BASE_CREATE_INPUT | {'min_year': datetime.datetime.now().year + 1}
 
-INVALID_MAX_YEAR_CREATE_INPUT = BASE_CREATE_INPUT | {'max_year': datetime.datetime.now().year + 1}
-
 # Min year should not be bigger than max year.
 INVALID_YEAR_DIFFERENCE_CREATE_INPUT = BASE_CREATE_INPUT | {'min_year': 2024, 'max_year': 2020}
 

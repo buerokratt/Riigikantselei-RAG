@@ -1,6 +1,6 @@
 import logging
 import uuid
-from typing import Dict, List, Tuple
+from typing import Dict, Iterable, List, Set, Tuple
 
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -115,6 +115,24 @@ class ConversationMixin(models.Model):
                 container.extend(query_result.messages)
         return container
 
+    def get_previous_results_parents_ids(self) -> Set[str]:
+        success_messages = (
+            self.query_results.filter(celery_task__status=TaskStatus.SUCCESS)
+            .exclude(response=None)
+            .order_by('created_at')
+        )
+        parents = set()
+
+        if success_messages:
+            latest_message = success_messages.last()
+            references = latest_message.references
+            for reference in references:
+                parent_id = reference.get('parent', None)
+                if parent_id:
+                    parents.add(parent_id)
+
+        return parents
+
     @property
     def messages_for_pdf(self) -> List[Dict[str, str]]:
         container = []
@@ -147,12 +165,14 @@ class ConversationMixin(models.Model):
         dataset_index_queries: List[str],
         vectorizer: Vectorizer,
         encoder: Encoding,
+        parent_references: Iterable[str],
     ) -> dict:
         input_vector = vectorizer.vectorize([user_input])['vectors'][0]
 
         knn = ElasticKNN()
 
-        search_query = knn.create_date_query(min_year=self.min_year, max_year=self.max_year)
+        date_query = knn.create_date_query(min_year=self.min_year, max_year=self.max_year)
+        search_query = knn.create_doc_id_query(date_query, parent_references)
         search_query_wrapper = {'search_query': search_query} if search_query else {}
         matching_documents = knn.search_vector(
             vector=input_vector, indices=dataset_index_queries, **search_query_wrapper
