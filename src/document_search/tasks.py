@@ -116,11 +116,13 @@ def generate_openai_prompt(
 ) -> dict:
     conversation = DocumentSearchConversation.objects.get(pk=conversation_id)
     user_input = conversation.user_input
+    parents = conversation.get_previous_results_parents_ids()
     context_and_references = conversation.generate_conversations_and_references(
         user_input=user_input,
         dataset_index_queries=dataset_index_queries,
         vectorizer=celery_task.vectorizer,
         encoder=celery_task.encoder,
+        parent_references=parents,
     )
     return context_and_references
 

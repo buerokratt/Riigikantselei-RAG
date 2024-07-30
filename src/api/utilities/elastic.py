@@ -1,6 +1,6 @@
 import functools
 import logging
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
 import elasticsearch_dsl
 from elasticsearch import AuthenticationException
@@ -156,6 +156,32 @@ class ElasticKNN:
 
         search = search.query('range', **{date_field: date_filter})
         return search.to_dict()
+
+    @staticmethod
+    def create_doc_id_query(
+        search_query: Optional[dict], parent_references: Iterable[str]
+    ) -> Optional[dict]:
+        if search_query and not parent_references:
+            return search_query
+
+        if search_query is None and not parent_references:
+            return None
+
+        parent_field = CoreVariable.get_core_setting('ELASTICSEARCH_PARENT_FIELD')
+        doc_id_restriction = [
+            elasticsearch_dsl.Q('term', **{parent_field: reference})
+            for reference in parent_references
+        ]
+        parent_query = elasticsearch_dsl.Q('bool', should=doc_id_restriction)
+
+        if search_query:
+            search_wrapper = elasticsearch_dsl.Search.from_dict(search_query)
+            previous_query = elasticsearch_dsl.Q(search_wrapper.query)
+            query = elasticsearch_dsl.Q('bool', must=[parent_query, previous_query])
+            return elasticsearch_dsl.Search().query(query).to_dict()
+
+        search_wrapper = elasticsearch_dsl.Search()
+        return search_wrapper.query(parent_query).to_dict()
 
     def _apply_filter_to_knn(
         self, index: str, search_query: Optional[dict] = None

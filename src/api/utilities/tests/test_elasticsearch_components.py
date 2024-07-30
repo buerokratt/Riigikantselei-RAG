@@ -48,11 +48,12 @@ from api.utilities.tests.test_settings import (
     YEAR_TEST_YEAR_LIST,
 )
 from api.utilities.vectorizer import Vectorizer
+from core.models import CoreVariable
 
 # pylint: disable=too-many-instance-attributes,too-many-arguments
 
 
-class TestElasticCore(APITestCase):
+class TestElasticsearchComponents(APITestCase):
     def setUp(self) -> None:  # pylint: disable=invalid-name
         self.elastic_core = ElasticCore()
 
@@ -265,3 +266,51 @@ class TestElasticCore(APITestCase):
         self.assertEqual(len(hits), MIDDLE_YEAR_ONLY_EXPECTED_HIT_COUNT)
         search_text_set = {hit['_source'][TEXT_FIELD_NAME] for hit in hits}
         self.assertEqual(search_text_set, MIDDLE_YEAR_ONLY_EXPECTED_DOCUMENT_SET)
+
+    def test_that_when_year_query_exists_and_parents_dont_the_year_query_is_the_same(self) -> None:
+        year_query = ElasticKNN.create_date_query(2000, 2024)
+        self.assertTrue(year_query is not None)
+        search_query = ElasticKNN.create_doc_id_query(year_query, set())
+        self.assertEqual(search_query, year_query)
+
+    def test_that_year_and_parent_query_being_empty_returns_none(self) -> None:
+        year_query = ElasticKNN.create_date_query(None, None)
+        self.assertEqual(year_query, None)
+        search_query = ElasticKNN.create_doc_id_query(year_query, set())
+        self.assertEqual(search_query, None)
+
+    def test_parent_term_query_being_generated_on_empty_year_query(self) -> None:
+        year_query = ElasticKNN.create_date_query(None, None)
+        self.assertEqual(year_query, None)
+        references = ['66554848489', '14549849865']
+        search_query = ElasticKNN.create_doc_id_query(year_query, references)
+        self.assertTrue(search_query is not None)
+        restrictions = search_query['query']['bool']['should']  # type: ignore
+        self.assertEqual(len(restrictions), len(references))
+
+    def test_year_and_reference_querys_being_combined_under_a_must_restriction(self) -> None:
+        references = ['66554848489', '14549849865', '41498498']
+        min_year = 2000
+        max_year = 2024
+        year_field = CoreVariable.get_core_setting('ELASTICSEARCH_YEAR_FIELD')
+
+        year_query = ElasticKNN.create_date_query(min_year, max_year)
+        self.assertTrue(year_query is not None)
+        search_query = ElasticKNN.create_doc_id_query(year_query, references)
+        self.assertTrue(search_query is not None)
+
+        restrictions = search_query['query']['bool']['must']  # type: ignore
+        # One for the year range, the other for references.
+        self.assertEqual(len(restrictions), 2)
+        year_restrictions = [restriction for restriction in restrictions if 'range' in restriction]
+        self.assertEqual(len(year_restrictions), 1)
+        year_restriction = year_restrictions[0]
+        self.assertEqual(year_restriction['range'][year_field]['gte'], min_year)
+        self.assertEqual(year_restriction['range'][year_field]['lte'], max_year)
+
+        reference_restrictions = [
+            restriction for restriction in restrictions if 'bool' in restriction
+        ]
+        self.assertEqual(len(reference_restrictions), 1)
+        reference_restriction = reference_restrictions[0]
+        self.assertEqual(len(reference_restriction['bool']['should']), len(references))
