@@ -72,6 +72,7 @@ class UserProfileReadOnlySerializer(serializers.ModelSerializer):
         data['email'] = auth_user.email
         data['first_name'] = auth_user.first_name
         data['last_name'] = auth_user.last_name
+        data['is_superuser'] = auth_user.is_superuser
         return data
 
     class Meta:
@@ -80,7 +81,6 @@ class UserProfileReadOnlySerializer(serializers.ModelSerializer):
             'is_manager',
             'is_reviewed',
             'is_accepted',
-            'is_superuser',
             'is_allowed_to_spend_resources',
             'custom_usage_limit_euros',
             'usage_limit',

@@ -47,6 +47,12 @@ class UserProfile(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     @property
+    def usage_limit(self) -> float:
+        if self.custom_usage_limit_euros is not None:
+            return self.custom_usage_limit_euros
+        return CoreVariable.get_core_setting('DEFAULT_USAGE_LIMIT_EUROS')
+
+    @property
     def used_cost(self) -> float:
         text_queries = TextSearchQueryResult.objects.filter(conversation__auth_user=self.auth_user)
         document_queries = DocumentSearchQueryResult.objects.filter(
@@ -57,16 +63,6 @@ class UserProfile(models.Model):
             'total_cost__sum'
         ]
         return text_cost + document_cost
-
-    @property
-    def usage_limit(self) -> float:
-        if self.custom_usage_limit_euros is not None:
-            return self.custom_usage_limit_euros
-        return CoreVariable.get_core_setting('DEFAULT_USAGE_LIMIT_EUROS')
-
-    @property
-    def is_superuser(self) -> bool:
-        return self.auth_user.is_superuser
 
     def __str__(self) -> str:
         if self.auth_user.first_name and self.auth_user.last_name:
