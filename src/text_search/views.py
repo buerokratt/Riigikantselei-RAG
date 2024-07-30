@@ -1,3 +1,5 @@
+import io
+
 from django.http import FileResponse
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -124,4 +126,6 @@ class TextSearchConversationViewset(viewsets.ViewSet):
         filename = f'riigikantselei_vestlus_{pk}.pdf'
         pdf_file_bytes = pdf_file_bytes_from_conversation(conversation)
 
-        return FileResponse(pdf_file_bytes, as_attachment=True, filename=filename)
+        buffer = io.BytesIO(pdf_file_bytes)
+        buffer.seek(0)
+        return FileResponse(buffer, as_attachment=True, filename=filename)
