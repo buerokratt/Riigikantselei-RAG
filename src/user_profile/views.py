@@ -20,7 +20,7 @@ from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.views import APIView
 
-from user_profile.models import PasswordResetToken, UserProfile
+from user_profile.models import LogInEvent, LogOutEvent, PasswordResetToken, UserProfile
 from user_profile.permissions import UserProfilePermission  # type: ignore
 from user_profile.serializers import (
     EmailSerializer,
@@ -45,23 +45,25 @@ class GetTokenView(APIView):
         username = serializer.validated_data['username']
         password = serializer.validated_data['password']
 
-        if authenticate(request=request, username=username, password=password):
-            user = User.objects.get(username=username)
-            token, _ = Token.objects.get_or_create(user=user)
+        if not authenticate(request=request, username=username, password=password):
+            raise AuthenticationFailed('User and password do not match!')
 
-            # TODO: Remove this later.
-            if settings.DEBUG:
-                login(request, user)
+        user = User.objects.get(username=username)
+        token, _ = Token.objects.get_or_create(user=user)
 
-            response = {
-                'id': user.id,
-                'username': user.username,
-                'email': user.email,
-                'token': token.key,
-            }
-            return Response(response, status=status.HTTP_200_OK)
+        # TODO: Remove this later.
+        if settings.DEBUG:
+            login(request, user)
 
-        raise AuthenticationFailed('User and password do not match!')
+        LogInEvent.objects.create(auth_user=user)
+
+        response = {
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'token': token.key,
+        }
+        return Response(response, status=status.HTTP_200_OK)
 
 
 class LogOutView(APIView):
@@ -69,6 +71,7 @@ class LogOutView(APIView):
 
     def post(self, request: Request) -> Response:
         Token.objects.filter(user=request.user).delete()
+        LogOutEvent.objects.create(auth_user=request.user)
         return Response()
 
 

@@ -74,3 +74,13 @@ class UserProfile(models.Model):
 class PasswordResetToken(models.Model):
     auth_user = models.ForeignKey(User, on_delete=models.PROTECT)
     key = models.CharField(default=Token.generate_key, max_length=50)
+
+
+class LogInEvent(models.Model):
+    auth_user = models.ForeignKey(User, on_delete=models.PROTECT)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class LogOutEvent(models.Model):
+    auth_user = models.ForeignKey(User, on_delete=models.PROTECT)
+    created_at = models.DateTimeField(auto_now_add=True)
