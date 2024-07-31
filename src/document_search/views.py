@@ -1,6 +1,7 @@
 from django.db import transaction
 from django.db.models import QuerySet
 from django.http import FileResponse
+from django.utils.translation import gettext as _
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
@@ -146,7 +147,7 @@ class DocumentSearchConversationViewset(viewsets.ModelViewSet):
         ids = serializer.validated_data['ids']
         DocumentSearchConversation.objects.filter(auth_user=request.user, id__in=ids).delete()
 
-        return Response({'detail': 'Deleted chosen objects!'}, status=status.HTTP_204_NO_CONTENT)
+        return Response({'detail': _('Deleted chosen objects!')}, status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=['get'])
     def pdf(self, request: Request, pk: int) -> FileResponse:

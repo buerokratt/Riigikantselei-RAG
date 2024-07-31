@@ -4,6 +4,7 @@ from typing import List, Optional, Tuple
 
 import django
 import openai
+from django.utils.translation import gettext as _
 from rest_framework.exceptions import APIException
 
 from core.models import CoreVariable
@@ -133,7 +134,8 @@ class ChatGPT:
 
     def _commit_api(self, messages: List[dict]) -> Tuple[dict, dict, int]:
         if self.gpt is None:
-            raise APIException("No OpenAI API key given, can't query API!")
+            message = _("No OpenAI API key given, can't query API!")
+            raise APIException(message)
 
         try:
             response = self.gpt.chat.completions.with_raw_response.create(
@@ -146,10 +148,12 @@ class ChatGPT:
             return headers, response_dict, status_code
 
         except openai.AuthenticationError as exception:
-            raise APIException("Couldn't authenticate with OpenAI API!") from exception
+            message = _("Couldn't authenticate with OpenAI API!")
+            raise APIException(message) from exception
 
         except openai.BadRequestError as exception:
-            raise APIException('OpenAI request is not correct!') from exception
+            message = _('OpenAI request is not correct!')
+            raise APIException(message) from exception
 
         # TODO: We will be handling this exception with retries later,
         #  either through Celery or something else.
@@ -158,12 +162,12 @@ class ChatGPT:
             raise exception
 
         except openai.NotFoundError as exception:
-            raise APIException(
-                'Requested resource was not found! Is the right model configured?'
-            ) from exception
+            message = _('Requested resource was not found! Is the right model configured?')
+            raise APIException(message) from exception
 
         except openai.PermissionDeniedError as exception:
-            raise APIException('Requested resource was denied!') from exception
+            message = _('Requested resource was denied!')
+            raise APIException(message) from exception
 
         # TODO: We will be handling this exception with retries later,
         #  either through Celery or something else.
@@ -182,10 +186,12 @@ class ChatGPT:
             raise exception
 
         except openai.APIConnectionError as exception:
-            raise APIException("Couldn't connect to the OpenAI API!") from exception
+            message = _("Couldn't connect to the OpenAI API!")
+            raise APIException(message) from exception
 
         except Exception as exception:
-            raise APIException("Couldn't connect to the OpenAI API!") from exception
+            message = _("Couldn't connect to the OpenAI API!")
+            raise APIException(message) from exception
 
     def chat(self, messages: List[dict]) -> LLMResponse:
         user_input = messages[-1]['content']
