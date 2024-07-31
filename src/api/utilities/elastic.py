@@ -3,7 +3,6 @@ import logging
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
 import elasticsearch_dsl
-from django.utils.translation import gettext as _
 from elasticsearch import AuthenticationException
 from elasticsearch import ConnectionError as ElasticsearchConnectionError
 from elasticsearch import ConnectionTimeout, Elasticsearch, NotFoundError, RequestError
@@ -16,14 +15,14 @@ from core.models import CoreVariable
 logger = logging.getLogger(__name__)
 
 MATCH_ALL_QUERY: Dict[str, Dict[str, dict]] = {'query': {'match_all': {}}}
-ELASTIC_NOT_FOUND_MESSAGE = _('Could not find specified data from Elasticsearch!')
-ELASTIC_REQUEST_ERROR_MESSAGE = _('Error executing Elasticsearch query! Bad query?')
-ELASTIC_CONNECTION_TIMEOUT_MESSAGE = _(
+ELASTIC_NOT_FOUND_MESSAGE = 'Could not find specified data from Elasticsearch!'
+ELASTIC_REQUEST_ERROR_MESSAGE = 'Error executing Elasticsearch query! Bad query?'
+ELASTIC_CONNECTION_TIMEOUT_MESSAGE = (
     'Connection to Elasticsearch took too long, please try again later!'
 )
-ELASTIC_AUTHENTICATION_ERROR_MESSAGE = _('Could not authenticate with Elasticsearch!')
-ELASTIC_UNKNOWN_ERROR_MESSAGE = _('Unexpected error from Elasticsearch!')
-ELASTIC_CONNECTION_ERROR_MESSAGE = _(
+ELASTIC_AUTHENTICATION_ERROR_MESSAGE = 'Could not authenticate with Elasticsearch!'
+ELASTIC_UNKNOWN_ERROR_MESSAGE = 'Unexpected error from Elasticsearch!'
+ELASTIC_CONNECTION_ERROR_MESSAGE = (
     'Could not connect to Elasticsearch, is the location properly configured?'
 )
 

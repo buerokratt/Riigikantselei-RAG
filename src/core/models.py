@@ -2,7 +2,6 @@ from typing import Any, List, Optional
 
 from django.conf import settings
 from django.db import models
-from django.utils.translation import gettext as _
 from rest_framework.exceptions import ValidationError
 
 from api.utilities.core_settings import is_float
@@ -70,8 +69,4 @@ class Dataset(models.Model):
                 bad_dataset_names.append(dataset_name)
 
         if bad_dataset_names:
-            erronous_datasets = ', '.join(bad_dataset_names)
-            message = _('Unknown dataset names: [%(bad_dataset_names)s]') % {
-                'bad_dataset_names': erronous_datasets
-            }
-            raise ValidationError(message)
+            raise ValidationError(f'Unknown dataset names: [{", ".join(bad_dataset_names)}]')

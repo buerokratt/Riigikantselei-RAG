@@ -1,7 +1,6 @@
 import re
 
 from django.contrib.auth.models import User
-from django.utils.translation import gettext as _
 from rest_framework import serializers
 
 from api.utilities.serializers import reasonable_character_without_spaces_validator
@@ -13,22 +12,19 @@ _SIMPLE_EMAIL_PATTERN = re.compile(r'[^\s@]+@[^\s@]+\.[^\s@]+')
 
 def _simple_email_format_validator(email: str) -> str:
     if not _SIMPLE_EMAIL_PATTERN.fullmatch(email):
-        message = _('The given value is not an email.')
-        raise serializers.ValidationError(message)
+        raise serializers.ValidationError('The given value is not an email.')
     return email
 
 
 def _unique_username_validator(username: str) -> str:
     if User.objects.filter(username=username):
-        message = _('The given username is already in use.')
-        raise serializers.ValidationError(message)
+        raise serializers.ValidationError('The given username is already in use.')
     return username
 
 
 def _unique_email_validator(email: str) -> str:
     if User.objects.filter(email=email):
-        message = _('The given email is already in use.')
-        raise serializers.ValidationError(message)
+        raise serializers.ValidationError('The given email is already in use.')
     return email
 
 

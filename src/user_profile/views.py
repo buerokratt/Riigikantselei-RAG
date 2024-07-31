@@ -3,7 +3,6 @@ from django.contrib.auth import authenticate, login
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
-from django.utils.translation import gettext as _
 from rest_framework import status, viewsets
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import action
@@ -33,8 +32,6 @@ from user_profile.serializers import (
     UserProfileReadOnlySerializer,
 )
 
-# pylint: disable=unused-variable
-
 
 class GetTokenView(APIView):
     permission_classes = (AllowAny,)
@@ -50,7 +47,7 @@ class GetTokenView(APIView):
 
         if authenticate(request=request, username=username, password=password):
             user = User.objects.get(username=username)
-            token, is_created = Token.objects.get_or_create(user=user)
+            token, _ = Token.objects.get_or_create(user=user)
 
             # TODO: Remove this later.
             if settings.DEBUG:
@@ -64,8 +61,7 @@ class GetTokenView(APIView):
             }
             return Response(response, status=status.HTTP_200_OK)
 
-        message = _('User and password do not match!')
-        raise AuthenticationFailed(message)
+        raise AuthenticationFailed('User and password do not match!')
 
 
 class LogOutView(APIView):
@@ -124,8 +120,7 @@ class UserProfileViewSet(viewsets.ViewSet):
         auth_user = get_object_or_404(User.objects.all(), id=pk)
 
         if auth_user == request.user:
-            message = _('You can not change your own status!')
-            raise ValidationError(message)
+            raise ValidationError('You can not change your own status!')
 
         # Ensure the two are equal and not mismatched.
         auth_user.is_staff = not auth_user.is_staff
@@ -221,8 +216,7 @@ class UserProfileViewSet(viewsets.ViewSet):
             from_email=settings.DEFAULT_FROM_EMAIL,
         )
         if result != 1:
-            message = _('Sending email failed.')
-            raise APIException(message)
+            raise APIException('Sending email failed.')
 
         return Response()
 
@@ -259,8 +253,7 @@ def _set_acceptance(pk: int, to_accept: bool) -> Response:
     user_profile = auth_user.user_profile
 
     if user_profile.is_reviewed:
-        message = _('Can not set acceptance for an already accepted user.')
-        raise ParseError(message)
+        raise ParseError('Can not set acceptance for an already accepted user.')
 
     user_profile.is_reviewed = True
     user_profile.is_accepted = to_accept
