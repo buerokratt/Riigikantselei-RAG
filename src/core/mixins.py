@@ -15,7 +15,7 @@ from core.utilities import exceeds_token_limit, prune_context
 
 
 class ConversationMixin(models.Model):
-    title = models.CharField(max_length=100)
+    title = models.TextField(default='')
     auth_user = models.ForeignKey(User, on_delete=models.RESTRICT)
     system_input = models.TextField()
 

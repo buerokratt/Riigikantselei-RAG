@@ -3,6 +3,7 @@ from typing import List, Optional
 from django.db import models
 
 from core.mixins import ConversationMixin, ResultMixin, TaskMixin
+from core.models import Dataset
 
 
 class TextSearchConversation(ConversationMixin):
@@ -13,7 +14,8 @@ class TextSearchConversation(ConversationMixin):
         if self.dataset_names_string:
             return self.dataset_names_string.split(',')
 
-        return None
+        datasets = [dataset.name for dataset in Dataset.objects.all()]
+        return datasets
 
 
 class TextSearchQueryResult(ResultMixin):
