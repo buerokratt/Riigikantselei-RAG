@@ -6,7 +6,6 @@ _LOGGED_OUT_ONLY_ACTIONS = {
     'create',
     'request_password_reset',
     'confirm_password_reset',
-    'reset_password',
 }
 _LOGGED_IN_ONLY_ACTIONS = {'retrieve', 'change_password'}
 _MANAGER_ONLY_ACTIONS = {'list', 'accept', 'decline', 'ban', 'set_limit'}
