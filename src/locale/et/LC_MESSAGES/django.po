@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-07-31 13:32+0300\n"
+"POT-Creation-Date: 2024-08-01 12:43+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -30,7 +30,7 @@ msgstr "Andmeid ei leitud!"
 msgid "Error executing Elasticsearch query! Bad query?"
 msgstr "Viga Elasticu päringuga. Võtke ühendust administraatoriga!"
 
-#: api/utilities/elastic.py:21
+#: api/utilities/elastic.py:22
 msgid "Connection to Elasticsearch took too long, please try again later!"
 msgstr "Ühendus võttis liiga kaua aega, palun proovige uuesti!"
 
@@ -104,17 +104,21 @@ msgstr "Teie kasutaja pole kinnitatud administraatori poolelt!"
 msgid "You have reached your monetary limit!"
 msgstr "Ületasite oma kasutuslimiidi!"
 
-#: user_profile/serializers.py:16
+#: user_profile/serializers.py:18
 msgid "The given value is not an email."
 msgstr "Antud email ei vasta emaili formaadile!"
 
-#: user_profile/serializers.py:23
+#: user_profile/serializers.py:25
 msgid "The given username is already in use."
 msgstr "Antud kasutajanimi on juba kasutuses!"
 
-#: user_profile/serializers.py:30
+#: user_profile/serializers.py:32
 msgid "The given email is already in use."
 msgstr "Antud email on juba kasutuses!"
+
+#: user_profile/serializers.py:127
+msgid "Your password reset has expired!"
+msgstr "Teie parooli muutmise periood on aegunud!"
 
 #: user_profile/views.py:66
 msgid "User and password do not match!"
@@ -124,10 +128,14 @@ msgstr "Kasutajanimi ja parool ei ühti!"
 msgid "You can not change your own status!"
 msgstr "Omaenda admin staatust ei saa muuta!"
 
-#: user_profile/views.py:223
+#: user_profile/views.py:220
 msgid "Sending email failed."
 msgstr "Emaili saatmine ebaõnnestus!"
 
-#: user_profile/views.py:261
+#: user_profile/views.py:240
+msgid "Your password has been reset!"
+msgstr "Teie parool on muudetud!"
+
+#: user_profile/views.py:250
 msgid "Can not set acceptance for an already accepted user."
 msgstr "Aksepteeritud kasutaja staatust ei saa muuta!"

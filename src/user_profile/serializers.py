@@ -1,11 +1,13 @@
 import re
 
 from django.contrib.auth.models import User
+from django.shortcuts import get_object_or_404
 from django.utils.translation import gettext as _
 from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 
 from api.utilities.serializers import reasonable_character_without_spaces_validator
-from user_profile.models import UserProfile
+from user_profile.models import PasswordResetToken, UserProfile
 
 # Real email matching is incredibly complex, but this checks for the main structure
 _SIMPLE_EMAIL_PATTERN = re.compile(r'[^\s@]+@[^\s@]+\.[^\s@]+')
@@ -114,6 +116,15 @@ class PasswordResetSerializer(serializers.Serializer):
         validators=[reasonable_character_without_spaces_validator],
     )
     token = serializers.CharField(required=True)
+
+    def validate_token(self, token: str) -> str:
+        orm: PasswordResetToken = get_object_or_404(PasswordResetToken.objects.all(), key=token)
+        expired = orm.is_expired()
+        if expired:
+            message = _('Your password reset has expired!')
+            raise ValidationError(message)
+
+        return token
 
 
 class EmailSerializer(serializers.Serializer):

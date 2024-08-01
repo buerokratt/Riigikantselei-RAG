@@ -15,10 +15,8 @@ from rest_framework.exceptions import (
 )
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
-from rest_framework.renderers import TemplateHTMLRenderer
 from rest_framework.request import Request
 from rest_framework.response import Response
-from rest_framework.reverse import reverse
 from rest_framework.views import APIView
 
 from user_profile.models import PasswordResetToken, UserProfile
@@ -202,10 +200,7 @@ class UserProfileViewSet(viewsets.ViewSet):
         token = PasswordResetToken(auth_user=auth_user)
         token.save()
 
-        password_reset_endpoint = reverse(
-            'v1:user_profile-confirm-password-reset', kwargs={'pk': token.key}
-        )
-        password_reset_url = settings.BASE_URL + password_reset_endpoint
+        password_reset_url = settings.BASE_URL + '/' + f'parooli-taastamine/token={token.key}'
         content = render_to_string(
             template_name='password_reset_email.txt',
             context={
@@ -215,10 +210,10 @@ class UserProfileViewSet(viewsets.ViewSet):
         )
 
         result = send_mail(
-            subject=f'{settings.SERVICE_NAME} parooli lähtestamine',
+            subject='Parooli lähtestamine',
             message=content,
             recipient_list=(email,),
-            from_email=settings.DEFAULT_FROM_EMAIL,
+            from_email=f'{settings.EMAIL_DISPLAY_NAME} <{settings.DEFAULT_FROM_EMAIL}>',
         )
         if result != 1:
             message = _('Sending email failed.')
@@ -226,17 +221,8 @@ class UserProfileViewSet(viewsets.ViewSet):
 
         return Response()
 
-    @action(
-        detail=True,
-        methods=['get'],
-        renderer_classes=(TemplateHTMLRenderer,),
-    )
-    def confirm_password_reset(self, request: Request, pk: int) -> Response:
-        token = get_object_or_404(PasswordResetToken.objects.all(), key=pk)
-        return Response({'token': token.key}, template_name='password_reset_page.html')
-
     @action(detail=False, methods=['post'])
-    def reset_password(self, request: Request) -> Response:
+    def confirm_password_reset(self, request: Request) -> Response:
         serializer = PasswordResetSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -250,7 +236,8 @@ class UserProfileViewSet(viewsets.ViewSet):
 
         PasswordResetToken.objects.filter(auth_user=auth_user).delete()
 
-        return Response()
+        message = _('Your password has been reset!')
+        return Response({'detail': message})
 
 
 # pylint: disable=invalid-name
