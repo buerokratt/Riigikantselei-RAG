@@ -124,7 +124,7 @@ class ConversationMixin(models.Model):
         parents = set()
 
         if success_messages:
-            latest_message = success_messages.last()
+            latest_message = success_messages.first()
             references = latest_message.references
             for reference in references:
                 parent_id = reference.get('parent', None)
