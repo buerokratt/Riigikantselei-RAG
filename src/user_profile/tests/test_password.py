@@ -1,4 +1,5 @@
-from django.conf import settings
+from datetime import timedelta
+
 from django.contrib.auth.models import User
 from django.core import mail
 from rest_framework import status
@@ -19,7 +20,7 @@ class TestUserProfilePassword(APITestCase):
 
         self.change_password_endpoint_url = reverse('v1:user_profile-change-password')
         self.request_password_reset_endpoint_url = reverse('v1:user_profile-request-password-reset')
-        self.reset_password_url = reverse('v1:user_profile-reset-password')
+        self.confirm_password_reset_endpoint_url = reverse('v1:user_profile-confirm-password-reset')
 
         self.password_input_data = {'password': 'password2'}
         self.email_input_data = {'email': 'tester@email.com'}
@@ -63,7 +64,6 @@ class TestUserProfilePassword(APITestCase):
         self.assertEqual(len(mail.outbox), 0)
 
         # Request reset
-
         response = self.client.post(
             self.request_password_reset_endpoint_url, data=self.email_input_data
         )
@@ -81,26 +81,6 @@ class TestUserProfilePassword(APITestCase):
                 confirm_password_reset_endpoint_url = line
                 break
         self.assertGreater(len(confirm_password_reset_endpoint_url), 0)
-        confirm_password_reset_endpoint_url = confirm_password_reset_endpoint_url.replace(
-            settings.BASE_URL, ''
-        )
-
-    def test_password_reset_fails_because_authed(self) -> None:
-        token, _ = Token.objects.get_or_create(user=self.non_manager_auth_user)
-        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
-
-        response = self.client.post(self.request_password_reset_endpoint_url, self.email_input_data)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
-        confirm_password_reset_endpoint_url = reverse(
-            'v1:user_profile-confirm-password-reset', kwargs={'pk': 0}
-        )
-        response = self.client.get(confirm_password_reset_endpoint_url)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
-        password_token_input_data = self.password_input_data | {'token': '0'}
-        response = self.client.post(self.reset_password_url, data=password_token_input_data)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_password_reset_fails_because_not_exists(self) -> None:
         response = self.client.post(
@@ -108,14 +88,10 @@ class TestUserProfilePassword(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
-        confirm_password_reset_endpoint_url = reverse(
-            'v1:user_profile-confirm-password-reset', kwargs={'pk': 0}
-        )
-        response = self.client.get(confirm_password_reset_endpoint_url)
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-
         password_token_input_data = self.password_input_data | {'token': '0'}
-        response = self.client.post(self.reset_password_url, data=password_token_input_data)
+        response = self.client.post(
+            self.confirm_password_reset_endpoint_url, data=password_token_input_data
+        )
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_password_reset_fails_because_bad_input(self) -> None:
@@ -124,6 +100,23 @@ class TestUserProfilePassword(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-        password_token_input_data = {'password': 'password\0', 'token': '0'}
-        response = self.client.post(self.reset_password_url, data=password_token_input_data)
+        test_token = 'jmdolamldkaldkala165a1d65as65d'
+        PasswordResetToken.objects.create(key=test_token, auth_user=self.non_manager_auth_user)
+
+        password_token_input_data = {'password': 'password\0', 'token': test_token}
+        response = self.client.post(
+            self.confirm_password_reset_endpoint_url, data=password_token_input_data
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_password_confirm_after_expire_date_throws_exception(self) -> None:
+        key = 'fa,mlkömfgafa65f4af4a65f'
+        token = PasswordResetToken.objects.create(key=key, auth_user=self.non_manager_auth_user)
+        token.created_at = token.created_at + timedelta(weeks=10)
+        token.save()
+
+        response = self.client.post(
+            self.confirm_password_reset_endpoint_url,
+            data={'token': key, 'password': 'daaököFAF@41'},
+        )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

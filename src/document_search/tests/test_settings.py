@@ -46,3 +46,35 @@ class DocumentSearchMockResponse:
         return self.input_tokens * CoreVariable.get_core_setting(
             'EURO_COST_PER_INPUT_TOKEN'
         ) + self.response_tokens * CoreVariable.get_core_setting('EURO_COST_PER_OUTPUT_TOKEN')
+
+
+AGGREGATION_PARSING_MULTIPLE_DOCS_AS_ONE = [
+    {
+        '_index': 'rk_test_index_1',
+        '_source': {
+            'doc_id': 'adaja154885kfdada',
+            'year': 2000,
+            'reference': 'This is a segment §1',
+        },
+    },
+    {
+        '_index': 'rk_test_index_1',
+        '_source': {
+            'doc_id': 'adaja154885kfdada',
+            'year': 2024,
+            'reference': 'This is segment §2',
+        },
+    },
+]
+
+
+AGGREGATION_PARSING_AS_SEVERAL = AGGREGATION_PARSING_MULTIPLE_DOCS_AS_ONE + [
+    {
+        '_index': 'rk_duos_index_1',
+        '_source': {
+            'doc_id': 'adajaadfaödkfaökdfdada',
+            'year': 2005,
+            'reference': 'This is segement of another document',
+        },
+    }
+]

@@ -1,5 +1,6 @@
 from django.db.models import QuerySet
 from django.http import FileResponse
+from django.utils.translation import gettext as _
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
@@ -63,7 +64,7 @@ class TextSearchConversationViewset(viewsets.ViewSet):
         ids = serializer.validated_data['ids']
         self.get_queryset().filter(id__in=ids).update(is_deleted=True)
 
-        return Response({'detail': 'Deleted chosen objects!'}, status=status.HTTP_204_NO_CONTENT)
+        return Response({'detail': _('Deleted chosen objects!')}, status=status.HTTP_204_NO_CONTENT)
 
     def retrieve(self, request: Request, pk: int) -> Response:
         conversation = get_object_or_404(self.get_queryset(), id=pk)

@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 import logging
 import os
+from gettext import gettext
 from pathlib import Path
 
 import environ
@@ -49,10 +50,10 @@ CORE_SETTINGS = {
     'ELASTICSEARCH_TEXT_CONTENT_FIELD': env('RK_ELASTICSEARCH_TEXT_CONTENT_FIELD', default='text'),
     'ELASTICSEARCH_YEAR_FIELD': env('RK_ELASTICSEARCH_YEAR_FIELD', default='year'),
     'ELASTICSEARCH_URL_FIELD': env('RK_ELASTICSEARCH_URL_FIELD', default='url'),
-    'ELASTICSEARCH_TITLE_FIELD': env('RK_ELASTICSEARCH_TITLE_FIELD', default='title'),
+    'ELASTICSEARCH_TITLE_FIELD': env('RK_ELASTICSEARCH_TITLE_FIELD', default='reference'),
     # For the field which references the parent document (actual paper document)
     # the segment belongs to.
-    'ELASTICSEARCH_PARENT_FIELD': env('RK_ELASTICSEARCH_PARENT_FIELD', default='parent'),
+    'ELASTICSEARCH_PARENT_FIELD': env('RK_ELASTICSEARCH_PARENT_FIELD', default='doc_id'),
     # OpenAI integration
     # TODO: obtain key
     'OPENAI_API_KEY': env('RK_OPENAI_API_KEY', default=None),
@@ -124,6 +125,7 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.locale.LocaleMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -221,10 +223,14 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.0/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGES = (('et', gettext('Estonian')),)
+
+LANGUAGE_CODE = 'et'
 TIME_ZONE = env.str('RK_TIME_ZONE', default='Europe/Tallinn')
 USE_I18N = True
 USE_TZ = True
+
+LOCALE_PATHS = (BASE_DIR / 'locale',)
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
@@ -379,16 +385,17 @@ if DOWNLOAD_RESOURCES:
 #### EMAIL CONFIGURATION ####
 
 EMAIL_HOST = env('RK_EMAIL_HOST', default='localhost')
-EMAIL_PORT = env('RK_EMAIL_PORT', default=25)
+EMAIL_PORT = env.int('RK_EMAIL_PORT', default=25)
 EMAIL_HOST_USER = env('RK_EMAIL_HOST_USER', default='')
+EMAIL_DISPLAY_NAME = env.str('RK_DISPLAY_NAME', default='Riigikantselei semantiline otsing')
 EMAIL_HOST_PASSWORD = env('RK_EMAIL_HOST_PASSWORD', default='')
-EMAIL_TIMEOUT = env('RK_EMAIL_TIMEOUT_IN_SECONDS', default=5)  # in seconds.
+EMAIL_TIMEOUT = env.int('RK_EMAIL_TIMEOUT_IN_SECONDS', default=5)  # in seconds.
 EMAIL_USE_TLS = env.bool('RK_EMAIL_USE_TLS', default=False)
 EMAIL_USE_SSL = env.bool('RK_EMAIL_USE_SSL', default=False)
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
-# TODO: replace dummy backend with real backend
-EMAIL_BACKEND = 'django.core.mail.backends.dummy.EmailBackend'
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
 #### OTHER ####
 

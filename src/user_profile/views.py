@@ -3,6 +3,7 @@ from django.contrib.auth import authenticate, login
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
+from django.utils.translation import gettext as _
 from rest_framework import status, viewsets
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import action
@@ -14,10 +15,8 @@ from rest_framework.exceptions import (
 )
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
-from rest_framework.renderers import TemplateHTMLRenderer
 from rest_framework.request import Request
 from rest_framework.response import Response
-from rest_framework.reverse import reverse
 from rest_framework.views import APIView
 
 from user_profile.models import LogInEvent, LogOutEvent, PasswordResetToken, UserProfile
@@ -31,6 +30,8 @@ from user_profile.serializers import (
     UserCreateSerializer,
     UserProfileReadOnlySerializer,
 )
+
+# pylint: disable=unused-variable
 
 
 class GetTokenView(APIView):
@@ -46,7 +47,8 @@ class GetTokenView(APIView):
         password = serializer.validated_data['password']
 
         if not authenticate(request=request, username=username, password=password):
-            raise AuthenticationFailed('User and password do not match!')
+            message = _('User and password do not match!')
+            raise AuthenticationFailed(message)
 
         user = User.objects.get(username=username)
         token, _ = Token.objects.get_or_create(user=user)
@@ -152,7 +154,8 @@ class UserProfileViewSet(viewsets.ViewSet):
         auth_user = get_object_or_404(User.objects.all(), id=pk)
 
         if auth_user == request.user:
-            raise ValidationError('You can not change your own status!')
+            message = _('You can not change your own status!')
+            raise ValidationError(message)
 
         # Ensure the two are equal and not mismatched.
         auth_user.is_staff = not auth_user.is_staff
@@ -217,22 +220,20 @@ class UserProfileViewSet(viewsets.ViewSet):
 
         return Response()
 
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], permission_classes=(AllowAny,))
     def request_password_reset(self, request: Request) -> Response:
         serializer = EmailSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+        # Existence is checked in the serializer.
         email = serializer.validated_data['email']
+        auth_user = User.objects.get(email=email)
 
-        auth_user = get_object_or_404(User.objects.all(), email=email)
         token = PasswordResetToken(auth_user=auth_user)
         token.save()
 
-        password_reset_endpoint = reverse(
-            'v1:user_profile-confirm-password-reset', kwargs={'pk': token.key}
-        )
-        password_reset_url = settings.BASE_URL + password_reset_endpoint
+        password_reset_url = settings.BASE_URL + '/' + f'parooli-taastamine/{token.key}'
         content = render_to_string(
             template_name='password_reset_email.txt',
             context={
@@ -242,41 +243,35 @@ class UserProfileViewSet(viewsets.ViewSet):
         )
 
         result = send_mail(
-            subject=f'{settings.SERVICE_NAME} parooli lähtestamine',
+            subject='Parooli lähtestamine',
             message=content,
             recipient_list=(email,),
-            from_email=settings.DEFAULT_FROM_EMAIL,
+            from_email=f'{settings.EMAIL_DISPLAY_NAME} <{settings.DEFAULT_FROM_EMAIL}>',
         )
         if result != 1:
-            raise APIException('Sending email failed.')
+            message = _('Sending email failed.')
+            raise APIException(message)
 
         return Response()
 
-    @action(
-        detail=True,
-        methods=['get'],
-        renderer_classes=(TemplateHTMLRenderer,),
-    )
-    def confirm_password_reset(self, request: Request, pk: int) -> Response:
-        token = get_object_or_404(PasswordResetToken.objects.all(), key=pk)
-        return Response({'token': token.key}, template_name='password_reset_page.html')
-
-    @action(detail=False, methods=['post'])
-    def reset_password(self, request: Request) -> Response:
+    @action(detail=False, methods=['post'], permission_classes=(AllowAny,))
+    def confirm_password_reset(self, request: Request) -> Response:
         serializer = PasswordResetSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        token = get_object_or_404(
-            PasswordResetToken.objects.all(), key=serializer.validated_data['token']
-        )
+        # Its existence is already checked in the serializer.
+        token = serializer.validated_data['token']
+        token = PasswordResetToken.objects.get(key=token)
+
         auth_user = token.auth_user
         auth_user.set_password(serializer.validated_data['password'])
         auth_user.save()
 
         PasswordResetToken.objects.filter(auth_user=auth_user).delete()
 
-        return Response()
+        message = _('Your password has been reset!')
+        return Response({'detail': message})
 
 
 # pylint: disable=invalid-name
@@ -285,7 +280,8 @@ def _set_acceptance(pk: int, to_accept: bool) -> Response:
     user_profile = auth_user.user_profile
 
     if user_profile.is_reviewed:
-        raise ParseError('Can not set acceptance for an already accepted user.')
+        message = _('Can not set acceptance for an already accepted user.')
+        raise ParseError(message)
 
     user_profile.is_reviewed = True
     user_profile.is_accepted = to_accept

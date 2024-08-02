@@ -1,0 +1,150 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-08-01 17:52+0300\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: api/settings.py:226
+msgid "Estonian"
+msgstr "Eesti"
+
+#: api/utilities/elastic.py:19
+msgid "Could not find specified data from Elasticsearch!"
+msgstr "Andmeid ei leitud!"
+
+#: api/utilities/elastic.py:20
+msgid "Error executing Elasticsearch query! Bad query?"
+msgstr "Viga Elasticu päringuga. Võtke ühendust administraatoriga!"
+
+#: api/utilities/elastic.py:22
+msgid "Connection to Elasticsearch took too long, please try again later!"
+msgstr "Ühendus võttis liiga kaua aega, palun proovige uuesti!"
+
+#: api/utilities/elastic.py:24
+msgid "Could not authenticate with Elasticsearch!"
+msgstr "Ei saanud autentida Elasticuga! Võtke ühendust administraatoriga!"
+
+#: api/utilities/elastic.py:25
+msgid "Unexpected error from Elasticsearch!"
+msgstr "Ootamatu error Elasticust! Võtke ühendust administraatoriga!"
+
+#: api/utilities/elastic.py:27
+msgid ""
+"Could not connect to Elasticsearch, is the location properly configured?"
+msgstr "Ei saanud ühendust Elasticuga! Võtke ühendust administraatoriga!"
+
+#: api/utilities/gpt.py:137
+msgid "No OpenAI API key given, can't query API!"
+msgstr "ChatGPT ühendus on seadistamata! Võtke ühendust administraatoriga!"
+
+#: api/utilities/gpt.py:151
+msgid "Couldn't authenticate with OpenAI API!"
+msgstr "Autentimine ChatGPT'ga ebaõnnestus! Võtke ühendust administraatoriga!"
+
+#: api/utilities/gpt.py:155
+msgid "OpenAI request is not correct!"
+msgstr "Viga ChatGPT päringuga! Võtke ühendust administraatoriga!"
+
+#: api/utilities/gpt.py:165
+msgid "Requested resource was not found! Is the right model configured?"
+msgstr ""
+"Palutud ChatGPT mudel ei ole saadaval! Võtke ühendust administraatoriga!"
+
+#: api/utilities/gpt.py:169
+msgid "Requested resource was denied!"
+msgstr "Ligipääs keelatud! Võtke ühendust administraatoriga!"
+
+#: api/utilities/gpt.py:189 api/utilities/gpt.py:193
+msgid "Couldn't connect to the OpenAI API!"
+msgstr "Ei saanud ühendust ChatGPT'ga!"
+
+#: api/utilities/serializers.py:17 api/utilities/serializers.py:24
+msgid "The given value contains forbidden characters."
+msgstr "Sisaldab keelatud tähemärke!"
+
+#: core/models.py:74
+#, python-format
+msgid "Unknown dataset names: [%(bad_dataset_names)s]"
+msgstr "Võõrad andmestiku nimed: [%(bad_dataset_names)s]"
+
+#: core/utilities.py:10
+msgid "Minimum year must be lesser than currently running year!"
+msgstr "Miinimum aasta piirang peab olema väiksem kui praegune aasta!"
+
+#: core/utilities.py:13
+msgid "Minimum year must be lesser than the maximum year restriction!"
+msgstr "Miinimum aasta piirang ei tohi olla suurem kui maksimum aasta oma!"
+
+#: document_search/views.py:150 text_search/views.py:59
+msgid "Deleted chosen objects!"
+msgstr "Kustutatud!"
+
+#: user_profile/permissions.py:31
+msgid "Your account is not a manager!"
+msgstr "Teie kasutaja pole administraator!"
+
+#: user_profile/permissions.py:42
+msgid "Your account has not been accepted by a moderator!"
+msgstr "Teie kasutaja pole kinnitatud administraatori poolelt!"
+
+#: user_profile/permissions.py:53
+msgid "You have reached your monetary limit!"
+msgstr "Ületasite oma kasutuslimiidi!"
+
+#: user_profile/serializers.py:17
+msgid "The given value is not an email."
+msgstr "Antud email ei vasta emaili formaadile!"
+
+#: user_profile/serializers.py:24
+msgid "The given username is already in use."
+msgstr "Antud kasutajanimi on juba kasutuses!"
+
+#: user_profile/serializers.py:31
+msgid "The given email is already in use."
+msgstr "Antud email on juba kasutuses!"
+
+#: user_profile/serializers.py:124
+msgid "The given token is invalid."
+msgstr "Turvakontroll ebaõnnestus!"
+
+#: user_profile/serializers.py:129
+msgid "Your password reset has expired!"
+msgstr "Teie parooli muutmise periood on aegunud!"
+
+#: user_profile/serializers.py:145
+msgid "User with that email does not exist!"
+msgstr "Sellise emailiga kasutaja ei eksisteeri!"
+
+#: user_profile/views.py:66
+msgid "User and password do not match!"
+msgstr "Kasutajanimi ja parool ei ühti!"
+
+#: user_profile/views.py:126
+msgid "You can not change your own status!"
+msgstr "Omaenda admin staatust ei saa muuta!"
+
+#: user_profile/views.py:221
+msgid "Sending email failed."
+msgstr "Emaili saatmine ebaõnnestus!"
+
+#: user_profile/views.py:242
+msgid "Your password has been reset!"
+msgstr "Teie parool on muudetud!"
+
+#: user_profile/views.py:252
+msgid "Can not set acceptance for an already accepted user."
+msgstr "Aksepteeritud kasutaja staatust ei saa muuta!"

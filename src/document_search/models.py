@@ -8,7 +8,6 @@ from core.mixins import ConversationMixin, ResultMixin, TaskMixin
 # Create your models here.
 class DocumentSearchConversation(ConversationMixin):
     user_input = models.TextField()
-    title = models.CharField(max_length=100, default='')
 
 
 class DocumentSearchQueryResult(ResultMixin):

@@ -21,7 +21,6 @@ from text_search.tests.test_settings import (
     EXPECTED_MESSAGES_FOR_PDF,
     EXPECTED_REFERENCES_FOR_PDF,
     INVALID_DATASET_NAME_CREATE_INPUT,
-    INVALID_MAX_YEAR_CREATE_INPUT,
     INVALID_MIN_YEAR_CREATE_INPUT,
     INVALID_YEAR_DIFFERENCE_CREATE_INPUT,
     NEITHER_DATE_CREATE_INPUT,
@@ -270,9 +269,6 @@ class TestTextSearchNonChat(APITestCase):
         response = self.client.post(self.create_endpoint_url, data=INVALID_MIN_YEAR_CREATE_INPUT)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-        response = self.client.post(self.create_endpoint_url, data=INVALID_MAX_YEAR_CREATE_INPUT)
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
         response = self.client.post(
             self.create_endpoint_url, data=INVALID_YEAR_DIFFERENCE_CREATE_INPUT
         )
@@ -464,3 +460,21 @@ class TestTextSearchNonChat(APITestCase):
         pdf_endpoint_url = reverse('v1:text_search-pdf', kwargs={'pk': conversation_id})
         response = self.client.get(pdf_endpoint_url)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_that_first_message_isnt_pulled_for_follow_up(self) -> None:
+        conversation = TextSearchConversation.objects.create(
+            title='Maamaks', auth_user=self.accepted_auth_user
+        )
+        empty_ids = conversation.get_previous_results_parents_ids()
+        self.assertEqual(len(empty_ids), 0)
+
+        # Create one after a previous result exists.
+        first_result = TextSearchQueryResult.objects.create(
+            conversation=conversation,
+            user_input='Mis on maamaks?',
+            response='Vargus.',
+            references=[{'parent': '41480194810'}],
+        )
+        TextTask.objects.create(status=TaskStatus.SUCCESS, result=first_result)
+        single_id = conversation.get_previous_results_parents_ids()
+        self.assertEqual(len(single_id), 1)

@@ -57,11 +57,14 @@ def query_and_format_rag_context(
     :return: Text containing user input and relevant context documents.
     """
     conversation: TextSearchConversation = TextSearchConversation.objects.get(pk=conversation_id)
+    parents = conversation.get_previous_results_parents_ids()
+
     context_and_references = conversation.generate_conversations_and_references(
         user_input=user_input,
         dataset_index_queries=dataset_index_queries,
         vectorizer=celery_task.vectorizer,
         encoder=celery_task.encoder,
+        parent_references=parents,
     )
     return context_and_references
 

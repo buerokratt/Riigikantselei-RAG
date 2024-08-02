@@ -1,11 +1,16 @@
+from datetime import timedelta
+
 from django.contrib.auth.models import User
 from django.db import models
 from django.db.models import Sum
+from django.utils import timezone
 from rest_framework.authtoken.models import Token
 
 from core.models import CoreVariable
 from document_search.models import DocumentSearchQueryResult
 from text_search.models import TextSearchQueryResult
+
+# pylint: disable=dangerous-default-value
 
 
 class UserProfile(models.Model):
@@ -74,6 +79,14 @@ class UserProfile(models.Model):
 class PasswordResetToken(models.Model):
     auth_user = models.ForeignKey(User, on_delete=models.PROTECT)
     key = models.CharField(default=Token.generate_key, max_length=50)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def is_expired(self, weeks: int = 1, days: int = 0, hours: int = 0, minutes: int = 0) -> bool:
+        expire_limit = timedelta(weeks=weeks, days=days, hours=hours, minutes=minutes)
+        expired_at = timezone.now() + expire_limit
+        if self.created_at > expired_at:
+            return True
+        return False
 
 
 class LogInEvent(models.Model):

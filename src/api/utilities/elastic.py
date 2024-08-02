@@ -1,12 +1,14 @@
 import functools
 import logging
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
 import elasticsearch_dsl
+from django.utils.translation import gettext as _
 from elasticsearch import AuthenticationException
 from elasticsearch import ConnectionError as ElasticsearchConnectionError
 from elasticsearch import ConnectionTimeout, Elasticsearch, NotFoundError, RequestError
 from elasticsearch_dsl import Search
+from elasticsearch_dsl.response import Response
 from rest_framework import status
 from rest_framework.exceptions import APIException
 
@@ -15,14 +17,14 @@ from core.models import CoreVariable
 logger = logging.getLogger(__name__)
 
 MATCH_ALL_QUERY: Dict[str, Dict[str, dict]] = {'query': {'match_all': {}}}
-ELASTIC_NOT_FOUND_MESSAGE = 'Could not find specified data from Elasticsearch!'
-ELASTIC_REQUEST_ERROR_MESSAGE = 'Error executing Elasticsearch query! Bad query?'
-ELASTIC_CONNECTION_TIMEOUT_MESSAGE = (
+ELASTIC_NOT_FOUND_MESSAGE = _('Could not find specified data from Elasticsearch!')
+ELASTIC_REQUEST_ERROR_MESSAGE = _('Error executing Elasticsearch query! Bad query?')
+ELASTIC_CONNECTION_TIMEOUT_MESSAGE = _(
     'Connection to Elasticsearch took too long, please try again later!'
 )
-ELASTIC_AUTHENTICATION_ERROR_MESSAGE = 'Could not authenticate with Elasticsearch!'
-ELASTIC_UNKNOWN_ERROR_MESSAGE = 'Unexpected error from Elasticsearch!'
-ELASTIC_CONNECTION_ERROR_MESSAGE = (
+ELASTIC_AUTHENTICATION_ERROR_MESSAGE = _('Could not authenticate with Elasticsearch!')
+ELASTIC_UNKNOWN_ERROR_MESSAGE = _('Unexpected error from Elasticsearch!')
+ELASTIC_CONNECTION_ERROR_MESSAGE = _(
     'Could not connect to Elasticsearch, is the location properly configured?'
 )
 
@@ -157,6 +159,32 @@ class ElasticKNN:
         search = search.query('range', **{date_field: date_filter})
         return search.to_dict()
 
+    @staticmethod
+    def create_doc_id_query(
+        search_query: Optional[dict], parent_references: Iterable[str]
+    ) -> Optional[dict]:
+        if search_query and not parent_references:
+            return search_query
+
+        if search_query is None and not parent_references:
+            return None
+
+        parent_field = CoreVariable.get_core_setting('ELASTICSEARCH_PARENT_FIELD')
+        doc_id_restriction = [
+            elasticsearch_dsl.Q('term', **{parent_field: reference})
+            for reference in parent_references
+        ]
+        parent_query = elasticsearch_dsl.Q('bool', should=doc_id_restriction)
+
+        if search_query:
+            search_wrapper = elasticsearch_dsl.Search.from_dict(search_query)
+            previous_query = elasticsearch_dsl.Q(search_wrapper.query)
+            query = elasticsearch_dsl.Q('bool', must=[parent_query, previous_query])
+            return elasticsearch_dsl.Search().query(query).to_dict()
+
+        search_wrapper = elasticsearch_dsl.Search()
+        return search_wrapper.query(parent_query).to_dict()
+
     def _apply_filter_to_knn(
         self, index: str, search_query: Optional[dict] = None
     ) -> Optional[dict]:
@@ -202,7 +230,7 @@ class ElasticKNN:
         num_candidates: int = NUM_CANDIDATES_DEFAULT,
         source: Optional[list] = None,
         size: Optional[int] = None,
-    ) -> Dict:
+    ) -> Response:
         if indices is None:
             indices_str = '*'
         else:

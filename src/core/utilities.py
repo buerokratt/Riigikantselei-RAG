@@ -2,6 +2,7 @@ import datetime
 import re
 from typing import Any, Dict, Iterable, Optional
 
+from django.utils.translation import gettext as _
 from rest_framework.exceptions import ValidationError
 from tiktoken import Encoding
 
@@ -10,13 +11,10 @@ from core.models import Dataset
 
 def validate_min_max_years(min_year: int, max_year: int) -> None:
     if min_year and min_year > datetime.datetime.now().year:
-        raise ValidationError('min_year must be lesser than currently running year!')
-
-    if max_year and max_year > datetime.datetime.now().year:
-        raise ValidationError('max_year must be lesser than currently running year!')
+        raise ValidationError(_('Minimum year must be lesser than currently running year!'))
 
     if min_year and max_year and min_year > max_year:
-        raise ValidationError('min_year must be lesser than max_year!')
+        raise ValidationError(_('Minimum year must be lesser than the maximum year restriction!'))
 
 
 def get_n_tokens(text: str, encoder: Encoding) -> int:
