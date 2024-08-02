@@ -31,8 +31,6 @@ from user_profile.serializers import (
     UserProfileReadOnlySerializer,
 )
 
-# pylint: disable=unused-variable
-
 
 class GetTokenView(APIView):
     permission_classes = (AllowAny,)
@@ -51,7 +49,9 @@ class GetTokenView(APIView):
             raise AuthenticationFailed(message)
 
         user = User.objects.get(username=username)
-        token, _ = Token.objects.get_or_create(user=user)
+        token, is_created = Token.objects.get_or_create(  # pylint: disable=unused-variable
+            user=user
+        )
 
         # TODO: Remove this later.
         if settings.DEBUG:

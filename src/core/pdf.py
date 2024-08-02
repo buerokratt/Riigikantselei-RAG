@@ -401,7 +401,7 @@ def get_statistics_pdf_file_bytes(year: int, month: int) -> BytesIO:
     pdf.write_html(html)
 
     # You can uncomment this and run tests to look at the produced PDF
-    pdf.output('statistics.pdf')
+    # pdf.output('statistics.pdf')
 
     # BytesIO is necessary for Django's FileResponse class to return a proper file to the front-end
     bytes_buffer = BytesIO(pdf.output())

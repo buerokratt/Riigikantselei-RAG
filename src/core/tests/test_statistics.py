@@ -75,16 +75,14 @@ class TestStatistics(APITestCase):
 
         # Conversations
 
-        a_c_t_1 = TextSearchConversation.objects.create(  # 2, 1
-            title='',
+        a_c_t_1 = TextSearchConversation.objects.create(
             auth_user=self.admin_user,
             system_input='',
             min_year=2020,
             max_year=2024,
             dataset_names_string='a,c',
         )
-        a_c_d_1 = DocumentSearchConversation.objects.create(  # 2, 1
-            title='',
+        a_c_d_1 = DocumentSearchConversation.objects.create(
             auth_user=self.admin_user,
             system_input='',
             min_year=2022,
@@ -92,16 +90,14 @@ class TestStatistics(APITestCase):
             user_input='',
         )
 
-        n_c_t_1 = TextSearchConversation.objects.create(  # 0, 0
-            title='',
+        n_c_t_1 = TextSearchConversation.objects.create(
             auth_user=self.non_admin_user,
             system_input='',
             min_year=2020,
             max_year=2024,
             dataset_names_string='a,c',
         )
-        n_c_d_1 = DocumentSearchConversation.objects.create(  # 0, 0
-            title='',
+        n_c_d_1 = DocumentSearchConversation.objects.create(
             auth_user=self.non_admin_user,
             system_input='',
             min_year=2022,
@@ -109,28 +105,26 @@ class TestStatistics(APITestCase):
             user_input='',
         )
 
-        u1_c_t_1 = TextSearchConversation.objects.create(  # 1, 1
-            title='',
+        u1_c_t_1 = TextSearchConversation.objects.create(
             auth_user=user_1,
             system_input='',
             min_year=2020,
             max_year=2024,
             dataset_names_string='a,b',
         )
-        u1_c_d_1 = DocumentSearchConversation.objects.create(  # 1, 1
-            title='', auth_user=user_1, system_input='', min_year=2022, max_year=2024, user_input=''
+        u1_c_d_1 = DocumentSearchConversation.objects.create(
+            auth_user=user_1, system_input='', min_year=2022, max_year=2024, user_input=''
         )
 
-        u1_c_t_2 = TextSearchConversation.objects.create(  # 3, 3
-            title='',
+        u1_c_t_2 = TextSearchConversation.objects.create(
             auth_user=user_1,
             system_input='',
             min_year=2022,
             max_year=2023,
             dataset_names_string='b,c',
         )
-        u1_c_d_2 = DocumentSearchConversation.objects.create(  # 1, 1
-            title='', auth_user=user_1, system_input='', min_year=2022, max_year=2023, user_input=''
+        u1_c_d_2 = DocumentSearchConversation.objects.create(
+            auth_user=user_1, system_input='', min_year=2022, max_year=2023, user_input=''
         )
 
         # Queries
