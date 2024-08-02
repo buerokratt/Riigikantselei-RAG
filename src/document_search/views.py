@@ -92,14 +92,14 @@ class DocumentSearchConversationViewset(viewsets.ModelViewSet):
         instance.max_year = max_year
         instance.save()
 
-        result = DocumentSearchQueryResult.objects.create(
-            conversation=instance, user_input=user_input
-        )
-        DocumentTask.objects.create(result=result)
-
         dataset_name = serializer.validated_data['dataset_name']
         dataset = get_object_or_404(Dataset.objects.all(), name=dataset_name)
         dataset_index_query = dataset.index
+
+        result = DocumentSearchQueryResult.objects.create(
+            conversation=instance, user_input=user_input, dataset_name=dataset.name
+        )
+        DocumentTask.objects.create(result=result)
 
         prompt_task = generate_openai_prompt.s(pk, [dataset_index_query])
         gpt_task = send_document_search.s(pk, user_input, result.uuid)

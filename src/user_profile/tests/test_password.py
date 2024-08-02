@@ -82,23 +82,6 @@ class TestUserProfilePassword(APITestCase):
                 break
         self.assertGreater(len(confirm_password_reset_endpoint_url), 0)
 
-    def test_password_reset_fails_because_authed(self) -> None:
-        token, _ = Token.objects.get_or_create(user=self.non_manager_auth_user)
-        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
-
-        response = self.client.post(self.request_password_reset_endpoint_url, self.email_input_data)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
-        confirm_password_reset_endpoint_url = reverse('v1:user_profile-confirm-password-reset')
-        response = self.client.post(confirm_password_reset_endpoint_url)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
-        password_token_input_data = self.password_input_data | {'token': '0'}
-        response = self.client.post(
-            self.confirm_password_reset_endpoint_url, data=password_token_input_data
-        )
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
     def test_password_reset_fails_because_not_exists(self) -> None:
         response = self.client.post(
             self.request_password_reset_endpoint_url, data={'email': 'manager@email.com'}

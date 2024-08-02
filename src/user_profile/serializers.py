@@ -1,10 +1,9 @@
 import re
 
 from django.contrib.auth.models import User
-from django.shortcuts import get_object_or_404
 from django.utils.translation import gettext as _
 from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import NotFound, ValidationError
 
 from api.utilities.serializers import reasonable_character_without_spaces_validator
 from user_profile.models import PasswordResetToken, UserProfile
@@ -118,7 +117,13 @@ class PasswordResetSerializer(serializers.Serializer):
     token = serializers.CharField(required=True)
 
     def validate_token(self, token: str) -> str:
-        orm: PasswordResetToken = get_object_or_404(PasswordResetToken.objects.all(), key=token)
+        orm = PasswordResetToken.objects.filter(key=token)
+        if orm.exists():
+            orm = orm.first()
+        else:
+            message = _('The given token is invalid.')
+            raise NotFound(message)
+
         expired = orm.is_expired()
         if expired:
             message = _('Your password reset has expired!')
@@ -133,6 +138,14 @@ class EmailSerializer(serializers.Serializer):
         max_length=100,
         validators=[_simple_email_format_validator],
     )
+
+    def validate_email(self, email: str) -> str:
+        auth_user = User.objects.filter(email=email)
+        if auth_user.exists() is False:
+            message = _('User with that email does not exist!')
+            raise NotFound(message)
+
+        return email
 
 
 class LoginSerializer(serializers.Serializer):

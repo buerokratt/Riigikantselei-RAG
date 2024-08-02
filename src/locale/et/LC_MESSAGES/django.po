@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-08-01 12:43+0300\n"
+"POT-Creation-Date: 2024-08-01 17:52+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -61,7 +61,8 @@ msgstr "Viga ChatGPT päringuga! Võtke ühendust administraatoriga!"
 
 #: api/utilities/gpt.py:165
 msgid "Requested resource was not found! Is the right model configured?"
-msgstr "Palutud ChatGPT mudel ei ole saadaval! Võtke ühendust administraatoriga!"
+msgstr ""
+"Palutud ChatGPT mudel ei ole saadaval! Võtke ühendust administraatoriga!"
 
 #: api/utilities/gpt.py:169
 msgid "Requested resource was denied!"
@@ -92,33 +93,41 @@ msgstr "Miinimum aasta piirang ei tohi olla suurem kui maksimum aasta oma!"
 msgid "Deleted chosen objects!"
 msgstr "Kustutatud!"
 
-#: user_profile/permissions.py:32
+#: user_profile/permissions.py:31
 msgid "Your account is not a manager!"
 msgstr "Teie kasutaja pole administraator!"
 
-#: user_profile/permissions.py:43
+#: user_profile/permissions.py:42
 msgid "Your account has not been accepted by a moderator!"
 msgstr "Teie kasutaja pole kinnitatud administraatori poolelt!"
 
-#: user_profile/permissions.py:54
+#: user_profile/permissions.py:53
 msgid "You have reached your monetary limit!"
 msgstr "Ületasite oma kasutuslimiidi!"
 
-#: user_profile/serializers.py:18
+#: user_profile/serializers.py:17
 msgid "The given value is not an email."
 msgstr "Antud email ei vasta emaili formaadile!"
 
-#: user_profile/serializers.py:25
+#: user_profile/serializers.py:24
 msgid "The given username is already in use."
 msgstr "Antud kasutajanimi on juba kasutuses!"
 
-#: user_profile/serializers.py:32
+#: user_profile/serializers.py:31
 msgid "The given email is already in use."
 msgstr "Antud email on juba kasutuses!"
 
-#: user_profile/serializers.py:127
+#: user_profile/serializers.py:124
+msgid "The given token is invalid."
+msgstr "Turvakontroll ebaõnnestus!"
+
+#: user_profile/serializers.py:129
 msgid "Your password reset has expired!"
 msgstr "Teie parooli muutmise periood on aegunud!"
+
+#: user_profile/serializers.py:145
+msgid "User with that email does not exist!"
+msgstr "Sellise emailiga kasutaja ei eksisteeri!"
 
 #: user_profile/views.py:66
 msgid "User and password do not match!"
@@ -128,14 +137,14 @@ msgstr "Kasutajanimi ja parool ei ühti!"
 msgid "You can not change your own status!"
 msgstr "Omaenda admin staatust ei saa muuta!"
 
-#: user_profile/views.py:220
+#: user_profile/views.py:221
 msgid "Sending email failed."
 msgstr "Emaili saatmine ebaõnnestus!"
 
-#: user_profile/views.py:240
+#: user_profile/views.py:242
 msgid "Your password has been reset!"
 msgstr "Teie parool on muudetud!"
 
-#: user_profile/views.py:250
+#: user_profile/views.py:252
 msgid "Can not set acceptance for an already accepted user."
 msgstr "Aksepteeritud kasutaja staatust ei saa muuta!"

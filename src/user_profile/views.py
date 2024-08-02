@@ -188,19 +188,20 @@ class UserProfileViewSet(viewsets.ViewSet):
 
         return Response()
 
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], permission_classes=(AllowAny,))
     def request_password_reset(self, request: Request) -> Response:
         serializer = EmailSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+        # Existence is checked in the serializer.
         email = serializer.validated_data['email']
+        auth_user = User.objects.get(email=email)
 
-        auth_user = get_object_or_404(User.objects.all(), email=email)
         token = PasswordResetToken(auth_user=auth_user)
         token.save()
 
-        password_reset_url = settings.BASE_URL + '/' + f'parooli-taastamine/token={token.key}'
+        password_reset_url = settings.BASE_URL + '/' + f'parooli-taastamine/{token.key}'
         content = render_to_string(
             template_name='password_reset_email.txt',
             context={
@@ -221,15 +222,16 @@ class UserProfileViewSet(viewsets.ViewSet):
 
         return Response()
 
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], permission_classes=(AllowAny,))
     def confirm_password_reset(self, request: Request) -> Response:
         serializer = PasswordResetSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        token = get_object_or_404(
-            PasswordResetToken.objects.all(), key=serializer.validated_data['token']
-        )
+        # Its existence is already checked in the serializer.
+        token = serializer.validated_data['token']
+        token = PasswordResetToken.objects.get(key=token)
+
         auth_user = token.auth_user
         auth_user.set_password(serializer.validated_data['password'])
         auth_user.save()
