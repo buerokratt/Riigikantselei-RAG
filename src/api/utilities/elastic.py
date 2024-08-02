@@ -8,6 +8,7 @@ from elasticsearch import AuthenticationException
 from elasticsearch import ConnectionError as ElasticsearchConnectionError
 from elasticsearch import ConnectionTimeout, Elasticsearch, NotFoundError, RequestError
 from elasticsearch_dsl import Search
+from elasticsearch_dsl.response import Response
 from rest_framework import status
 from rest_framework.exceptions import APIException
 
@@ -229,7 +230,7 @@ class ElasticKNN:
         num_candidates: int = NUM_CANDIDATES_DEFAULT,
         source: Optional[list] = None,
         size: Optional[int] = None,
-    ) -> Dict:
+    ) -> Response:
         if indices is None:
             indices_str = '*'
         else:

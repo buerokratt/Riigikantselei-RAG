@@ -57,6 +57,9 @@ class Dataset(models.Model):
     # Description of dataset contents
     description = models.TextField(default='')
 
+    def __str__(self) -> str:
+        return self.name
+
     @staticmethod
     def get_all_dataset_values(field: str = 'name') -> List[str]:
         return list(Dataset.objects.values_list(field, flat=True))
