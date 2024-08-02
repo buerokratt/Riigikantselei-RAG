@@ -1,3 +1,4 @@
+import uuid
 from copy import deepcopy
 from unittest import mock
 
@@ -11,9 +12,14 @@ from rest_framework.test import APITransactionTestCase
 from api.utilities.elastic import ElasticCore
 from api.utilities.vectorizer import Vectorizer
 from core.choices import TaskStatus
-from core.models import Dataset
+from core.models import CoreVariable, Dataset
 from document_search.models import DocumentSearchConversation, DocumentSearchQueryResult
-from document_search.tests.test_settings import DocumentSearchMockResponse
+from document_search.tasks import parse_aggregation
+from document_search.tests.test_settings import (
+    AGGREGATION_PARSING_AS_SEVERAL,
+    AGGREGATION_PARSING_MULTIPLE_DOCS_AS_ONE,
+    DocumentSearchMockResponse,
+)
 from user_profile.utilities import create_test_user_with_user_profile
 
 # pylint: disable=invalid-name
@@ -38,7 +44,8 @@ class DocumentSearchTestCase(APITransactionTestCase):
         # Lets do some funny business to avoid pointless vectorization
         extra_documents = deepcopy(self.documents)
         for count, extra_document in enumerate(extra_documents):
-            extra_document['index'] = f'rk_duos_index_{count}'
+            extra_document['index'] = f'rk_duos_index_{uuid.uuid4().hex}_{count}'
+            extra_document['doc_id'] = 'random random random doc_id'
 
         elastic_core = ElasticCore()
         for document in self.documents + extra_documents:
@@ -49,18 +56,20 @@ class DocumentSearchTestCase(APITransactionTestCase):
     def setUp(self) -> None:
         self.documents = [
             {
-                'index': 'rk_test_index_1',
+                'index': f'rk_test_index_{uuid.uuid4().hex}',
                 'text': 'See on ainult lihashaav.',
                 'year': 2022,
                 'url': 'http://lihashaav.ee',
-                'title': 'Lihashaavad ja nende roll ühiskonnas',
+                'reference': 'Lihashaavad ja nende roll ühiskonnas',
+                'doc_id': 'dakföafgakfafköl',
             },
             {
-                'index': 'rk_test_index_2',
+                'index': f'rk_test_index_{uuid.uuid4().hex}',
                 'text': 'Kas sa tahad õelda, et kookused migreeruvad?',
                 'year': 2019,
                 'url': 'http://kookus.ee',
-                'title': 'Migreeruvad kookused',
+                'reference': 'Migreeruvad kookused',
+                'doc_id': 'admöakmfdöamlköf',
             },
         ]
 
@@ -73,13 +82,14 @@ class DocumentSearchTestCase(APITransactionTestCase):
         token, _ = Token.objects.get_or_create(user=self.accepted_auth_user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
-        Dataset(name='RK test', type='', index='rk_test_index_*', description='').save()
-        Dataset(name='RK Duos', type='', index='rk_duos_index_*', description='').save()
+        self.indices = [('RK test', 'rk_test_index_*'), ('RK Duos', 'rk_duos_index_*')]
+        for dataset_name, index_pattern in self.indices:
+            Dataset(name=dataset_name, type='', index=index_pattern, description='').save()
 
     def tearDown(self) -> None:
         elastic_core = ElasticCore()
-        for document in self.documents:
-            elastic_core.elasticsearch.indices.delete(index=document['index'], ignore=[400, 404])
+        for _, index_pattern in self.indices:
+            elastic_core.elasticsearch.indices.delete(index=index_pattern, ignore=[400, 404])
 
     @override_settings(CELERY_TASK_ALWAYS_EAGER=True)
     def test_workflow_of_adding_aggregations_and_chatting_working(self) -> None:
@@ -177,3 +187,26 @@ class DocumentSearchTestCase(APITransactionTestCase):
         detail_response = self.client.post(detail_uri, data={'title': patched_title})
         self.assertEqual(detail_response.status_code, status.HTTP_200_OK)
         self.assertEqual(detail_response.data, None)
+
+    def test_aggregation_of_two_segments_from_same_document_counted_as_one(self) -> None:
+        year_field = CoreVariable.get_core_setting('ELASTICSEARCH_YEAR_FIELD')
+
+        aggregations = parse_aggregation(AGGREGATION_PARSING_MULTIPLE_DOCS_AS_ONE)
+        self.assertEqual(len(aggregations), 1)
+        aggregation = aggregations[0]
+        self.assertEqual(aggregation['count'], 2)
+
+        years = [
+            document['_source'][year_field]  # type: ignore
+            for document in AGGREGATION_PARSING_MULTIPLE_DOCS_AS_ONE
+        ]
+        self.assertEqual(aggregation['min_year'], min(years))
+        self.assertEqual(aggregation['max_year'], max(years))
+
+    def test_aggregation_of_three_segments_where_two_are_of_same_parent(self) -> None:
+        aggregations = parse_aggregation(AGGREGATION_PARSING_AS_SEVERAL)
+        self.assertEqual(len(aggregations), 2)
+        # Since the assumption is they are sorted, we can bravely
+        # just use indices
+        self.assertEqual(aggregations[0]['count'], 2)
+        self.assertEqual(aggregations[1]['count'], 1)
