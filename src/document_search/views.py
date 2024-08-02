@@ -10,7 +10,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from core.models import CoreVariable, Dataset
-from core.pdf import pdf_file_bytes_from_conversation
+from core.pdf import get_conversation_pdf_file_bytes
 from core.serializers import (
     ConversationBulkDeleteSerializer,
     ConversationSetTitleSerializer,
@@ -161,6 +161,6 @@ class DocumentSearchConversationViewset(viewsets.ModelViewSet):
         conversation = get_object_or_404(self.get_queryset(), id=pk)
 
         filename = f'riigikantselei_vestlus_{pk}.pdf'
-        pdf_file_bytes = pdf_file_bytes_from_conversation(conversation)
+        pdf_file_bytes = get_conversation_pdf_file_bytes(conversation)
 
         return FileResponse(pdf_file_bytes, as_attachment=True, filename=filename)

@@ -11,11 +11,11 @@
     {% if message.references %}
         <h4 style="color:black" >Viited:</h4>
 
+        <ol style="color:black" >
         {% for reference in message.references %}
-            <ol style="color:black" >
-                <li>{{ reference.title }}, <a href="{{ reference.url }}" >LINK</a></li>
-            </ol>
+            <li>{{ reference.title }}, <a href="{{ reference.url }}" >LINK</a></li>
         {% endfor %}
+        </ol>
 
     {% endif %}
 

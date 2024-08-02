@@ -28,3 +28,4 @@ dependencies:
       - numpy<2  # Breaking changes, some other packages did not take into account
       - tiktoken
       - fpdf2
+      - matplotlib

@@ -1,0 +1,57 @@
+<h1 style="color:black" >Statistika - {{ year }}-{{ month }}</h1>
+
+<h2 style="color:black" >Logimine</h2>
+<p style="color:black" ><b>Sisse logimisi</b> kuu lõpu seisuga: {{ log_in_count_total }}</p>
+<p style="color:black" ><b>Sisse logimisi</b> kuu jooksul: {{ log_in_count_month }}</p>
+<p style="color:black" ><b>Välja logimisi</b> kuu lõpu seisuga: {{ log_out_count_total }}</p>
+<p style="color:black" ><b>Välja logimisi</b> kuu jooksul: {{ log_out_count_month }}</p>
+
+<h2 style="color:black" >Kasutajad</h2>
+<p style="color:black" ><b>Kasutajaid loodud</b> kuu lõpu seisuga: {{ user_count_total }}</p>
+<p style="color:black" ><b>Kasutajaid loodud</b> kuu jooksul: {{ user_count_month }}</p>
+<p style="color:black" ><b>Kasutajaid vestelnud</b> kuu lõpu seisuga: {{ user_with_query_count_total }}</p>
+<p style="color:black" ><b>Kasutajaid vestelnud</b> kuu jooksul: {{ user_with_query_count_month }}</p>
+
+<h2 style="color:black" >Maksumus</h2>
+<p style="color:black" ><b>Maksumus</b> kuu lõpu seisuga: {{ cost_total }}</p>
+<p style="color:black" ><b>Maksumus</b> kuu jooksul: {{ cost_month }}</p>
+<p style="color:black" ><b>Maksumus vestelnud kasutaja kohta</b> kuu lõpu seisuga: {{ cost_per_user_with_query_total }}</p>
+<p style="color:black" ><b>Maksumus vestelnud kasutaja kohta</b> kuu jooksul: {{ cost_per_user_with_query_month }}</p>
+
+<h2 style="color:black" >Sõnumid</h2>
+<p style="color:black" ><b>Sõnumeid saadetud</b> kuu lõpu seisuga: {{ query_count_total }}</p>
+<p style="color:black" ><b>Sõnumeid saadetud</b> kuu jooksul: {{ query_count_month }}</p>
+<p style="color:black" ><b>Sõnumeid saadetud vestelnud kasutaja kohta</b> kuu lõpu seisuga: {{ query_count_per_user_with_query_total }}</p>
+<p style="color:black" ><b>Sõnumeid saadetud vestelnud kasutaja kohta</b> kuu jooksul: {{ query_count_per_user_with_query_month }}</p>
+<p style="color:black" ><b>Sõnumeid vestluse kohta</b> kuu lõpu seisuga: {{ query_count_per_conversation_total }}</p>
+<p style="color:black" ><b>Sõnumeid vestluse kohta</b> kuu jooksul: {{ query_count_per_conversation_month }}</p>
+
+<h2 style="color:black" >Tekstiotsing vs dokumendiotsing</h2>
+<p style="color:black" ><b>Tekstiotsingu sõnumite osakaal sõnumitest</b> kuu lõpu seisuga: {{ text_search_query_proportion_total }}%</p>
+<p style="color:black" ><b>Tekstiotsingu sõnumite osakaal sõnumitest</b> kuu jooksul: {{ text_search_query_proportion_month }}%</p>
+<p style="color:black" ><b>Dokumendiotsingu sõnumite osakaal sõnumitest</b> kuu lõpu seisuga: {{ document_search_query_proportion_total }}%</p>
+<p style="color:black" ><b>Dokumendiotsingu sõnumite osakaal sõnumitest</b> kuu jooksul: {{ document_search_query_proportion_month }}%</p>
+
+<h2 style="color:black" >Andmete aastad</h2>
+
+<p style="color:black" ><b>Aasta dokumentide kaasamiste arv</b> kuu lõpu seisuga:</p>
+<img src="data:image/png;base64, {{ year_usage_total_graph_base_64 }}" height="200" />
+<p style="color:black" ><b>Aasta dokumentide kaasamiste arv</b> kuu jooksul:</p>
+<img src="data:image/png;base64, {{ year_usage_month_graph_base_64 }}" height="200" />
+
+<p style="color:black" ><b>Aasta dokumentidele viitamiste arv</b> kuu lõpu seisuga:</p>
+<img src="data:image/png;base64, {{ year_reference_total_graph_base_64 }}" height="200" />
+<p style="color:black" ><b>Aasta dokumentidele viitamiste arv</b> kuu jooksul:</p>
+<img src="data:image/png;base64, {{ year_reference_month_graph_base_64 }}" height="200" />
+
+<h2 style="color:black" >Andmestikud</h2>
+
+<p style="color:black" ><b>Andmestike kaasamiste arv</b> kuu lõpu seisuga:</p>
+<img src="data:image/png;base64, {{ dataset_usage_total_graph_base_64 }}" height="300" />
+<p style="color:black" ><b>Andmestike kaasamiste arv</b> kuu jooksul:</p>
+<img src="data:image/png;base64, {{ dataset_usage_month_graph_base_64 }}" height="300" />
+
+<p style="color:black" ><b>Andmestikele viitamiste arv</b> kuu lõpu seisuga:</p>
+<img src="data:image/png;base64, {{ dataset_reference_total_graph_base_64 }}" height="300" />
+<p style="color:black" ><b>Andmestikele viitamiste arv</b> kuu jooksul:</p>
+<img src="data:image/png;base64, {{ dataset_reference_month_graph_base_64 }}" height="300" />

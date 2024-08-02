@@ -11,13 +11,13 @@ from api.utilities.gpt import ChatGPT
 from core.base_task import ResourceTask
 from core.exceptions import OPENAI_EXCEPTIONS
 from core.models import CoreVariable, Dataset
+from core.utilities import match_pattern
 from document_search.models import (
     DocumentAggregationResult,
     DocumentSearchConversation,
     DocumentSearchQueryResult,
     DocumentTask,
 )
-from document_search.utilities import match_pattern
 
 # pylint: disable=unused-argument,too-many-arguments
 

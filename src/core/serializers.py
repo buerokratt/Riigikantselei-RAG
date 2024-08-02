@@ -1,7 +1,9 @@
+from datetime import datetime
 from typing import Any
 
 from django.conf import settings
 from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 from rest_framework.validators import UniqueValidator
 
 from api.utilities.serializers import reasonable_character_with_spaces_validator
@@ -59,3 +61,17 @@ class ConversationSetTitleSerializer(serializers.Serializer):
 
 class ConversationBulkDeleteSerializer(serializers.Serializer):
     ids = serializers.ListField(child=serializers.IntegerField())
+
+
+class StatisticsSerializer(serializers.Serializer):
+    year = serializers.IntegerField(required=True, min_value=2024)
+    month = serializers.IntegerField(required=True, min_value=1, max_value=12)
+
+    def validate(self, data: dict) -> dict:
+        if data['year'] > datetime.now().year:
+            raise ValidationError('year must be less than the current year!')
+        if data['year'] == 2024 and data['month'] < 7:
+            raise ValidationError("Can't make statistics for before July 2024!")
+        if data['year'] == datetime.now().year and data['month'] > datetime.now().month:
+            raise ValidationError("Can't make statistics for after the current month!")
+        return data
