@@ -9,7 +9,7 @@ check:
 	conda run -n riigikantselei pre-commit run --all-files
 
 test:
-	cd src && conda run -n riigikantselei python manage.py test user_profile.tests.test_password
+	cd src && conda run -n riigikantselei python manage.py test
 
 
 makemigrations:
