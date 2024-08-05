@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict
 from unittest import mock
 
@@ -37,9 +37,9 @@ class TestStatistics(APITestCase):
         Dataset(name='b', type='', index='b_*', description='').save()
         Dataset(name='c', type='', index='c_*', description='').save()
 
-        before_date = datetime(year=self.year, month=self.month - 1, day=15)
-        during_date = datetime(year=self.year, month=self.month, day=15)
-        after_date = datetime(year=self.year, month=self.month + 1, day=15)
+        before_date = datetime(year=self.year, month=self.month - 1, day=15, tzinfo=timezone.utc)
+        during_date = datetime(year=self.year, month=self.month, day=15, tzinfo=timezone.utc)
+        after_date = datetime(year=self.year, month=self.month + 1, day=15, tzinfo=timezone.utc)
 
         # Users
         with _mock_time(before_date):

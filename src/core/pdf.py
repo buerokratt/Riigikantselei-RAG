@@ -1,6 +1,6 @@
 from base64 import b64encode
 from collections import Counter
-from datetime import date
+from datetime import datetime, timezone
 from io import BytesIO
 from typing import Any, Dict, Iterable, List
 
@@ -141,11 +141,11 @@ def _build_statistics_context(year: int, month: int) -> Dict[str, Any]:
     context['year'] = year
     context['month'] = str(month).zfill(2)
 
-    month_start_date = date(year=year, month=month, day=1)
-    month_end_date = month_start_date + relativedelta(months=1) - relativedelta(days=1)
+    month_start_datetime = datetime(year=year, month=month, day=1, tzinfo=timezone.utc)
+    month_end_datetime = month_start_datetime + relativedelta(months=1) - relativedelta(days=1)
 
-    total_time_filter = Q(created_at__lte=month_end_date)
-    month_time_filter = Q(created_at__lte=month_end_date, created_at__gte=month_start_date)
+    total_time_filter = Q(created_at__lte=month_end_datetime)
+    month_time_filter = Q(created_at__lte=month_end_datetime, created_at__gte=month_start_datetime)
 
     context['log_in_count_total'] = LogInEvent.objects.filter(total_time_filter).count()
     context['log_in_count_month'] = LogInEvent.objects.filter(month_time_filter).count()
