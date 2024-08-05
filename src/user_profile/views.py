@@ -3,6 +3,7 @@ from django.contrib.auth import authenticate, login
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
+from django.utils import timezone
 from django.utils.translation import gettext as _
 from rest_framework import status, viewsets
 from rest_framework.authtoken.models import Token
@@ -130,6 +131,7 @@ class UserProfileViewSet(viewsets.ViewSet):
         user_profile.is_accepted = False
         user_profile.is_allowed_to_spend_resources = False
         user_profile.is_deleted = True
+        user_profile.deleted_at = timezone.now()
         user_profile.save()
 
         auth_user.username = str(pk)

@@ -1,9 +1,12 @@
+from datetime import datetime
+
 from django.contrib.auth.models import User
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 from rest_framework.reverse import reverse
 from rest_framework.test import APITestCase
 
+from api.utilities.testing import IsType
 from core.models import CoreVariable
 from user_profile.utilities import create_test_user_with_user_profile
 
@@ -329,6 +332,7 @@ class TestUserProfileEdit(APITestCase):
         self.assertEqual(updated_user_profile.is_accepted, False)
         self.assertEqual(updated_user_profile.is_allowed_to_spend_resources, False)
         self.assertEqual(updated_user_profile.is_deleted, True)
+        self.assertEqual(updated_user_profile.deleted_at, IsType(datetime))
 
         self.assertEqual(updated_auth_user.username, str(self.non_manager_reviewed_auth_user.id))
         self.assertEqual(updated_auth_user.email, '')

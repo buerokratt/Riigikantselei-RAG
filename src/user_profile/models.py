@@ -48,6 +48,7 @@ class UserProfile(models.Model):
     custom_usage_limit_euros = models.FloatField(default=None, null=True)
 
     is_deleted = models.BooleanField(default=False)
+    deleted_at = models.DateTimeField(null=True, default=None)
 
     created_at = models.DateTimeField(auto_now_add=True)
 
