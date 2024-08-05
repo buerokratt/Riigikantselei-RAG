@@ -17,7 +17,12 @@ Including another URLconf
 from django.urls import include, path
 from rest_framework import routers
 
-from core.views import CoreVariableViewSet, DatasetViewset, ElasticDocumentDetailView
+from core.views import (
+    CoreVariableViewSet,
+    DatasetViewset,
+    ElasticDocumentDetailView,
+    StatisticsView,
+)
 from document_search.views import DocumentSearchConversationViewset
 from health.views import HealthView
 from text_search.views import TextSearchConversationViewset
@@ -40,4 +45,5 @@ urlpatterns = [
     path('get_token', GetTokenView.as_view(), name='get_token'),
     path('log_out', LogOutView.as_view(), name='log_out'),
     path('health', HealthView.as_view(), name='health'),
+    path('statistics', StatisticsView.as_view(), name='statistics'),
 ]

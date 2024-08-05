@@ -28,6 +28,13 @@ class TestUserProfileRetrieveAndList(APITestCase):
             'v1:user_profile-detail', kwargs={'pk': self.non_manager_auth_user.id}
         )
 
+        self.deleted_auth_user = create_test_user_with_user_profile(
+            self, 'tester2', 'tester2@email.com', 'password', is_manager=False
+        )
+        deleted_user_profile = self.deleted_auth_user.user_profile
+        deleted_user_profile.is_deleted = True
+        deleted_user_profile.save()
+
     def test_retrieve(self) -> None:
         # Manager should be able to access other user, non-manager should be able to access self
         for user in [self.manager_auth_user, self.non_manager_auth_user]:
@@ -60,7 +67,7 @@ class TestUserProfileRetrieveAndList(APITestCase):
 
     def test_retrieve_without_user_being_accepted_is_allowed(self) -> None:
         non_accepted_auth_user = create_test_user_with_user_profile(
-            self, 'tester2', 'tester2@email.com', 'password', is_manager=False
+            self, 'tester3', 'tester3@email.com', 'password', is_manager=False
         )
         non_accepted_user_profile = non_accepted_auth_user.user_profile
         non_accepted_user_profile.is_accepted = False

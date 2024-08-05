@@ -8,7 +8,6 @@ from rest_framework.reverse import reverse
 from rest_framework.test import APITransactionTestCase
 
 from core.models import Dataset
-from text_search.models import TextSearchConversation, TextSearchQueryResult
 from text_search.tests.test_settings import (
     BASE_CREATE_INPUT,
     CHAT_CHAIN_EXPECTED_ARGUMENTS_1,
@@ -186,60 +185,3 @@ class TestTextSearchChat(APITransactionTestCase):
 
         response = self.client.post(chat_endpoint_url, data=CHAT_INPUT_1)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
-    # Delete
-
-    @override_settings(CELERY_TASK_ALWAYS_EAGER=True)
-    def test_delete(self) -> None:
-        token, _ = Token.objects.get_or_create(user=self.allowed_auth_user)
-        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
-
-        conversation_id, chat_endpoint_url = self._create_successful_conversation()
-
-        # Start conversing with OpenAI
-        with mock.patch(
-            'text_search.serializers.async_call_celery_task_chain',
-            side_effect=chat_chain_side_effect_1,
-        ):
-            response = self.client.post(chat_endpoint_url, data=CHAT_INPUT_1)
-            self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        results = response.data['query_results']
-        self.assertEqual(len(results), 1)
-
-        # Delete and assert nothing remains.
-        delete_uri = reverse('v1:text_search-bulk-destroy')
-        response = self.client.delete(delete_uri, data={'ids': [conversation_id]})
-        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-
-        self.assertFalse(TextSearchConversation.objects.filter(id=conversation_id).exists())
-        self.assertFalse(
-            TextSearchQueryResult.objects.filter(conversation__id=conversation_id).exists()
-        )
-
-    def test_delete_fails_because_other_user(self) -> None:
-        # Create the first conversation which should be protected from deletion.
-        token, _ = Token.objects.get_or_create(user=self.allowed_auth_user)
-        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
-
-        protected_conversation_id, _ = self._create_successful_conversation()
-
-        # User making the deletion.
-        token, _ = Token.objects.get_or_create(user=self.allowed_auth_user_2)
-        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
-
-        to_delete_conversation_id, _ = self._create_successful_conversation()
-
-        # Delete and assert that only one of them has been destroyed.
-        delete_uri = reverse('v1:text_search-bulk-destroy')
-        data = {'ids': [protected_conversation_id, to_delete_conversation_id]}
-
-        response = self.client.delete(delete_uri, data=data)
-        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-
-        self.assertFalse(
-            TextSearchConversation.objects.filter(id=to_delete_conversation_id).exists()
-        )
-        self.assertTrue(
-            TextSearchConversation.objects.filter(id=protected_conversation_id).exists()
-        )

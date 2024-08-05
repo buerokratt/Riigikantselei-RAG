@@ -152,14 +152,13 @@ class DocumentSearchTestCase(APITransactionTestCase):
         response = self.client.delete(delete_uri, data={'ids': [conversation_pk]})
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
-        self.assertFalse(DocumentSearchConversation.objects.filter(id=conversation_pk).exists())
-        self.assertFalse(
+        self.assertTrue(DocumentSearchConversation.objects.get(id=conversation_pk).is_deleted)
+        self.assertTrue(
             DocumentSearchQueryResult.objects.filter(conversation__id=conversation_pk).exists()
         )
 
     def test_chatting_being_denied_when_overreaching_spending_limit(self) -> None:
-        self.accepted_auth_user.user_profile.used_cost = 5000
-        self.accepted_auth_user.user_profile.custom_usage_limit_euros = 1
+        self.accepted_auth_user.user_profile.custom_usage_limit_euros = 0
         self.accepted_auth_user.user_profile.save()
 
         payload = {'user_input': 'Kuidas saab piim kookuse sisse?'}

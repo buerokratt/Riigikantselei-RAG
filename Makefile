@@ -18,6 +18,9 @@ makemigrations:
 migrate:
 	cd src && conda run -n riigikantselei python manage.py migrate
 
+makemessages:
+	cd src && conda run -n riigikantselei python manage.py makemessages -a
+
 
 superuser:
 	cd src && conda run -n riigikantselei DJANGO_SUPERUSER_PASSWORD=password python manage.py createsuperuser --username admin --email admin@email.com --noinput

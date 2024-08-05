@@ -2,10 +2,13 @@ from datetime import timedelta
 
 from django.contrib.auth.models import User
 from django.db import models
+from django.db.models import Sum
 from django.utils import timezone
 from rest_framework.authtoken.models import Token
 
 from core.models import CoreVariable
+from document_search.models import DocumentSearchQueryResult
+from text_search.models import TextSearchQueryResult
 
 # pylint: disable=dangerous-default-value
 
@@ -19,7 +22,7 @@ class UserProfile(models.Model):
     # - first_name
     # - last_name
     # Set on creation.
-    auth_user = models.OneToOneField(User, on_delete=models.RESTRICT, related_name='user_profile')
+    auth_user = models.OneToOneField(User, on_delete=models.PROTECT, related_name='user_profile')
     # Whether the user is allowed to manage other users.
     # Separate from Django superuser or staff as administering the web application is our job
     # and managing the users' rights is the customers' job.
@@ -44,7 +47,10 @@ class UserProfile(models.Model):
     # If this is None, the usage limit should be read from the default value.
     custom_usage_limit_euros = models.FloatField(default=None, null=True)
 
-    used_cost = models.FloatField(default=0.0)
+    is_deleted = models.BooleanField(default=False)
+    deleted_at = models.DateTimeField(null=True, default=None)
+
+    created_at = models.DateTimeField(auto_now_add=True)
 
     @property
     def usage_limit(self) -> float:
@@ -53,8 +59,16 @@ class UserProfile(models.Model):
         return CoreVariable.get_core_setting('DEFAULT_USAGE_LIMIT_EUROS')
 
     @property
-    def is_superuser(self) -> bool:
-        return self.auth_user.is_superuser
+    def used_cost(self) -> float:
+        text_queries = TextSearchQueryResult.objects.filter(conversation__auth_user=self.auth_user)
+        document_queries = DocumentSearchQueryResult.objects.filter(
+            conversation__auth_user=self.auth_user
+        )
+        text_cost = text_queries.aggregate(Sum('total_cost', default=0.0))['total_cost__sum']
+        document_cost = document_queries.aggregate(Sum('total_cost', default=0.0))[
+            'total_cost__sum'
+        ]
+        return text_cost + document_cost
 
     def __str__(self) -> str:
         if self.auth_user.first_name and self.auth_user.last_name:
@@ -64,7 +78,7 @@ class UserProfile(models.Model):
 
 
 class PasswordResetToken(models.Model):
-    auth_user = models.ForeignKey(User, on_delete=models.RESTRICT)
+    auth_user = models.ForeignKey(User, on_delete=models.PROTECT)
     key = models.CharField(default=Token.generate_key, max_length=50)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -74,3 +88,13 @@ class PasswordResetToken(models.Model):
         if self.created_at > expired_at:
             return True
         return False
+
+
+class LogInEvent(models.Model):
+    auth_user = models.ForeignKey(User, on_delete=models.PROTECT)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class LogOutEvent(models.Model):
+    auth_user = models.ForeignKey(User, on_delete=models.PROTECT)
+    created_at = models.DateTimeField(auto_now_add=True)

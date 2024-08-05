@@ -89,7 +89,7 @@ repos:
     hooks:
       - id: mypy
         pass_filenames: false
-        additional_dependencies: [types-redis]
+        additional_dependencies: [types-redis, types-python-dateutil]
         args: [ --disallow-untyped-defs, --ignore-missing-imports, 'src' ]
         # --disallow-untyped-defs - This flag reports an error whenever it encounters a function definition without type annotations.
         # --ignore-missing-imports - This flag makes mypy ignore all missing imports. It is equivalent to adding # type: ignore comments to all unresolved imports within your codebase.

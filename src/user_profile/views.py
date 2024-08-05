@@ -3,6 +3,7 @@ from django.contrib.auth import authenticate, login
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
+from django.utils import timezone
 from django.utils.translation import gettext as _
 from rest_framework import status, viewsets
 from rest_framework.authtoken.models import Token
@@ -19,7 +20,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from user_profile.models import PasswordResetToken, UserProfile
+from user_profile.models import LogInEvent, LogOutEvent, PasswordResetToken, UserProfile
 from user_profile.permissions import UserProfilePermission  # type: ignore
 from user_profile.serializers import (
     EmailSerializer,
@@ -30,8 +31,6 @@ from user_profile.serializers import (
     UserCreateSerializer,
     UserProfileReadOnlySerializer,
 )
-
-# pylint: disable=unused-variable
 
 
 class GetTokenView(APIView):
@@ -46,24 +45,28 @@ class GetTokenView(APIView):
         username = serializer.validated_data['username']
         password = serializer.validated_data['password']
 
-        if authenticate(request=request, username=username, password=password):
-            user = User.objects.get(username=username)
-            token, is_created = Token.objects.get_or_create(user=user)
+        if not authenticate(request=request, username=username, password=password):
+            message = _('User and password do not match!')
+            raise AuthenticationFailed(message)
 
-            # TODO: Remove this later.
-            if settings.DEBUG:
-                login(request, user)
+        user = User.objects.get(username=username)
+        token, is_created = Token.objects.get_or_create(  # pylint: disable=unused-variable
+            user=user
+        )
 
-            response = {
-                'id': user.id,
-                'username': user.username,
-                'email': user.email,
-                'token': token.key,
-            }
-            return Response(response, status=status.HTTP_200_OK)
+        # TODO: Remove this later.
+        if settings.DEBUG:
+            login(request, user)
 
-        message = _('User and password do not match!')
-        raise AuthenticationFailed(message)
+        LogInEvent.objects.create(auth_user=user)
+
+        response = {
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'token': token.key,
+        }
+        return Response(response, status=status.HTTP_200_OK)
 
 
 class LogOutView(APIView):
@@ -71,6 +74,7 @@ class LogOutView(APIView):
 
     def post(self, request: Request) -> Response:
         Token.objects.filter(user=request.user).delete()
+        LogOutEvent.objects.create(auth_user=request.user)
         return Response()
 
 
@@ -104,10 +108,40 @@ class UserProfileViewSet(viewsets.ViewSet):
         return Response(serializer.data)
 
     def list(self, request: Request) -> Response:
-        user_profiles = UserProfile.objects.all()
+        user_profiles = UserProfile.objects.filter(is_deleted=False)
 
         serializer = UserProfileReadOnlySerializer(user_profiles, many=True)
         return Response(serializer.data)
+
+    def destroy(self, request: Request, pk: int) -> Response:
+        # Prevent non-manager user from accessing other users' data.
+        # We do it here, not self.check_object_permissions, because we want to return 404, not 403,
+        # because 403 implies that the resource exists and a non-manager should not know even that.
+        queryset = User.objects.all()
+        if not request.user.user_profile.is_manager:
+            queryset = User.objects.filter(id=request.user.id)
+
+        auth_user = get_object_or_404(queryset, id=pk)
+        user_profile = auth_user.user_profile
+
+        if auth_user.is_staff:
+            raise ValidationError('You can not destroy a superuser! Remove permissions first!')
+
+        user_profile.is_manager = False
+        user_profile.is_accepted = False
+        user_profile.is_allowed_to_spend_resources = False
+        user_profile.is_deleted = True
+        user_profile.deleted_at = timezone.now()
+        user_profile.save()
+
+        auth_user.username = str(pk)
+        auth_user.email = ''
+        auth_user.first_name = ''
+        auth_user.last_name = ''
+        auth_user.set_unusable_password()
+        auth_user.save()
+
+        return Response()
 
     @action(detail=True, methods=['post'])
     def accept(self, request: Request, pk: int) -> Response:

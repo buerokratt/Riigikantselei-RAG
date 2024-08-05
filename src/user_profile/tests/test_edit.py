@@ -1,9 +1,12 @@
+from datetime import datetime
+
 from django.contrib.auth.models import User
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 from rest_framework.reverse import reverse
 from rest_framework.test import APITestCase
 
+from api.utilities.testing import IsType
 from core.models import CoreVariable
 from user_profile.utilities import create_test_user_with_user_profile
 
@@ -12,7 +15,7 @@ from user_profile.utilities import create_test_user_with_user_profile
 class TestUserProfileEdit(APITestCase):
     def setUp(self) -> None:  # pylint: disable=invalid-name
         self.manager_auth_user = create_test_user_with_user_profile(
-            self, 'manager', 'manager@email.com', 'password', is_manager=True
+            self, 'manager', 'manager@email.com', 'password', is_manager=True, is_admin=True
         )
         self.non_manager_reviewed_auth_user = create_test_user_with_user_profile(
             self, 'tester', 'tester@email.com', 'password', is_manager=False
@@ -46,9 +49,18 @@ class TestUserProfileEdit(APITestCase):
         self.set_limit_endpoint_url = reverse(
             'v1:user_profile-set-limit', kwargs={'pk': self.non_manager_reviewed_auth_user.id}
         )
+        self.set_manager_endpoint_url = reverse(
+            'v1:user_profile-set-manager', kwargs={'pk': self.non_manager_reviewed_auth_user.id}
+        )
+        self.set_superuser_endpoint_url = reverse(
+            'v1:user_profile-set-superuser', kwargs={'pk': self.non_manager_reviewed_auth_user.id}
+        )
+        self.destroy_endpoint_url = reverse(
+            'v1:user_profile-detail', kwargs={'pk': self.non_manager_reviewed_auth_user.id}
+        )
 
         self.new_limit = 20.123
-        self.input_data = {'limit': self.new_limit}
+        self.set_limit_input_data = {'limit': self.new_limit}
 
     # Accept
 
@@ -176,7 +188,7 @@ class TestUserProfileEdit(APITestCase):
             CoreVariable.get_core_setting('DEFAULT_USAGE_LIMIT_EUROS'),
         )
 
-        response = self.client.post(self.set_limit_endpoint_url, data=self.input_data)
+        response = self.client.post(self.set_limit_endpoint_url, data=self.set_limit_input_data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         updated_auth_user = User.objects.get(id=self.non_manager_reviewed_auth_user.id)
@@ -185,14 +197,14 @@ class TestUserProfileEdit(APITestCase):
         self.assertEqual(updated_user_profile.usage_limit, self.new_limit)
 
     def test_set_limit_fails_because_not_authed(self) -> None:
-        response = self.client.post(self.set_limit_endpoint_url, data=self.input_data)
+        response = self.client.post(self.set_limit_endpoint_url, data=self.set_limit_input_data)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_set_limit_fails_because_not_manager(self) -> None:
         token, _ = Token.objects.get_or_create(user=self.non_manager_reviewed_auth_user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
-        response = self.client.post(self.set_limit_endpoint_url, data=self.input_data)
+        response = self.client.post(self.set_limit_endpoint_url, data=self.set_limit_input_data)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_set_limit_fails_because_not_exists(self) -> None:
@@ -201,91 +213,152 @@ class TestUserProfileEdit(APITestCase):
 
         set_limit_endpoint_url = reverse('v1:user_profile-set-limit', kwargs={'pk': 999})
 
-        response = self.client.post(set_limit_endpoint_url, data=self.input_data)
+        response = self.client.post(set_limit_endpoint_url, data=self.set_limit_input_data)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_set_limit_fails_because_bad_limit(self) -> None:
         token, _ = Token.objects.get_or_create(user=self.manager_auth_user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
-        input_data = {'limit': 10_000.0}
+        set_limit_input_data = {'limit': 10_000.0}
 
-        response = self.client.post(self.set_limit_endpoint_url, data=input_data)
+        response = self.client.post(self.set_limit_endpoint_url, data=set_limit_input_data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_setting_user_to_manager(self) -> None:
-        admin = create_test_user_with_user_profile(
-            self, 'admin', email='admin@gmail.com', password='1234', is_admin=True
-        )
-        plebian = create_test_user_with_user_profile(
-            self,
-            'plebian',
-            email='plebian@gmail.com',
-            password='1234',
-            is_admin=False,
-            is_manager=False,
-        )
+    # Set manager
 
-        # Login as admin
-        token, _ = Token.objects.get_or_create(user=admin)
+    def test_set_manager(self) -> None:
+        token, _ = Token.objects.get_or_create(user=self.manager_auth_user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
-        # Make the request
-        uri = reverse('v1:user_profile-set-manager', kwargs={'pk': plebian.id})
-        response = self.client.post(uri, data={})
+        response = self.client.post(self.set_manager_endpoint_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        # Check the state.
-        plebian.refresh_from_db()
-        self.assertEqual(plebian.user_profile.is_manager, True)
+        updated_auth_user = User.objects.get(id=self.non_manager_reviewed_auth_user.id)
+        updated_user_profile = updated_auth_user.user_profile
+        self.assertEqual(updated_user_profile.is_manager, True)
 
-        # Lets try switching it again.
-        response = self.client.post(uri, data={})
+        response = self.client.post(self.set_manager_endpoint_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        plebian.refresh_from_db()
-        self.assertEqual(plebian.user_profile.is_manager, False)
 
-    def test_setting_user_to_superuser(self) -> None:
-        admin = create_test_user_with_user_profile(
-            self, 'admin', email='admin@gmail.com', password='1234', is_admin=True
-        )
-        plebian = create_test_user_with_user_profile(
-            self,
-            'plebian',
-            email='plebian@gmail.com',
-            password='1234',
-            is_admin=False,
-            is_manager=False,
-        )
+        updated_auth_user = User.objects.get(id=self.non_manager_reviewed_auth_user.id)
+        updated_user_profile = updated_auth_user.user_profile
+        self.assertEqual(updated_user_profile.is_manager, False)
 
-        # Login as admin
-        token, _ = Token.objects.get_or_create(user=admin)
+    def test_set_manager_fails_because_not_authed(self) -> None:
+        response = self.client.post(self.set_manager_endpoint_url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_set_manager_fails_because_not_manager(self) -> None:
+        token, _ = Token.objects.get_or_create(user=self.non_manager_reviewed_auth_user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
-        # Make the request
-        uri = reverse('v1:user_profile-set-superuser', kwargs={'pk': plebian.id})
-        response = self.client.post(uri, data={})
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        response = self.client.post(self.set_manager_endpoint_url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-        # Check the state.
-        plebian.refresh_from_db()
-        self.assertEqual(plebian.is_staff, True)
-        self.assertEqual(plebian.is_superuser, True)
-
-        # Lets try switching it again.
-        response = self.client.post(uri, data={})
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        plebian.refresh_from_db()
-        self.assertEqual(plebian.is_staff, False)
-        self.assertEqual(plebian.is_superuser, False)
-
-    def test_superusers_not_being_able_to_change_their_status(self) -> None:
-        admin = create_test_user_with_user_profile(
-            self, 'admin', email='admin@gmail.com', password='1234', is_admin=True
-        )
-        token, _ = Token.objects.get_or_create(user=admin)
+    def test_set_manager_fails_because_not_exists(self) -> None:
+        token, _ = Token.objects.get_or_create(user=self.manager_auth_user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
 
-        uri = reverse('v1:user_profile-set-superuser', kwargs={'pk': admin.id})
-        response = self.client.post(uri, data={})
+        set_manager_endpoint_url = reverse('v1:user_profile-set-manager', kwargs={'pk': 999})
+
+        response = self.client.post(set_manager_endpoint_url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    # Set superuser
+
+    def test_set_superuser(self) -> None:
+        token, _ = Token.objects.get_or_create(user=self.manager_auth_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
+
+        response = self.client.post(self.set_superuser_endpoint_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        updated_auth_user = User.objects.get(id=self.non_manager_reviewed_auth_user.id)
+        self.assertEqual(updated_auth_user.is_staff, True)
+        self.assertEqual(updated_auth_user.is_superuser, True)
+
+        response = self.client.post(self.set_superuser_endpoint_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        updated_auth_user = User.objects.get(id=self.non_manager_reviewed_auth_user.id)
+        self.assertEqual(updated_auth_user.is_staff, False)
+        self.assertEqual(updated_auth_user.is_superuser, False)
+
+    def test_set_superuser_fails_because_not_authed(self) -> None:
+        response = self.client.post(self.set_superuser_endpoint_url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_set_superuser_fails_because_not_manager(self) -> None:
+        token, _ = Token.objects.get_or_create(user=self.non_manager_reviewed_auth_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
+
+        response = self.client.post(self.set_superuser_endpoint_url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_set_superuser_fails_because_not_exists(self) -> None:
+        token, _ = Token.objects.get_or_create(user=self.manager_auth_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
+
+        set_superuser_endpoint_url = reverse('v1:user_profile-set-superuser', kwargs={'pk': 999})
+
+        response = self.client.post(set_superuser_endpoint_url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_set_superuser_fails_because_self(self) -> None:
+        token, _ = Token.objects.get_or_create(user=self.manager_auth_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
+
+        set_superuser_endpoint_url = reverse(
+            'v1:user_profile-set-superuser', kwargs={'pk': self.manager_auth_user.id}
+        )
+
+        response = self.client.post(set_superuser_endpoint_url)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    # Destroy
+
+    def test_destroy(self) -> None:
+        token, _ = Token.objects.get_or_create(user=self.manager_auth_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
+
+        response = self.client.delete(self.destroy_endpoint_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        updated_auth_user = User.objects.get(id=self.non_manager_reviewed_auth_user.id)
+        updated_user_profile = updated_auth_user.user_profile
+
+        self.assertEqual(updated_user_profile.is_manager, False)
+        self.assertEqual(updated_user_profile.is_accepted, False)
+        self.assertEqual(updated_user_profile.is_allowed_to_spend_resources, False)
+        self.assertEqual(updated_user_profile.is_deleted, True)
+        self.assertEqual(updated_user_profile.deleted_at, IsType(datetime))
+
+        self.assertEqual(updated_auth_user.username, str(self.non_manager_reviewed_auth_user.id))
+        self.assertEqual(updated_auth_user.email, '')
+        self.assertEqual(updated_auth_user.first_name, '')
+        self.assertEqual(updated_auth_user.last_name, '')
+
+    def test_destroy_fails_because_not_authed(self) -> None:
+        response = self.client.delete(self.destroy_endpoint_url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_destroy_fails_because_not_exists(self) -> None:
+        token, _ = Token.objects.get_or_create(user=self.manager_auth_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
+
+        destroy_endpoint_url = reverse('v1:user_profile-detail', kwargs={'pk': 999})
+
+        response = self.client.delete(destroy_endpoint_url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_destroy_fails_because_admin(self) -> None:
+        token, _ = Token.objects.get_or_create(user=self.manager_auth_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
+
+        destroy_endpoint_url = reverse(
+            'v1:user_profile-detail', kwargs={'pk': self.manager_auth_user.id}
+        )
+
+        response = self.client.delete(destroy_endpoint_url)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

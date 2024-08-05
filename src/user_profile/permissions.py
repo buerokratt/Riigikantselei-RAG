@@ -5,7 +5,7 @@ from rest_framework import permissions
 _LOGGED_OUT_ONLY_ACTIONS = {
     'create',
 }
-_LOGGED_IN_ONLY_ACTIONS = {'retrieve', 'change_password'}
+_LOGGED_IN_ONLY_ACTIONS = {'retrieve', 'destroy', 'change_password'}
 _MANAGER_ONLY_ACTIONS = {'list', 'accept', 'decline', 'ban', 'set_limit'}
 
 

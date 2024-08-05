@@ -1,8 +1,12 @@
 import datetime
+import re
+from typing import Any, Dict, Iterable, Optional
 
 from django.utils.translation import gettext as _
 from rest_framework.exceptions import ValidationError
 from tiktoken import Encoding
+
+from core.models import Dataset
 
 
 def validate_min_max_years(min_year: int, max_year: int) -> None:
@@ -39,3 +43,26 @@ def prune_context(text: str, encoder: Encoding, token_limit: int = 10000) -> str
     pruned_tokens = tokens[:token_limit]
     pruned_context = encoder.decode(pruned_tokens)
     return pruned_context
+
+
+def wildcard_to_regex(pattern: str) -> str:
+    return re.escape(pattern).replace(r'\*', '.*')
+
+
+# Function to match string with patterns and return corresponding value
+def match_pattern(input_string: str, wildcard_to_data_map: Dict[str, Any]) -> Optional[Any]:
+    for wildcard_pattern, data in wildcard_to_data_map.items():
+        regex_pattern = wildcard_to_regex(wildcard_pattern)
+        if re.fullmatch(regex_pattern, input_string):
+            return data
+    return None
+
+
+def dataset_indexes_to_names(indexes: Iterable[str]) -> Iterable[str]:
+    dataset_index_wildcard_to_name_map = {}
+    for dataset in Dataset.objects.all():
+        dataset_index_wildcard_to_name_map[dataset.index] = dataset.name
+
+    for index in indexes:
+        name = match_pattern(index, dataset_index_wildcard_to_name_map)
+        yield name if name else 'Teadmata'
