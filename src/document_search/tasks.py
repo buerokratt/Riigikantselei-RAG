@@ -15,8 +15,8 @@ from document_search.models import (
     DocumentAggregationResult,
     DocumentSearchConversation,
     DocumentSearchQueryResult,
-    DocumentTask,
 )
+
 
 # pylint: disable=unused-argument,too-many-arguments
 
@@ -83,7 +83,7 @@ def parse_aggregation(hits: List[dict]) -> List[dict]:
 # Using bind=True sets the Celery Task object to the first argument, in this case celery_task.
 @app.task(name='generate_aggregations', bind=True, base=ResourceTask)
 def generate_aggregations(
-    celery_task: ResourceTask, conversation_id: int, user_input: str, result_uuid: str
+        celery_task: ResourceTask, conversation_id: int, user_input: str, result_uuid: str
 ) -> None:
     try:
         conversation = DocumentSearchConversation.objects.get(pk=conversation_id)
@@ -126,7 +126,7 @@ def generate_aggregations(
 # Using bind=True sets the Celery Task object to the first argument, in this case celery_task.
 @app.task(name='generate_openai_prompt', bind=True, base=ResourceTask)
 def generate_openai_prompt(
-    celery_task: ResourceTask, conversation_id: int, dataset_index_queries: List[str]
+        celery_task: ResourceTask, conversation_id: int, dataset_index_queries: List[str]
 ) -> dict:
     conversation = DocumentSearchConversation.objects.get(pk=conversation_id)
     user_input = conversation.user_input
@@ -150,11 +150,11 @@ def generate_openai_prompt(
     bind=True,
 )
 def send_document_search(
-    celery_task: Task,
-    context_and_references: dict,
-    conversation_id: int,
-    user_input: str,
-    result_uuid: str,
+        celery_task: Task,
+        context_and_references: dict,
+        conversation_id: int,
+        user_input: str,
+        result_uuid: str,
 ) -> dict:
     """
     Task for fetching the RAG context from pre-processed vectors in ElasticSearch.
@@ -214,22 +214,8 @@ def send_document_search(
 # Using bind=True sets the Celery Task object to the first argument, in this case celery_task.
 @app.task(name='save_openai_results_for_doc', bind=True, ignore_results=True)
 def save_openai_results_for_doc(
-    celery_task: Task, results: dict, conversation_id: int, result_uuid: str, dataset_name: str
+        celery_task: Task, results: dict, conversation_id: int, result_uuid: str, dataset_name: str
 ) -> None:
     conversation = DocumentSearchConversation.objects.get(id=conversation_id)
     result: DocumentSearchQueryResult = conversation.query_results.filter(uuid=result_uuid).first()
-    document_task: DocumentTask = result.celery_task
-
-    result.model = results['model']
-    result.dataset_name = dataset_name
-    result.user_input = results['user_input']
-    result.is_context_pruned = results['is_context_pruned']
-    result.response = results['response']
-    result.input_tokens = results['input_tokens']
-    result.output_tokens = results['output_tokens']
-    result.total_cost = results['total_cost']
-    result.response_headers = results['response_headers']
-    result.references = results['references']
-    result.save()
-
-    document_task.set_success()
+    result.save_results(results)

@@ -19,6 +19,7 @@ source activate riigikantselei
 echo "Migrating application..."
 
 python migrate.py -o
+python manage.py compilemessages -l et
 
 # prepare front conf file
 python create_front_config.py --path "/var/rk_api/front/assets/config/config.json"

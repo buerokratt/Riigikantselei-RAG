@@ -10,6 +10,7 @@ from core.base_task import ResourceTask
 from core.exceptions import OPENAI_EXCEPTIONS
 from text_search.models import TextSearchConversation, TextSearchQueryResult, TextTask
 
+
 # pylint: disable=unused-argument,too-many-arguments
 
 # TODO: Revisit the retry parameters, or do it by hand,
@@ -18,10 +19,10 @@ from text_search.models import TextSearchConversation, TextSearchQueryResult, Te
 
 # TODO: unit test
 def async_call_celery_task_chain(
-    user_input: str,
-    dataset_index_queries: List[str],
-    conversation_id: int,
-    result_uuid: str,
+        user_input: str,
+        dataset_index_queries: List[str],
+        conversation_id: int,
+        result_uuid: str,
 ) -> None:
     rag_task = query_and_format_rag_context.s(
         conversation_id=conversation_id,
@@ -42,10 +43,10 @@ def async_call_celery_task_chain(
 # Using bind=True sets the Celery Task object to the first argument, in this case celery_task.
 @app.task(name='query_and_format_rag_context', max_retries=5, bind=True, base=ResourceTask)
 def query_and_format_rag_context(
-    celery_task: ResourceTask,
-    conversation_id: int,
-    user_input: str,
-    dataset_index_queries: List[str],
+        celery_task: ResourceTask,
+        conversation_id: int,
+        user_input: str,
+        dataset_index_queries: List[str],
 ) -> dict:
     """
     Task for fetching the RAG context from pre-processed vectors in ElasticSearch.
@@ -78,11 +79,11 @@ def query_and_format_rag_context(
     bind=True,
 )
 def call_openai_api(
-    celery_task: Task,
-    context_and_references: dict,
-    conversation_id: int,
-    user_input: str,
-    result_uuid: str,
+        celery_task: Task,
+        context_and_references: dict,
+        conversation_id: int,
+        user_input: str,
+        result_uuid: str,
 ) -> dict:
     """
     Task for fetching the RAG context from pre-processed vectors in ElasticSearch.
@@ -142,21 +143,8 @@ def call_openai_api(
 # Using bind=True sets the Celery Task object to the first argument, in this case celery_task.
 @app.task(name='save_openai_results', bind=True, ignore_results=True)
 def save_openai_results(
-    celery_task: Task, results: dict, conversation_id: int, result_uuid: str
+        celery_task: Task, results: dict, conversation_id: int, result_uuid: str
 ) -> None:
     conversation = TextSearchConversation.objects.get(id=conversation_id)
     result: TextSearchQueryResult = conversation.query_results.filter(uuid=result_uuid).first()
-    task: TextTask = result.celery_task
-
-    result.model = results['model']
-    result.user_input = results['user_input']
-    result.is_context_pruned = results['is_context_pruned']
-    result.response = results['response']
-    result.input_tokens = results['input_tokens']
-    result.output_tokens = results['output_tokens']
-    result.total_cost = results['total_cost']
-    result.response_headers = results['response_headers']
-    result.references = results['references']
-    result.save()
-
-    task.set_success()
+    result.save_results(results)

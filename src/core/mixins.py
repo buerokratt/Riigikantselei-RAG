@@ -5,6 +5,7 @@ from typing import Dict, Iterable, List, Set, Tuple
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.db import models
+from django.utils.translation import gettext as _
 from tiktoken import Encoding
 
 from api.utilities.elastic import ElasticKNN
@@ -59,7 +60,7 @@ class ConversationMixin(models.Model):
 
     @staticmethod
     def parse_gpt_question_and_references(
-        user_input: str, hits: List[dict], encoder: Encoding
+            user_input: str, hits: List[dict], encoder: Encoding
     ) -> dict:
         url_field = CoreVariable.get_core_setting('ELASTICSEARCH_URL_FIELD')
         title_field = CoreVariable.get_core_setting('ELASTICSEARCH_TITLE_FIELD')
@@ -162,12 +163,12 @@ class ConversationMixin(models.Model):
         return container
 
     def generate_conversations_and_references(
-        self,
-        user_input: str,
-        dataset_index_queries: List[str],
-        vectorizer: Vectorizer,
-        encoder: Encoding,
-        parent_references: Iterable[str],
+            self,
+            user_input: str,
+            dataset_index_queries: List[str],
+            vectorizer: Vectorizer,
+            encoder: Encoding,
+            parent_references: Iterable[str],
     ) -> dict:
         input_vector = vectorizer.vectorize([user_input])['vectors'][0]
 
@@ -208,6 +209,27 @@ class ResultMixin(models.Model):
     references = models.JSONField(null=True, default=None)
 
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def save_results(self, results: dict):
+        try:
+            self.model = results['model']
+            self.user_input = results['user_input']
+            self.is_context_pruned = results['is_context_pruned']
+            self.response = results['response']
+            self.input_tokens = results['input_tokens']
+            self.output_tokens = results['output_tokens']
+            self.total_cost = results['total_cost']
+            self.response_headers = results['response_headers']
+            self.references = results['references']
+            self.save()
+
+            self.celery_task.set_success()
+
+        except Exception as exception:
+            logging.getLogger(settings.ERROR_LOGGER).exception("Couldn't store database results!")
+            message = _("Couldn't store ChatGPT results!")
+            self.celery_task.set_failed(message)
+            raise exception
 
     @property
     def messages(self) -> List[Dict[str, str]]:

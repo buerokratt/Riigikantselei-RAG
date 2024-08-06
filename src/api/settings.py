@@ -30,6 +30,7 @@ if env_file_path:
 env = environ.Env()
 
 GPT_SYSTEM_PROMPT_DEFAULT = """Kontekst: {}
+
 Palun vasta järgnevale küsimusele sellega samas keeles.
 Kasuta küsimusele vastamiseks AINULT ülaltoodud konteksti.
 Kui kontekstis pole vastamiseks piisavalt ja/või sobivat infot, vasta: "{}".
@@ -181,7 +182,7 @@ REST_FRAMEWORK = {
     # Almost every endpoint uses TokenAuthentication
     'DEFAULT_AUTHENTICATION_CLASSES': ('rest_framework.authentication.TokenAuthentication',),
     'DEFAULT_THROTTLE_CLASSES': ('rest_framework.throttling.AnonRateThrottle',),
-    'DEFAULT_THROTTLE_RATES': {'anon': '10/hour'},
+    'DEFAULT_THROTTLE_RATES': {'anon': '75/hour'},
 }
 
 if DEBUG is True:
