@@ -58,6 +58,7 @@ class DatasetViewset(viewsets.ModelViewSet):
 
 class StatisticsView(views.APIView):
     permission_classes = (IsAdminUser,)
+    serializer_class = StatisticsSerializer
 
     def post(self, request: Request) -> HttpResponseBase:  # pylint: disable=unused-argument
         serializer = StatisticsSerializer(data=request.data)

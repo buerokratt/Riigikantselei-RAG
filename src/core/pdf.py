@@ -58,9 +58,9 @@ def _build_conversation_context(
 def _queries_to_year_list(queries: QuerySet) -> Iterable[int]:
     year_lists = (
         range(min_year, max_year + 1)
-        for min_year, max_year in queries.values_list(
-            'conversation__min_year', 'conversation__max_year'
-        )
+        for min_year, max_year in queries.exclude(
+            conversation__min_year__isnull=True, conversation__max_year__isnull=True
+        ).values_list('conversation__min_year', 'conversation__max_year')
     )
     return (year for year_list in year_lists for year in year_list)
 
