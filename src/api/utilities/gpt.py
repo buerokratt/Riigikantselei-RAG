@@ -14,13 +14,13 @@ logger = logging.getLogger(__name__)
 
 class LLMResponse:
     def __init__(
-        self,
-        message: str,
-        model: str,
-        user_input: str,
-        input_tokens: int,
-        response_tokens: int,
-        headers: dict,
+            self,
+            message: str,
+            model: str,
+            user_input: str,
+            input_tokens: int,
+            response_tokens: int,
+            headers: dict,
     ):  # pylint: disable=too-many-arguments
         self.message = message
         self.model = model
@@ -102,11 +102,11 @@ def construct_messages_for_testing(system_input: str, user_input: str) -> List[d
 
 class ChatGPT:
     def __init__(
-        self,
-        api_key: Optional[str] = None,
-        model: Optional[str] = None,
-        timeout: Optional[int] = None,
-        max_retries: Optional[int] = None,
+            self,
+            api_key: Optional[str] = None,
+            model: Optional[str] = None,
+            timeout: Optional[int] = None,
+            max_retries: Optional[int] = None,
     ):
         api_key = api_key or CoreVariable.get_core_setting('OPENAI_API_KEY')
         timeout = timeout or CoreVariable.get_core_setting('OPENAI_API_TIMEOUT')
@@ -133,13 +133,18 @@ class ChatGPT:
         )
 
     def _commit_api(self, messages: List[dict]) -> Tuple[dict, dict, int]:
+        temperature = CoreVariable.get_core_setting('OPENAI_API_TEMPERATURE')
+
         if self.gpt is None:
             message = _("No OpenAI API key given, can't query API!")
             raise APIException(message)
 
         try:
             response = self.gpt.chat.completions.with_raw_response.create(
-                model=self.model, stream=False, messages=messages
+                model=self.model,
+                stream=False,
+                messages=messages,
+                temperature=temperature
             )
 
             headers = dict(response.headers)

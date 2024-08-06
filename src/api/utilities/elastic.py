@@ -28,7 +28,7 @@ ELASTIC_CONNECTION_ERROR_MESSAGE = _(
     'Could not connect to Elasticsearch, is the location properly configured?'
 )
 
-K_DEFAULT = 3
+K_DEFAULT = 5
 NUM_CANDIDATES_DEFAULT = 25
 
 
