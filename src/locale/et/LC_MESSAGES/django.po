@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-08-02 21:50+0300\n"
+"POT-Creation-Date: 2024-08-06 20:11+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,7 +18,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: api/settings.py:226
+#: api/settings.py:228
 msgid "Estonian"
 msgstr "Eesti"
 
@@ -47,34 +47,48 @@ msgid ""
 "Could not connect to Elasticsearch, is the location properly configured?"
 msgstr "Ei saanud ühendust Elasticuga! Võtke ühendust administraatoriga!"
 
-#: api/utilities/gpt.py:137
+#: api/utilities/gpt.py:139
 msgid "No OpenAI API key given, can't query API!"
 msgstr "ChatGPT ühendus on seadistamata! Võtke ühendust administraatoriga!"
 
-#: api/utilities/gpt.py:151
+#: api/utilities/gpt.py:153
 msgid "Couldn't authenticate with OpenAI API!"
 msgstr "Autentimine ChatGPT'ga ebaõnnestus! Võtke ühendust administraatoriga!"
 
-#: api/utilities/gpt.py:155
+#: api/utilities/gpt.py:157
 msgid "OpenAI request is not correct!"
 msgstr "Viga ChatGPT päringuga! Võtke ühendust administraatoriga!"
 
-#: api/utilities/gpt.py:165
+#: api/utilities/gpt.py:167
 msgid "Requested resource was not found! Is the right model configured?"
 msgstr ""
 "Palutud ChatGPT mudel ei ole saadaval! Võtke ühendust administraatoriga!"
 
-#: api/utilities/gpt.py:169
+#: api/utilities/gpt.py:171
 msgid "Requested resource was denied!"
 msgstr "Ligipääs keelatud! Võtke ühendust administraatoriga!"
 
-#: api/utilities/gpt.py:189 api/utilities/gpt.py:193
+#: api/utilities/gpt.py:191 api/utilities/gpt.py:195
 msgid "Couldn't connect to the OpenAI API!"
 msgstr "Ei saanud ühendust ChatGPT'ga!"
 
 #: api/utilities/serializers.py:17 api/utilities/serializers.py:24
 msgid "The given value contains forbidden characters."
 msgstr "Sisaldab keelatud tähemärke!"
+
+#: core/mixins.py:114
+msgid "Storing ChatGPT results timed out, please try again!"
+msgstr "ChatGPT vastuse salvestamine aegus! Palun teavitage administraatorit!"
+
+#: core/mixins.py:204
+#, fuzzy
+#| msgid "Could not find specified data from Elasticsearch!"
+msgid "Couldn't get context from Elasticsearch!"
+msgstr "Andmeid ei leitud!"
+
+#: core/mixins.py:248
+msgid "Couldn't store ChatGPT results!"
+msgstr "Ei suutnud salvestada ChatGPT tulemusi! Palun teavitage administraatorit!"
 
 #: core/models.py:77
 #, python-format
@@ -88,6 +102,10 @@ msgstr "Miinimum aasta piirang peab olema väiksem kui praegune aasta!"
 #: core/utilities.py:17
 msgid "Minimum year must be lesser than the maximum year restriction!"
 msgstr "Miinimum aasta piirang ei tohi olla suurem kui maksimum aasta oma!"
+
+#: document_search/tasks.py:197
+msgid "Unknown error, couldn't handle response from ChatGPT!"
+msgstr "Teadmata viga ChatGPT ühenduses! Palun teavitage administraatorit!"
 
 #: document_search/views.py:153 text_search/views.py:67
 msgid "Deleted chosen objects!"
@@ -129,22 +147,22 @@ msgstr "Teie parooli muutmise periood on aegunud!"
 msgid "User with that email does not exist!"
 msgstr "Sellise emailiga kasutaja ei eksisteeri!"
 
-#: user_profile/views.py:48
+#: user_profile/views.py:49
 msgid "User and password do not match!"
-msgstr "Kasutajanimi ja parool ei ühti!"
+msgstr "Kasutajanimi ja/või parool on vale!"
 
-#: user_profile/views.py:155
+#: user_profile/views.py:159
 msgid "You can not change your own status!"
 msgstr "Omaenda admin staatust ei saa muuta!"
 
-#: user_profile/views.py:250
+#: user_profile/views.py:254
 msgid "Sending email failed."
 msgstr "Emaili saatmine ebaõnnestus!"
 
-#: user_profile/views.py:271
+#: user_profile/views.py:275
 msgid "Your password has been reset!"
 msgstr "Teie parool on muudetud!"
 
-#: user_profile/views.py:281
+#: user_profile/views.py:285
 msgid "Can not set acceptance for an already accepted user."
 msgstr "Aksepteeritud kasutaja staatust ei saa muuta!"

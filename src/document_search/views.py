@@ -108,7 +108,7 @@ class DocumentSearchConversationViewset(viewsets.ModelViewSet):
         )
         DocumentTask.objects.create(result=result)
 
-        prompt_task = generate_openai_prompt.s(pk, [dataset_index_query])
+        prompt_task = generate_openai_prompt.s(result.uuid, pk, [dataset_index_query])
         gpt_task = send_document_search.s(pk, user_input, result.uuid)
         save_task = save_openai_results_for_doc.s(pk, result.uuid, dataset_name)
 

@@ -259,7 +259,7 @@ LOGGING = {
     'formatters': {
         'simple': {
             'format': '\n'
-                      + LOGGING_SEPARATOR.join(
+            + LOGGING_SEPARATOR.join(
                 [
                     '%(levelname)s',
                     '%(module)s',
@@ -287,7 +287,7 @@ LOGGING = {
         },
         'detailed_error': {
             'format': '\n'
-                      + LOGGING_SEPARATOR.join(
+            + LOGGING_SEPARATOR.join(
                 [
                     '%(levelname)s',
                     '%(module)s',
@@ -371,6 +371,11 @@ CELERY_WORKER_PREFETCH_MULTIPLIER = env.int('RK_CELERY_PREFETCH_MULTIPLIER', def
 CELERY_DEFAULT_QUEUE = env.str('RK_WORKER_QUEUE', default='celery')
 CELERY_DEFAULT_EXCHANGE = CELERY_DEFAULT_QUEUE
 CELERY_DEFAULT_ROUTING_KEY = CELERY_DEFAULT_QUEUE
+
+CELERY_VECTOR_SEARCH_SOFT_LIMIT = 2 * 60
+CELERY_OPENAI_SOFT_LIMIT = 2 * 60 + 30
+CELERY_RESULT_STORE_SOFT_LIMIT = 1 * 60
+CELERY_AGGREGATE_TASK_SOFT_LIMIT = 1 * 60 + 30
 
 #### VECTORIZATION CONFIGURATIONS ####
 VECTORIZATION_MODEL_NAME = 'BAAI/bge-m3'

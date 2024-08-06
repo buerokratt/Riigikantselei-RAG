@@ -1,6 +1,6 @@
 import logging
 import uuid
-from typing import Dict, Iterable, List, Set, Tuple
+from typing import Any, Dict, Iterable, List, Set, Tuple
 
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -13,6 +13,8 @@ from api.utilities.vectorizer import Vectorizer
 from core.choices import TASK_STATUS_CHOICES, TaskStatus
 from core.models import CoreVariable
 from core.utilities import exceeds_token_limit, prune_context
+
+# pylint: disable=too-many-instance-attributes,too-many-arguments
 
 
 class ConversationMixin(models.Model):
@@ -60,7 +62,7 @@ class ConversationMixin(models.Model):
 
     @staticmethod
     def parse_gpt_question_and_references(
-            user_input: str, hits: List[dict], encoder: Encoding
+        user_input: str, hits: List[dict], encoder: Encoding
     ) -> dict:
         url_field = CoreVariable.get_core_setting('ELASTICSEARCH_URL_FIELD')
         title_field = CoreVariable.get_core_setting('ELASTICSEARCH_TITLE_FIELD')
@@ -104,6 +106,13 @@ class ConversationMixin(models.Model):
             'references': context_documents_contents,
             'is_context_pruned': any(is_pruned_container),
         }
+
+    @staticmethod
+    def handle_celery_timeouts(conversation: Any, result_uuid: str) -> None:
+        logging.getLogger(settings.ERROR_LOGGER).exception('Celery task soft-time limit exceeded!')
+        result = conversation.query_results.filter(uuid=result_uuid).first()
+        message = _('Storing ChatGPT results timed out, please try again!')
+        result.celery_task.set_failed(message)
 
     @property
     def messages(self) -> List[Dict[str, str]]:
@@ -163,29 +172,38 @@ class ConversationMixin(models.Model):
         return container
 
     def generate_conversations_and_references(
-            self,
-            user_input: str,
-            dataset_index_queries: List[str],
-            vectorizer: Vectorizer,
-            encoder: Encoding,
-            parent_references: Iterable[str],
+        self,
+        user_input: str,
+        dataset_index_queries: List[str],
+        vectorizer: Vectorizer,
+        encoder: Encoding,
+        parent_references: Iterable[str],
+        task: Any,
     ) -> dict:
-        input_vector = vectorizer.vectorize([user_input])['vectors'][0]
+        try:
+            input_vector = vectorizer.vectorize([user_input])['vectors'][0]
 
-        knn = ElasticKNN()
+            knn = ElasticKNN()
 
-        date_query = knn.create_date_query(min_year=self.min_year, max_year=self.max_year)
-        search_query = knn.create_doc_id_query(date_query, parent_references)
-        search_query_wrapper = {'search_query': search_query} if search_query else {}
-        matching_documents = knn.search_vector(
-            vector=input_vector, indices=dataset_index_queries, **search_query_wrapper
-        )
+            date_query = knn.create_date_query(min_year=self.min_year, max_year=self.max_year)
+            search_query = knn.create_doc_id_query(date_query, parent_references)
+            search_query_wrapper = {'search_query': search_query} if search_query else {}
+            matching_documents = knn.search_vector(
+                vector=input_vector, indices=dataset_index_queries, **search_query_wrapper
+            )
 
-        hits = matching_documents['hits']['hits']
-        question_and_references = self.parse_gpt_question_and_references(
-            user_input=user_input, hits=hits, encoder=encoder
-        )
-        return question_and_references
+            hits = matching_documents['hits']['hits']
+            question_and_references = self.parse_gpt_question_and_references(
+                user_input=user_input, hits=hits, encoder=encoder
+            )
+            return question_and_references
+        except Exception as exception:
+            logging.getLogger(settings.ERROR_LOGGER).exception(
+                'Failed to search vectors for context!'
+            )
+            message = _("Couldn't get context from Elasticsearch!")
+            task.set_failed(message)
+            raise exception
 
     class Meta:
         abstract = True
@@ -210,7 +228,7 @@ class ResultMixin(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
 
-    def save_results(self, results: dict):
+    def save_results(self, results: dict) -> None:
         try:
             self.model = results['model']
             self.user_input = results['user_input']
