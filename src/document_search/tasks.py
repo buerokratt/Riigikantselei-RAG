@@ -19,7 +19,6 @@ from document_search.models import (
 )
 from document_search.utilities import parse_aggregation
 
-
 # pylint: disable=unused-argument,too-many-arguments
 
 # TODO: this file and its text_search sibling
@@ -39,7 +38,7 @@ from document_search.utilities import parse_aggregation
     soft_task_limit=settings.CELERY_AGGREGATE_TASK_SOFT_LIMIT,
 )
 def generate_aggregations(
-        celery_task: ResourceTask, conversation_id: int, user_input: str, result_uuid: str
+    celery_task: ResourceTask, conversation_id: int, user_input: str, result_uuid: str
 ) -> None:
     try:
         conversation = DocumentSearchConversation.objects.get(pk=conversation_id)
@@ -94,10 +93,10 @@ def generate_aggregations(
     soft_time_limit=settings.CELERY_VECTOR_SEARCH_SOFT_LIMIT,
 )
 def generate_openai_prompt(
-        celery_task: ResourceTask,
-        result_uuid: str,
-        conversation_id: int,
-        dataset_index_queries: List[str],
+    celery_task: ResourceTask,
+    result_uuid: str,
+    conversation_id: int,
+    dataset_index_queries: List[str],
 ) -> dict:
     try:
         conversation = DocumentSearchConversation.objects.get(pk=conversation_id)
@@ -110,7 +109,7 @@ def generate_openai_prompt(
             vectorizer=celery_task.vectorizer,
             encoder=celery_task.encoder,
             parent_references=parents,
-            task=task.celery_task
+            task=task.celery_task,
         )
         return context_and_references
 
@@ -132,11 +131,11 @@ def generate_openai_prompt(
     bind=True,
 )
 def send_document_search(
-        celery_task: Task,
-        context_and_references: dict,
-        conversation_id: int,
-        user_input: str,
-        result_uuid: str,
+    celery_task: Task,
+    context_and_references: dict,
+    conversation_id: int,
+    user_input: str,
+    result_uuid: str,
 ) -> dict:
     """
     Task for fetching the RAG context from pre-processed vectors in ElasticSearch.
@@ -208,7 +207,7 @@ def send_document_search(
     soft_time_limit=settings.CELERY_RESULT_STORE_SOFT_LIMIT,
 )
 def save_openai_results_for_doc(
-        celery_task: Task, results: dict, conversation_id: int, result_uuid: str, dataset_name: str
+    celery_task: Task, results: dict, conversation_id: int, result_uuid: str, dataset_name: str
 ) -> None:
     try:
         conversation = DocumentSearchConversation.objects.get(id=conversation_id)
