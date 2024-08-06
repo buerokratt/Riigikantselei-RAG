@@ -1,6 +1,6 @@
 import datetime
 import re
-from typing import Any, Dict, Iterable, Optional
+from typing import Any, Dict, Iterable, List, Optional
 
 from django.utils.translation import gettext as _
 from rest_framework.exceptions import ValidationError
@@ -58,7 +58,7 @@ def match_pattern(input_string: str, wildcard_to_data_map: Dict[str, Any]) -> Op
     return None
 
 
-def dataset_indexes_to_names(indexes: Iterable[str]) -> Iterable[str]:
+def dataset_indexes_to_names(indexes: List[str]) -> Iterable[str]:
     dataset_index_wildcard_to_name_map = {}
     for dataset in Dataset.objects.all():
         dataset_index_wildcard_to_name_map[dataset.index] = dataset.name

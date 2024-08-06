@@ -58,9 +58,9 @@ def _build_conversation_context(
 def _queries_to_year_list(queries: QuerySet) -> Iterable[int]:
     year_lists = (
         range(min_year, max_year + 1)
-        for min_year, max_year in queries.values_list(
-            'conversation__min_year', 'conversation__max_year'
-        )
+        for min_year, max_year in queries.exclude(
+            conversation__min_year__isnull=True, conversation__max_year__isnull=True
+        ).values_list('conversation__min_year', 'conversation__max_year')
     )
     return (year for year_list in year_lists for year in year_list)
 
@@ -74,18 +74,22 @@ def _document_queries_to_dataset_list(dataset_queries: QuerySet) -> Iterable[str
     return dataset_queries.values_list('dataset_name', flat=True)
 
 
-def _references_to_value_list(references_query_set: QuerySet, key: str) -> Iterable[Any]:
+def _references_to_value_list(
+    references_query_set: QuerySet, key: str, unknown_key: str = 'Teadmata'
+) -> Iterable[Any]:
     if key == 'dataset':
         # Dataset name is not in the database or reference and we have to map from index to dataset
         key = 'index'
 
-    value_list: Iterable[Any] = (
-        reference.get(key, 'Teadmata')
-        for reference_list in references_query_set.all()
-        for reference in reference_list
-    )
+    value_list = []
+    for reference_list in references_query_set.all():
+        if reference_list:
+            for reference in reference_list:
+                reference = reference.get(key, unknown_key)
+                value_list.append(reference)
+
     if key == 'index':
-        value_list = dataset_indexes_to_names(value_list)
+        value_list = dataset_indexes_to_names(value_list)  # type: ignore
 
     return value_list
 
