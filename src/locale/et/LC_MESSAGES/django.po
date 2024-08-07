@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-08-06 20:11+0300\n"
+"POT-Creation-Date: 2024-08-07 12:22+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -77,8 +77,8 @@ msgid "The given value contains forbidden characters."
 msgstr "Sisaldab keelatud tähemärke!"
 
 #: core/mixins.py:114
-msgid "Storing ChatGPT results timed out, please try again!"
-msgstr "ChatGPT vastuse salvestamine aegus! Palun teavitage administraatorit!"
+msgid "Task toke too much time!"
+msgstr "Töö ajalimiit ületatud, palun proovige uuesti! Korduva probleemi puhul palun teavitage administraatorit!"
 
 #: core/mixins.py:204
 #, fuzzy
@@ -88,7 +88,8 @@ msgstr "Andmeid ei leitud!"
 
 #: core/mixins.py:248
 msgid "Couldn't store ChatGPT results!"
-msgstr "Ei suutnud salvestada ChatGPT tulemusi! Palun teavitage administraatorit!"
+msgstr ""
+"Ei suutnud salvestada ChatGPT tulemusi! Palun teavitage administraatorit!"
 
 #: core/models.py:77
 #, python-format
@@ -103,7 +104,7 @@ msgstr "Miinimum aasta piirang peab olema väiksem kui praegune aasta!"
 msgid "Minimum year must be lesser than the maximum year restriction!"
 msgstr "Miinimum aasta piirang ei tohi olla suurem kui maksimum aasta oma!"
 
-#: document_search/tasks.py:197
+#: document_search/tasks.py:196
 msgid "Unknown error, couldn't handle response from ChatGPT!"
 msgstr "Teadmata viga ChatGPT ühenduses! Palun teavitage administraatorit!"
 

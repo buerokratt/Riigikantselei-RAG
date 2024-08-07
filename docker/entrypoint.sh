@@ -2,6 +2,7 @@
 
 # Worker concurrency defaults.
 export RK_WORKERS="${RK_WORKERS:-2}"
+export RK_MAX_TASKS="${RK_MAX_TASKS:-50}"
 
 echo "Setting application permissions..."
 

@@ -111,7 +111,7 @@ class ConversationMixin(models.Model):
     def handle_celery_timeouts(conversation: Any, result_uuid: str) -> None:
         logging.getLogger(settings.ERROR_LOGGER).exception('Celery task soft-time limit exceeded!')
         result = conversation.query_results.filter(uuid=result_uuid).first()
-        message = _('Storing ChatGPT results timed out, please try again!')
+        message = _('Task toke too much time!')
         result.celery_task.set_failed(message)
 
     @property
