@@ -145,7 +145,7 @@ class DocumentSearchTestCase(APITransactionTestCase):
             result = query_results[0]
             self.assertEqual(result['dataset_name'], target_dataset_name)
             self.assertEqual(result['celery_task']['status'], TaskStatus.SUCCESS)
-            self.assertEqual(len(result['references']), 3)
+            self.assertEqual(len(result['references']), 5)
 
         # Delete and assert nothing remains.
         delete_uri = reverse('v1:document_search-bulk-destroy')

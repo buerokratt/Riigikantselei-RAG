@@ -2,6 +2,7 @@ import logging
 from typing import List
 
 from celery import Task
+from celery.exceptions import SoftTimeLimitExceeded
 from django.conf import settings
 
 from api.celery_handler import app
@@ -25,6 +26,7 @@ def async_call_celery_task_chain(
 ) -> None:
     rag_task = query_and_format_rag_context.s(
         conversation_id=conversation_id,
+        result_uuid=result_uuid,
         user_input=user_input,
         dataset_index_queries=dataset_index_queries,
     )
@@ -40,33 +42,52 @@ def async_call_celery_task_chain(
 
 # TODO: implement real RAG logic, then unit test
 # Using bind=True sets the Celery Task object to the first argument, in this case celery_task.
-@app.task(name='query_and_format_rag_context', max_retries=5, bind=True, base=ResourceTask)
+@app.task(
+    name='query_and_format_rag_context',
+    max_retries=5,
+    bind=True,
+    base=ResourceTask,
+    soft_time_limit=settings.CELERY_VECTOR_SEARCH_SOFT_LIMIT,
+)
 def query_and_format_rag_context(
     celery_task: ResourceTask,
     conversation_id: int,
+    result_uuid: str,
     user_input: str,
     dataset_index_queries: List[str],
 ) -> dict:
     """
     Task for fetching the RAG context from pre-processed vectors in ElasticSearch.
 
-    :param conversation_id:
+    :param result_uuid: UUID of the Result model to keep track of status.
+    :param conversation_id: ID of the conversation.
     :param celery_task: Contains access to the Celery Task instance.
     :param user_input: User sent input to add context to.
     :param dataset_index_queries: Which wildcarded indexes to search from in Elasticsearch.
     :return: Text containing user input and relevant context documents.
     """
-    conversation: TextSearchConversation = TextSearchConversation.objects.get(pk=conversation_id)
-    parents = conversation.get_previous_results_parents_ids()
+    try:
+        conversation: TextSearchConversation = TextSearchConversation.objects.get(
+            pk=conversation_id
+        )
+        parents = conversation.get_previous_results_parents_ids()
+        result = conversation.query_results.filter(uuid=result_uuid).first()
 
-    context_and_references = conversation.generate_conversations_and_references(
-        user_input=user_input,
-        dataset_index_queries=dataset_index_queries,
-        vectorizer=celery_task.vectorizer,
-        encoder=celery_task.encoder,
-        parent_references=parents,
-    )
-    return context_and_references
+        context_and_references = conversation.generate_conversations_and_references(
+            user_input=user_input,
+            dataset_index_queries=dataset_index_queries,
+            vectorizer=celery_task.vectorizer,
+            encoder=celery_task.encoder,
+            parent_references=parents,
+            task=result.celery_task,
+        )
+        return context_and_references
+    except SoftTimeLimitExceeded as exception:
+        conversation = TextSearchConversation.objects.get(pk=conversation_id)
+        TextSearchConversation.handle_celery_timeouts(
+            conversation=conversation, result_uuid=result_uuid
+        )
+        raise exception
 
 
 # TODO: unit test, mocking like in test_openai_components.py
@@ -76,6 +97,7 @@ def query_and_format_rag_context(
     autoretry_for=OPENAI_EXCEPTIONS,
     max_retries=10,
     bind=True,
+    soft_time_limit=settings.CELERY_OPENAI_SOFT_LIMIT,
 )
 def call_openai_api(
     celery_task: Task,
@@ -129,6 +151,13 @@ def call_openai_api(
     except OPENAI_EXCEPTIONS as exception:
         raise exception
 
+    except SoftTimeLimitExceeded as exception:
+        conversation = TextSearchConversation.objects.get(pk=conversation_id)
+        TextSearchConversation.handle_celery_timeouts(
+            conversation=conversation, result_uuid=result_uuid
+        )
+        raise exception
+
     except Exception as exception:
         logging.getLogger(settings.ERROR_LOGGER).exception('Failed to connect to OpenAI API!')
         conversation = TextSearchConversation.objects.get(id=conversation_id)
@@ -140,23 +169,21 @@ def call_openai_api(
 
 # TODO: unit test
 # Using bind=True sets the Celery Task object to the first argument, in this case celery_task.
-@app.task(name='save_openai_results', bind=True, ignore_results=True)
+@app.task(
+    name='save_openai_results',
+    bind=True,
+    ignore_results=True,
+    soft_time_limit=settings.CELERY_RESULT_STORE_SOFT_LIMIT,
+)
 def save_openai_results(
     celery_task: Task, results: dict, conversation_id: int, result_uuid: str
 ) -> None:
-    conversation = TextSearchConversation.objects.get(id=conversation_id)
-    result: TextSearchQueryResult = conversation.query_results.filter(uuid=result_uuid).first()
-    task: TextTask = result.celery_task
-
-    result.model = results['model']
-    result.user_input = results['user_input']
-    result.is_context_pruned = results['is_context_pruned']
-    result.response = results['response']
-    result.input_tokens = results['input_tokens']
-    result.output_tokens = results['output_tokens']
-    result.total_cost = results['total_cost']
-    result.response_headers = results['response_headers']
-    result.references = results['references']
-    result.save()
-
-    task.set_success()
+    try:
+        conversation = TextSearchConversation.objects.get(id=conversation_id)
+        result: TextSearchQueryResult = conversation.query_results.filter(uuid=result_uuid).first()
+        result.save_results(results)
+    except SoftTimeLimitExceeded as exception:
+        conversation = TextSearchConversation.objects.get(pk=conversation_id)
+        conversation.handle_celery_timeouts(
+            conversation=conversation, result_uuid=result_uuid, exception=exception
+        )

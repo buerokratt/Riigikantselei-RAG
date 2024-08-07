@@ -29,12 +29,13 @@ if env_file_path:
 
 env = environ.Env()
 
-GPT_SYSTEM_PROMPT_DEFAULT = """Kontekst: {}
-Palun vasta järgnevale küsimusele sellega samas keeles.
-Kasuta küsimusele vastamiseks AINULT ülaltoodud konteksti.
-Kui kontekstis pole vastamiseks piisavalt ja/või sobivat infot, vasta: "{}".
-
-Küsimus: {}
+GPT_SYSTEM_PROMPT_DEFAULT = """Kontekst:\n\n{0}\n\n
+* Palun vasta järgmisele küsimusele sellega samas keeles.
+* Palun kasuta küsimusele vastamiseks ainult ülaltoodud konteksti.
+* Kui kontekstis pole küsimusele vastamiseks vajalikku infot, vasta: "{1}"
+* NB! Kui küsimusele pole ülaltoodud info põhjal võimalik üksüheselt vastata, kuid seda puudutav info on kontekstis siiski olemas, siis vasta küsimusele ja too välja erinevad võimalikud kitsendused.
+* Kasuta lauset "{1}" ainult siis, kui kontekstis pole üldse mingit relevantset informatsiooni.
+* Ära kasuta vastuses fraase nagu "Konteksti põhjal...".Küsimus: {2}
 """
 
 # TODO: why are some parameters in core settings and some not?
@@ -69,7 +70,8 @@ CORE_SETTINGS = {
     'OPENAI_API_TIMEOUT': env.int('RK_OPENAI_API_TIMEOUT', default=10),
     'OPENAI_API_MAX_RETRIES': env.int('RK_OPENAI_API_MAX_RETRIES', default=5),
     'OPENAI_API_CHAT_MODEL': env.int('RK_OPENAI_API_CHAT_MODEL', default='gpt-4o'),
-    'OPENAI_CONTEXT_MAX_TOKEN_LIMIT': env.int('RK_OPENAI_CONTEXT_MAX_TOKEN_LIMIT', default=8000),
+    'OPENAI_CONTEXT_MAX_TOKEN_LIMIT': env.int('RK_OPENAI_CONTEXT_MAX_TOKEN_LIMIT', default=4800),
+    'OPENAI_API_TEMPERATURE': env.float('RK_OPENAI_API_TEMPERATURE', default=0.0),
     #
     # Other
     'DEFAULT_USAGE_LIMIT_EUROS': env.float('RK_DEFAULT_USAGE_LIMIT_EUROS', default=10.0),
@@ -181,7 +183,7 @@ REST_FRAMEWORK = {
     # Almost every endpoint uses TokenAuthentication
     'DEFAULT_AUTHENTICATION_CLASSES': ('rest_framework.authentication.TokenAuthentication',),
     'DEFAULT_THROTTLE_CLASSES': ('rest_framework.throttling.AnonRateThrottle',),
-    'DEFAULT_THROTTLE_RATES': {'anon': '10/hour'},
+    'DEFAULT_THROTTLE_RATES': {'anon': '75/hour'},
 }
 
 if DEBUG is True:
@@ -370,6 +372,11 @@ CELERY_DEFAULT_QUEUE = env.str('RK_WORKER_QUEUE', default='celery')
 CELERY_DEFAULT_EXCHANGE = CELERY_DEFAULT_QUEUE
 CELERY_DEFAULT_ROUTING_KEY = CELERY_DEFAULT_QUEUE
 
+CELERY_VECTOR_SEARCH_SOFT_LIMIT = 2 * 60
+CELERY_OPENAI_SOFT_LIMIT = 2 * 60 + 30
+CELERY_RESULT_STORE_SOFT_LIMIT = 1 * 60
+CELERY_AGGREGATE_TASK_SOFT_LIMIT = 1 * 60 + 30
+
 #### VECTORIZATION CONFIGURATIONS ####
 VECTORIZATION_MODEL_NAME = 'BAAI/bge-m3'
 BGEM3_SYSTEM_CONFIGURATION = {'use_fp16': True, 'device': 'cpu', 'normalize_embeddings': True}
@@ -393,7 +400,6 @@ EMAIL_TIMEOUT = env.int('RK_EMAIL_TIMEOUT_IN_SECONDS', default=5)  # in seconds.
 EMAIL_USE_TLS = env.bool('RK_EMAIL_USE_TLS', default=False)
 EMAIL_USE_SSL = env.bool('RK_EMAIL_USE_SSL', default=False)
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
-
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 

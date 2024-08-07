@@ -2,6 +2,7 @@
 
 # Worker concurrency defaults.
 export RK_WORKERS="${RK_WORKERS:-2}"
+export RK_MAX_TASKS="${RK_MAX_TASKS:-50}"
 
 echo "Setting application permissions..."
 
@@ -19,6 +20,7 @@ source activate riigikantselei
 echo "Migrating application..."
 
 python migrate.py -o
+python manage.py compilemessages -l et
 
 # prepare front conf file
 python create_front_config.py --path "/var/rk_api/front/assets/config/config.json"

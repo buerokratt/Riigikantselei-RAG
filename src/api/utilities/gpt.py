@@ -133,13 +133,15 @@ class ChatGPT:
         )
 
     def _commit_api(self, messages: List[dict]) -> Tuple[dict, dict, int]:
+        temperature = CoreVariable.get_core_setting('OPENAI_API_TEMPERATURE')
+
         if self.gpt is None:
             message = _("No OpenAI API key given, can't query API!")
             raise APIException(message)
 
         try:
             response = self.gpt.chat.completions.with_raw_response.create(
-                model=self.model, stream=False, messages=messages
+                model=self.model, stream=False, messages=messages, temperature=temperature
             )
 
             headers = dict(response.headers)
