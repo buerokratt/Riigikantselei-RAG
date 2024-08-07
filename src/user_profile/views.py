@@ -98,10 +98,10 @@ class UserProfileViewSet(viewsets.ViewSet):
         # We do it here, not self.check_object_permissions, because we want to return 404, not 403,
         # because 403 implies that the resource exists and a non-manager should not know even that.
         queryset = User.objects.all()
-        if not request.user.user_profile.is_manager:
+        if request.user.user_profile.is_manager is False and request.user.is_staff is False:
             queryset = User.objects.filter(id=request.user.id)
 
-        auth_user = get_object_or_404(queryset, id=pk)
+        auth_user = get_object_or_404(queryset, user_profile__id=pk)
         user_profile = auth_user.user_profile
 
         serializer = UserProfileReadOnlySerializer(user_profile)
@@ -278,7 +278,7 @@ class UserProfileViewSet(viewsets.ViewSet):
 
 # pylint: disable=invalid-name
 def _set_acceptance(pk: int, to_accept: bool) -> Response:
-    auth_user = get_object_or_404(User.objects.all(), id=pk)
+    auth_user = get_object_or_404(User.objects.all(), user_profile__id=pk)
     user_profile = auth_user.user_profile
 
     if user_profile.is_reviewed:
