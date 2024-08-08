@@ -132,6 +132,15 @@ def call_openai_api(
         chat_gpt = ChatGPT()
         llm_response = chat_gpt.chat(messages=messages)
 
+        gpt_references = llm_response.used_references
+
+        # Adds binary field 'used_by_gpt'
+        for index, reference in enumerate(references):
+            if index in gpt_references:
+                reference['used_by_gpt'] = True
+            else:
+                reference['used_by_gpt'] = False
+
         # The output is a dict of all the input data needed to create a TextSearchQueryResult.
         # To separate testing of view and model logic from testing of RAG logic,
         # the TextSearchQueryResult is created in the view.
