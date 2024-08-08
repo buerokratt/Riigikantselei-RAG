@@ -31,11 +31,21 @@ env = environ.Env()
 
 GPT_SYSTEM_PROMPT_DEFAULT = """Kontekst:\n\n{0}\n\n
 * Palun vasta järgmisele küsimusele sellega samas keeles.
+* Palun anna küsimusele 2 vastust järgnevate reeglite alusel:
+
+1. GPT teadmusele tuginev vastus:
+
+* Kasuta vastamiseks üksnes oma teadmust, ära kasuta ülaltoodud konteksti.
+
+2. Kaasatud andmestikele tuginev vastus:
+
 * Palun kasuta küsimusele vastamiseks ainult ülaltoodud konteksti.
-* Kui kontekstis pole küsimusele vastamiseks vajalikku infot, vasta: "{1}"
+* Kui kontekstis pole küsimusele vastamiseks vajalikku infot, vasta: {1}. Ära kasuta seda fraasi osalise vastuse korral.
 * NB! Kui küsimusele pole ülaltoodud info põhjal võimalik üksüheselt vastata, kuid seda puudutav info on kontekstis siiski olemas, siis vasta küsimusele ja too välja erinevad võimalikud kitsendused.
-* Kasuta lauset "{1}" ainult siis, kui kontekstis pole üldse mingit relevantset informatsiooni.
-* Ära kasuta vastuses fraase nagu "Konteksti põhjal...".Küsimus: {2}
+* Palun tagastada relevantsuse järjekorras komaga eraldatuna nimekiri kontekstis olevatest allikatest, mida vastamisel kasutasid, nt: "{3} 10, 5, 7". Kui mõnda konteksti kaasatud allikat ei kasutatud, siis ära seda nimekirja lisa.
+* Palun lisa allikad ainult kõige lõppu. Ära lisa allikaid lõikude järele.
+
+Küsimus: {2}
 """
 
 # TODO: why are some parameters in core settings and some not?
@@ -55,6 +65,7 @@ CORE_SETTINGS = {
     # For the field which references the parent document (actual paper document)
     # the segment belongs to.
     'ELASTICSEARCH_PARENT_FIELD': env('RK_ELASTICSEARCH_PARENT_FIELD', default='doc_id'),
+    'ELASTICSEARCH_ID_FIELD': env('RK_ELASTICSEARCH_ID_FIELD', default='id'),
     # OpenAI integration
     # TODO: obtain key
     'OPENAI_API_KEY': env('RK_OPENAI_API_KEY', default=None),
@@ -63,6 +74,9 @@ CORE_SETTINGS = {
     ),
     'OPENAI_MISSING_CONTEXT_MESSAGE': env.str(
         'RK_OPENAI_MISSING_CONTEXT_MESSAGE', default='Teadmusbaasis info puudub!'
+    ),
+    'OPENAI_SOURCES_TEXT': env.str(
+        'RK_OPENAI_SOURCES_TEXT', default='Allikad:'
     ),
     'OPENAI_OPENING_QUESTION': env.str(
         'RK_OPENAI_OPENING_QUESTION', default=GPT_SYSTEM_PROMPT_DEFAULT

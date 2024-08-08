@@ -37,9 +37,10 @@ class ConversationMixin(models.Model):
     def format_gpt_question(user_input: str, context: str) -> str:
         missing_context = CoreVariable.get_core_setting('OPENAI_MISSING_CONTEXT_MESSAGE')
         prompt = CoreVariable.get_core_setting('OPENAI_OPENING_QUESTION')
+        sources_text = CoreVariable.get_core_setting('OPENAI_SOURCES_TEXT')
 
         try:
-            message = prompt.format(context, missing_context, user_input)
+            message = prompt.format(context, missing_context, user_input, sources_text)
         except ValueError:
             logging.getLogger(settings.ERROR_LOGGER).exception(
                 'Could not format the OpenAI prompt!'
@@ -69,14 +70,17 @@ class ConversationMixin(models.Model):
         text_field = CoreVariable.get_core_setting('ELASTICSEARCH_TEXT_CONTENT_FIELD')
         year_field = CoreVariable.get_core_setting('ELASTICSEARCH_YEAR_FIELD')
         parent_field = CoreVariable.get_core_setting('ELASTICSEARCH_PARENT_FIELD')
+        id_field = CoreVariable.get_core_setting('ELASTICSEARCH_ID_FIELD')
 
         context_documents_contents = []
         for hit in hits:
             source = dict(hit['_source'])
             content = source.get(text_field, '')
+            content_id = source.get(id_field, '')
             reference = {
                 'text': content,
                 'elastic_id': hit['_id'],
+                'id': content_id,
                 'index': hit['_index'],
                 'title': source.get(title_field, ''),
                 'url': source.get(url_field, ''),
