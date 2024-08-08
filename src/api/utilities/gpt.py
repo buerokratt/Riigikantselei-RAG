@@ -12,6 +12,8 @@ from core.models import CoreVariable
 
 logger = logging.getLogger(__name__)
 
+# pylint: disable=too-many-instance-attributes
+
 
 class LLMResponse:
     def __init__(
@@ -31,8 +33,8 @@ class LLMResponse:
         self.response_tokens = response_tokens
         self.headers = headers
 
-        self.__message: str = ""
-        self.__information_found: bool = None
+        self.__message: str = ''
+        self.__information_found: Optional[bool] = None
         self.__used_references: List[int] = []
 
     @property
@@ -41,21 +43,20 @@ class LLMResponse:
             try:
                 # Excpects the raw message in the following format:
                 # <message>\n\n<sources>
-                self.__message = self.raw_message.rsplit("\n\n", 1)[0]
-            except:
+                self.__message = self.raw_message.rsplit('\n\n', 1)[0]
+            except Exception:  # pylint: disable=broad-exception-caught
                 self.__message = self.raw_message
         return self.__message
 
     @property
     def information_found(self) -> bool:
-        if self.__information_found == None:
+        if self.__information_found is None:
             no_information_text = CoreVariable.get_core_setting('OPENAI_MISSING_CONTEXT_MESSAGE')
-            if re.search(no_infromation_text.lower(), self.raw_message, re.IGNORECASE):
+            if re.search(no_information_text.lower(), self.raw_message, re.IGNORECASE):
                 self.__information_found = False
             else:
                 self.__information_found = True
         return self.__information_found
-
 
     @property
     def used_references(self) -> List[int]:
@@ -63,15 +64,14 @@ class LLMResponse:
             try:
                 if self.information_found:
                     sources_text = CoreVariable.get_core_setting('OPENAI_SOURCES_TEXT')
-                    _used_references = answer.rsplit("\n\n", 1)[-1].strip()
-                    _used_references = re.sub(rf"{sources_text}\s*", "", _used_references)
-                    _used_references = [
-                        int(refrence.strip())
-                        for reference in _used_references.split(",")
+                    sources = self.raw_message.rsplit('\n\n', 1)[-1].strip()
+                    cleaned_sources = re.sub(rf'{sources_text}\s*', '', sources)
+                    references = [
+                        int(reference.strip()) for reference in cleaned_sources.split(',')
                     ]
-                    self.__used_references = _used_references
-            except:
-                pass
+                    self.__used_references = references
+            except Exception:  # pylint: disable=broad-exception-caught
+                logger.exception('Error while getting used references')
 
         return self.__used_references
 

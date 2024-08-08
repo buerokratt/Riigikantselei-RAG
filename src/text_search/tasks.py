@@ -135,12 +135,11 @@ def call_openai_api(
         gpt_references = llm_response.used_references
 
         # Adds binary field 'used_by_gpt'
-        for i, _reference in references:
-            if i in gpt_references:
-                _reference['used_by_gpt'] = True
+        for index, reference in enumerate(references):
+            if index in gpt_references:
+                reference['used_by_gpt'] = True
             else:
-                _reference['used_by_gpt'] = False
-
+                reference['used_by_gpt'] = False
 
         # The output is a dict of all the input data needed to create a TextSearchQueryResult.
         # To separate testing of view and model logic from testing of RAG logic,

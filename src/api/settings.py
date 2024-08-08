@@ -75,9 +75,7 @@ CORE_SETTINGS = {
     'OPENAI_MISSING_CONTEXT_MESSAGE': env.str(
         'RK_OPENAI_MISSING_CONTEXT_MESSAGE', default='Teadmusbaasis info puudub!'
     ),
-    'OPENAI_SOURCES_TEXT': env.str(
-        'RK_OPENAI_SOURCES_TEXT', default='Allikad:'
-    ),
+    'OPENAI_SOURCES_TEXT': env.str('RK_OPENAI_SOURCES_TEXT', default='Allikad:'),
     'OPENAI_OPENING_QUESTION': env.str(
         'RK_OPENAI_OPENING_QUESTION', default=GPT_SYSTEM_PROMPT_DEFAULT
     ),
