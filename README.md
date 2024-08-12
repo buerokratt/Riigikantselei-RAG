@@ -11,7 +11,7 @@ conda run -n riigikantselei pre-commit install
 
 ## Deployment setup
 
-***NB!*** If you deploys this and do not change the default environmental variables within the .env file, not only will the application not work because of security features like Allowed-Hosts, but I will personally hunt you down with a spatula since it means you're using the UNSECURE admin password and cryptographic keys along with DEBUG mode... 
+***NB!*** If you deploys this and do not change the default environmental variables within the .env file, not only will the application not work because of security features like Allowed-Hosts, but I will personally hunt you down with a spatula since it means you're using the UNSECURE admin password and cryptographic keys along with DEBUG mode...
 
 ### Local
 1. Create an account for ChatGPT and copy down its API key.
@@ -52,7 +52,7 @@ Additionally, some of these settings can be changed on the run through the datab
 * RK_DEBUG - Whether to launch the application in DEBUG mode. Security risk to set this to true in production.
 * RK_ALLOWED_HOSTS - A comma separated list of strings representing the host/domain names that this Django site can serve. This is a security measure to prevent HTTP Host header attacks, which are possible even under many seemingly-safe web server configurations. Example: rk-demo.texta.ee,riigikantselei.texta.ee. [Documentation](https://docs.djangoproject.com/en/5.0/ref/settings/#allowed-hosts)
 * RK_CORS_ALLOWED_ORIGINS - A comma separated list of string origins that are authorized to make cross-site HTTP requests. The origins in this setting will be allowed. Example: https://rk-demo.texta.ee,http://riigikantselei.texta.ee:3000.[Documentation](https://github.com/adamchainz/django-cors-headers)
-* RK_BASE_URL - Base domain name without trailing slash under which the application runs, used to create links for password resets etc. Example: http://rk-demo.texta.ee  
+* RK_BASE_URL - Base domain name without trailing slash under which the application runs, used to create links for password resets etc. Example: http://rk-demo.texta.ee
 * RK_ENV_FILE - Path to an .env file which the application automatically loads into its memory. Don't really need to set this unless you're running the application and its workers barebones.
 * RK_DATA_DIR - Directory into which all the models are downloaded into. Don't need to touch this unless you're running the application barebones and want some finer control for model locations.
 * HF_HOME - Sadly Huggingface can be incredibly annoying, demanding some of its files be cached at a folder in the /home directory, which it may not have access to.
@@ -61,15 +61,15 @@ Additionally, some of these settings can be changed on the run through the datab
 * RK_ELASTICSEARCH_URL - URI for where the Elasticsearch cluster is located at. Example: http://localhost:9200
 * RK_ELASTICSEARCH_TIMEOUT - How many seconds until the application throws an error when connecting to Elasticsearch (Default: 10).
 
-### OpenAI 
+### OpenAI
 * RK_OPENAI_API_KEY - API key to access ChatGPT.
 * RK_OPENAI_API_TIMEOUT -  How many seconds until the application throws an error when connecting to ChatGPT (Default: 10)
 * RK_OPENAI_API_MAX_RETRIES - How many times to retry when reaching a connection error or a rate limit (Default: 5).
 * RK_OPENAI_API_CHAT_MODEL - Which OpenAI model to use (Default: gpt-4o).
 
 * RK_DEFAULT_USAGE_LIMIT_EUROS - How much is the default spending limit for each user (Default: 50).
-* RK_EURO_COST_PER_INPUT_TOKEN - Cost of input tokens per ChatGPT model as defined by OpenAI's pricetable. Made dynamic since their pricetables can change at times. 
-* RK_EURO_COST_PER_OUTPUT_TOKEN - Cost of output tokens per ChatGPT model as defined by OpenAI's pricetable. Made dynamic since their pricetables can change at times. 
+* RK_EURO_COST_PER_INPUT_TOKEN - Cost of input tokens per ChatGPT model as defined by OpenAI's pricetable. Made dynamic since their pricetables can change at times.
+* RK_EURO_COST_PER_OUTPUT_TOKEN - Cost of output tokens per ChatGPT model as defined by OpenAI's pricetable. Made dynamic since their pricetables can change at times.
 
 ### Database
 * RK_DATABASE_ENGINE - Which database engine to use. Defaults to using SQLite3. Set to django.db.backends.mysql for MySQL.
@@ -81,7 +81,7 @@ Additionally, some of these settings can be changed on the run through the datab
 * RK_DATABASE_CONN_MAX_AGE - For how long to keep open database connections in seconds (Default: 30).
 
 ### Celery
-* RK_CELERY_BROKER_URL - Where to keep the task queue, for this application we use Redis (Default: redis://localhost:6379/1). 
+* RK_CELERY_BROKER_URL - Where to keep the task queue, for this application we use Redis (Default: redis://localhost:6379/1).
 * RK_CELERY_RESULT_BACKEND - Where to keep the results of every task, for this application we use Redis (Default: redis://localhost:6379/1)
 
 
@@ -90,7 +90,7 @@ Additionally, some of these settings can be changed on the run through the datab
 * RK_EMAIL_PORT - Port of the SMTP server.
 * RK_EMAIL_HOST_USER - Username with which to connect to the SMTP server.
 * RK_DISPLAY_NAME - Which text value to display to the customer as the sender when receiving an email. Without this the sender would be set to the EMAIL_HOST_USER (example@foo.com) instead of a neat name like (Semantiline otsing).
-* RK_EMAIL_HOST_PASSWORD - Password of the user we use to connect to the SMTP server. 
+* RK_EMAIL_HOST_PASSWORD - Password of the user we use to connect to the SMTP server.
 * RK_EMAIL_TIMEOUT_IN_SECONDS - How many seconds until the attempt to send an email throws an error.
 * RK_EMAIL_USE_TLS - Whether to use TLS.
 * RK_EMAIL_USE_SSL - Whether to use SSL.
@@ -112,17 +112,17 @@ Additionally, some of these settings can be changed on the run through the datab
 * RK_OPENAI_SOURCES_TEXT - What piece of text ChatGPT should use to present various sources for the question (Default: Allikad:)
 * RK_OPENAI_OPENING_QUESTION - What question to present to ChatGPT which takes input from the users question along with context from the vector search. Setting this, the user should be aware that for any context etc to be applied {} brackets need to be set in order or have their numeric order in them. Please use the example inside the settings file.
 * RK_OPENAI_API_TEMPERATURE - Which temperature to send towards ChatGPT. Lower values make responses more concice to the question while higher values allow for more creativity.
-* RK_OPENAI_CONTEXT_MAX_TOKEN_LIMIT - How many tokens from the results of the vectorsearched segments to send towards ChatGPT which is neccessary due to token based rate limits along with a max token limit. 
+* RK_OPENAI_CONTEXT_MAX_TOKEN_LIMIT - How many tokens from the results of the vectorsearched segments to send towards ChatGPT which is neccessary due to token based rate limits along with a max token limit.
 
 
-* RK_TIME_ZONE - Which timezone the application lives at. 
+* RK_TIME_ZONE - Which timezone the application lives at.
 * RK_LOGS_DIR - Directory under which logs are saved at.
 * RK_DOWNLOAD_DATA - Whether to download the necessary models or not. Only really needed during the Docker build proccess. Otherwise not needed to change as the application tries to check whether the models exist before downloading them.
 
 
 * RK_CELERY_TASK_ALWAYS_EAGER - Whether to run the asynchronous tasks synchronously. Do not touch this unless you want to run the application in development.
 * RK_CELERY_TIMEZONE - Which timezone Celery should use internally.
-* RK_CELERY_PREFETCH_MULTIPLIER - How many tasks should be sent towards Clery workers at once to reduce communication overhead. Even if set to 1 or 0, every worker gets a task and another one waiting for the first to end. 
+* RK_CELERY_PREFETCH_MULTIPLIER - How many tasks should be sent towards Clery workers at once to reduce communication overhead. Even if set to 1 or 0, every worker gets a task and another one waiting for the first to end.
 * RK_WORKER_QUEUE - Name of the queue inside the Broker which Celery listens to.
 
 
