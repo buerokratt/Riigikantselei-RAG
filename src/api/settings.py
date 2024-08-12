@@ -44,6 +44,7 @@ GPT_SYSTEM_PROMPT_DEFAULT = """Kontekst:\n\n{0}\n\n
 * NB! Kui küsimusele pole ülaltoodud info põhjal võimalik üksüheselt vastata, kuid seda puudutav info on kontekstis siiski olemas, siis vasta küsimusele ja too välja erinevad võimalikud kitsendused.
 * Palun tagastada relevantsuse järjekorras komaga eraldatuna nimekiri kontekstis olevatest allikatest, mida vastamisel kasutasid, nt: "{3} 10, 5, 7". Kui mõnda konteksti kaasatud allikat ei kasutatud, siis ära seda nimekirja lisa.
 * Palun lisa allikad ainult kõige lõppu. Ära lisa allikaid lõikude järele.
+* Palun eralda allikad ülejäänud vastusest kahekordse reavahetusega, nt: "<vastused>\n\nAllikad: [10, 5, 9]".
 
 Küsimus: {2}
 """
@@ -86,7 +87,7 @@ CORE_SETTINGS = {
     'OPENAI_API_TEMPERATURE': env.float('RK_OPENAI_API_TEMPERATURE', default=0.0),
     #
     # Other
-    'DEFAULT_USAGE_LIMIT_EUROS': env.float('RK_DEFAULT_USAGE_LIMIT_EUROS', default=10.0),
+    'DEFAULT_USAGE_LIMIT_EUROS': env.float('RK_DEFAULT_USAGE_LIMIT_EUROS', default=50.0),
     # defaults from https://openai.com/api/pricing/ GPT-4o
     'EURO_COST_PER_INPUT_TOKEN': env.float('RK_EURO_COST_PER_INPUT_TOKEN', default=5 / 1_000_000),
     'EURO_COST_PER_OUTPUT_TOKEN': env.float(

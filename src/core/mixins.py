@@ -99,6 +99,7 @@ class ConversationMixin(models.Model):
             context_container.append(text)
             is_pruned_container.append(is_pruned)
 
+        context_container = [f'{i}:\n{context_doc}' for i, context_doc in enumerate(context_container)]
         context = '\n\n'.join(context_container)
         query_with_context = ConversationMixin.format_gpt_question(user_input, context)
 
