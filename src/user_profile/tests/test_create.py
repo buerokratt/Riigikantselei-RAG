@@ -38,7 +38,7 @@ class TestUserProfileCreate(APITestCase):
             'is_accepted': False,
             'is_allowed_to_spend_resources': False,
             'custom_usage_limit_euros': None,
-            'usage_limit': 10.0,
+            'usage_limit': 50.0,
             'used_cost': 0.0,
         }
         added_auth_user_data = {
