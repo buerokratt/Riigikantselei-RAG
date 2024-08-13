@@ -40,9 +40,9 @@ conda run -n riigikantselei pre-commit install
 ### Docker
 1. Create an account for ChatGPT and copy down its API key.
 1. Set the environment variables in local.env file.
-1. Build the image with ````docker-compose build rk_api```
+1. Build the image with ```docker-compose build rk_api```
 1. Set up the dependency services MySQL, Redis and Elasticsearch clusters to your liking (alternatively, you can use the services in the docker-compose, however for production its reccomended to use a proper Elasticsearch cluster as it does some heavy lifting and a single node Docker instance isn't enough).
-1. Run the service with ````docker-compose up -d rk_api```
+1. Run the service with ```docker-compose up -d rk_api```
 1. Configure the datasets in the /api/v1/dataset endpoint or 'Andmestikud' in the user interface. Without these the application will not work.
 
 

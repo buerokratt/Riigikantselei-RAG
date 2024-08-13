@@ -23,9 +23,9 @@ def parse_references(result):
     for reference in references:
         reference_container.append(
             {
-                'id': reference.get('id', None),
+                'id': reference.get('id', ''),
                 'index': reference['index'],
-                'parent': reference.get('parent', None),
+                'parent': reference.get('parent', ''),
             }
         )
     return reference_container
