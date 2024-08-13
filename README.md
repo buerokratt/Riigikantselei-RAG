@@ -1,5 +1,13 @@
 # Riigikantselei API
 
+![Python](https://img.shields.io/badge/python-3.10-blue.svg)
+
+Aggregating the public data of various Estonian institutions for the purpose of aiding in decision-making processes by
+allowing users to use the natural language of LLM's but with additional stability by providing segments of public documents
+through RAG as context.
+
+Ran with Python 3.10 and Django as the web service, Elasticsearch for the vector search to get relevant segments for RAG,
+MySQL for data storage and Redis + Celery for an asynchronous workflow for search and ChatGPT communication.
 
 ## Developer setup
 

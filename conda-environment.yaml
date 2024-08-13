@@ -4,28 +4,27 @@ channels:
 dependencies:
   # Put to 3.10 since 3.12 causes conflict errors with mysqlclient for some reason.
   - python=3.10
-  - pip
-  - mysqlclient
-  - uwsgi
-  - nginx
-  - supervisor
+  - pip=24.2
+  - mysqlclient=2.0.3
+  - uwsgi=2.0.21
+  - nginx=1.21.6
+  - supervisor=4.2.5
   - pip:
-      - requests
+      - requests==2.32.3
       - torch==2.3.1+cpu
       - -f https://download.pytorch.org/whl/torch_stable.html
       - FlagEmbedding==1.2.10
-      - Django>5<6
-      - djangorestframework
-      - gunicorn
-      - django-environ
-      - django-cors-headers
-      - celery[redis]<6
-      - elasticsearch==8.*
-      - elasticsearch_dsl==8.*
-      - pytest
-      - pre-commit
-      - openai
-      - numpy<2  # Breaking changes, some other packages did not take into account
-      - tiktoken
-      - fpdf2
-      - matplotlib
+      - Django==5.1
+      - djangorestframework==3.15.2
+      - django-environ==0.11.2
+      - django-cors-headers==4.4.0
+      - celery[redis]==5.4.0
+      - elasticsearch==8.14.0
+      - elasticsearch_dsl==8.15.0
+      - pytest==8.3.2
+      - pre-commit==3.8.0
+      - openai==1.40.6
+      - numpy==1.26.4  # Breaking changes, some other packages did not take into account
+      - tiktoken==0.7.0
+      - fpdf2==2.7.9
+      - matplotlib==3.9.2
