@@ -12,6 +12,7 @@ from core.models import CoreVariable
 
 logger = logging.getLogger(__name__)
 
+
 # pylint: disable=too-many-instance-attributes
 
 
@@ -195,48 +196,48 @@ class ChatGPT:
             return headers, response_dict, status_code
 
         except openai.AuthenticationError as exception:
+            logger.exception("Couldn't authenticate with OpenAI API!")
             message = _("Couldn't authenticate with OpenAI API!")
             raise APIException(message) from exception
 
         except openai.BadRequestError as exception:
+            logger.exception('Sent invalid request towards OpenAI API!')
             message = _('OpenAI request is not correct!')
             raise APIException(message) from exception
 
-        # TODO: We will be handling this exception with retries later,
-        #  either through Celery or something else.
         except openai.InternalServerError as exception:
             logger.exception('Issues on OpenAI server!')
             raise exception
 
         except openai.NotFoundError as exception:
+            logger.exception('Could not find resource in OpenAI API! (is the model correct?)')
             message = _('Requested resource was not found! Is the right model configured?')
             raise APIException(message) from exception
 
         except openai.PermissionDeniedError as exception:
+            logger.exception('Permissions denied by OpenAI API!')
             message = _('Requested resource was denied!')
             raise APIException(message) from exception
 
-        # TODO: We will be handling this exception with retries later,
-        #  either through Celery or something else.
         except openai.RateLimitError as exception:
+            logger.warning('Hitting OpenAI API rate limits!')
             raise exception from exception
 
-        # TODO: We will be handling this exception with retries later,
-        #  either through Celery or something else.
         except openai.UnprocessableEntityError as exception:
             logger.exception('Unable to process the request despite the format being correct!')
             raise exception from exception
 
-        # TODO: We will be handling this exception with retries later,
-        #  either through Celery or something else.
         except openai.APITimeoutError as exception:
+            logger.warning('Hitting OpenAI API timeouts!')
             raise exception
 
         except openai.APIConnectionError as exception:
+            logger.exception('Unable to connect to OpenAI API!')
             message = _("Couldn't connect to the OpenAI API!")
             raise APIException(message) from exception
 
         except Exception as exception:
+            logger.exception('Unhandled exception when connecting to OpenAI API!')
             message = _("Couldn't connect to the OpenAI API!")
             raise APIException(message) from exception
 
