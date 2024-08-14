@@ -8,7 +8,6 @@ from django.utils.translation import gettext as _
 
 from api.celery_handler import app
 from api.utilities.elastic import ElasticKNN
-from api.utilities.gpt import ChatGPT
 from core.base_task import ResourceTask
 from core.exceptions import OPENAI_EXCEPTIONS
 from core.models import Dataset
@@ -21,15 +20,7 @@ from document_search.utilities import parse_aggregation
 
 # pylint: disable=unused-argument,too-many-arguments
 
-# TODO: this file and its text_search sibling
-#  differ in unnecessary ways (code that does the same thing is written differently)
-#  and is way too similar in other ways (duplicated code).
-#  Unify the unnecessarily different code and then refactor all shared code out.
-#  Otherwise we will end up with different behaviour between workflows
-#  and bugs will happen more easily.
 
-
-# TODO: unit test
 # Using bind=True sets the Celery Task object to the first argument, in this case celery_task.
 @app.task(
     name='generate_aggregations',
@@ -84,7 +75,6 @@ def generate_aggregations(
         raise exception
 
 
-# TODO: implement real RAG logic, then unit test
 # Using bind=True sets the Celery Task object to the first argument, in this case celery_task.
 @app.task(
     name='generate_openai_prompt',
@@ -121,7 +111,6 @@ def generate_openai_prompt(
         raise exception
 
 
-# TODO: unit test, mocking like in test_openai_components.py
 # Using bind=True sets the Celery Task object to the first argument, in this case celery_task.
 @app.task(
     name='send_document_search',
@@ -150,33 +139,13 @@ def send_document_search(
     try:
         conversation = DocumentSearchConversation.objects.get(id=conversation_id)
         result = conversation.query_results.filter(uuid=result_uuid).first()
-        document_task = result.celery_task
+        task = result.celery_task
 
-        document_task.set_started()
+        api_results = result.commit_search(
+            task=task, context_and_references=context_and_references, user_input=user_input
+        )
 
-        user_input_with_context = context_and_references['context']
-        references = context_and_references['references']
-        is_pruned = context_and_references['is_context_pruned']
-
-        messages = conversation.messages + [{'role': 'user', 'content': user_input_with_context}]
-
-        chat_gpt = ChatGPT()
-        llm_response = chat_gpt.chat(messages=messages)
-
-        # The output is a dict of all the input data needed to create a TextSearchQueryResult.
-        # To separate testing of view and model logic from testing of RAG logic,
-        # the TextSearchQueryResult is created in the view.
-        return {
-            'model': llm_response.model,
-            'user_input': user_input,
-            'response': llm_response.message,
-            'input_tokens': llm_response.input_tokens,
-            'output_tokens': llm_response.response_tokens,
-            'total_cost': llm_response.total_cost,
-            'response_headers': llm_response.headers,
-            'references': references,
-            'is_context_pruned': is_pruned,
-        }
+        return api_results
 
     # Reraise these since they'd be necessary for a retry.
     except OPENAI_EXCEPTIONS as exception:
@@ -198,7 +167,6 @@ def send_document_search(
         raise exception
 
 
-# TODO: unit test
 # Using bind=True sets the Celery Task object to the first argument, in this case celery_task.
 @app.task(
     name='save_openai_results_for_doc',

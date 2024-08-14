@@ -17,7 +17,7 @@ TestAPI:
     - apt-get update && apt-get install -y make
     - conda env create -f conda-environment.yaml
     - make migrate
-    - make check
+    - make test
   except:
     - tags
 

@@ -20,7 +20,7 @@ conda run -n riigikantselei pre-commit install
 ## Deployment setup
 
 ***NB!*** If you deploy this and do not change the default environmental variables within the .env file, not only will
-the application not work because of security features like Allowed-Hosts, but I will personally hunt you down with a 
+the application not work because of security features like Allowed-Hosts, but I will personally hunt you down with a
 spatula since it means you're using the UNSECURE admin password and cryptographic keys along with DEBUG mode...
 
 ### Local
