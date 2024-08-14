@@ -88,7 +88,9 @@ def query_and_format_rag_context(
 @app.task(
     name='call_openai_api',
     autoretry_for=OPENAI_EXCEPTIONS,
-    max_retries=10,
+    retry_backoff=1,
+    retry_jitter=True,
+    retry_backoff_max=5*60,
     bind=True,
     soft_time_limit=settings.CELERY_OPENAI_SOFT_LIMIT,
 )

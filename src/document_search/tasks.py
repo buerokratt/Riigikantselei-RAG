@@ -115,6 +115,9 @@ def generate_openai_prompt(
 @app.task(
     name='send_document_search',
     autoretry_for=OPENAI_EXCEPTIONS,
+    retry_backoff=1,
+    retry_jitter=True,
+    retry_backoff_max=5*60,
     max_retries=10,
     soft_time_limit=settings.CELERY_OPENAI_SOFT_LIMIT,
     bind=True,
