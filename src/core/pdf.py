@@ -96,6 +96,8 @@ def _references_to_value_list(
 
 def _get_bar_chart_image_base_64_from_year_counter(counter: Counter) -> str:
     x_y_pairs = counter.most_common()
+    x_y_pairs = [(value, counter) for value, counter in x_y_pairs if isinstance(value, int)]
+
     x_y_pairs = sorted(x_y_pairs, key=lambda pair: pair[0])
     x_list, y_list = zip(*x_y_pairs) if x_y_pairs else ([], [])
 

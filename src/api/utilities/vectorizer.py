@@ -71,10 +71,6 @@ class Vectorizer:
     # Adding additional kwargs here to support overloading the parameters by hand.
     def vectorize(self, texts: List[str], **kwargs: Any) -> dict:
         if self.model_interface is None:
-            logger.warning(
-                'Trying to vectorize without initialising the interference interface, '
-                'loading it automatically!'
-            )
             self.load_model_interface()
 
         if self.model_interface is None:

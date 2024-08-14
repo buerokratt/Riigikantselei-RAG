@@ -1,6 +1,9 @@
-from typing import Dict
+import logging
+from typing import Dict, List
 
 from core.models import CoreVariable
+
+logger = logging.getLogger(__name__)
 
 
 class DocumentSearchMockResponse:
@@ -47,6 +50,10 @@ class DocumentSearchMockResponse:
             'EURO_COST_PER_INPUT_TOKEN'
         ) + self.response_tokens * CoreVariable.get_core_setting('EURO_COST_PER_OUTPUT_TOKEN')
 
+    @property
+    def used_references(self) -> List[int]:
+        return []
+
 
 AGGREGATION_PARSING_MULTIPLE_DOCS_AS_ONE = [
     {
@@ -66,7 +73,6 @@ AGGREGATION_PARSING_MULTIPLE_DOCS_AS_ONE = [
         },
     },
 ]
-
 
 AGGREGATION_PARSING_AS_SEVERAL = AGGREGATION_PARSING_MULTIPLE_DOCS_AS_ONE + [
     {

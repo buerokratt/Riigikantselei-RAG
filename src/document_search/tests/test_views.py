@@ -124,7 +124,7 @@ class DocumentSearchTestCase(APITransactionTestCase):
         # Mock the chat process with ChatGPT and check for state.
         target_dataset_name = aggregations[0]['dataset_name']
         chat_uri = reverse('v1:document_search-chat', kwargs={'pk': conversation_pk})
-        mock_path = 'document_search.tasks.ChatGPT.chat'
+        mock_path = 'core.mixins.ChatGPT.chat'
         max_year = 2023
         min_year = 2000
         with mock.patch(mock_path, return_value=DocumentSearchMockResponse()):

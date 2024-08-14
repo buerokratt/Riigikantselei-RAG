@@ -1,3 +1,7 @@
+# pylint: disable=too-many-instance-attributes,too-many-arguments
+# type: ignore
+
+
 import logging
 import uuid
 from typing import Any, Dict, Iterable, List, Set, Tuple
@@ -9,12 +13,11 @@ from django.utils.translation import gettext as _
 from tiktoken import Encoding
 
 from api.utilities.elastic import ElasticKNN
+from api.utilities.gpt import ChatGPT
 from api.utilities.vectorizer import Vectorizer
 from core.choices import TASK_STATUS_CHOICES, TaskStatus
 from core.models import CoreVariable
 from core.utilities import exceeds_token_limit, prune_context
-
-# pylint: disable=too-many-instance-attributes,too-many-arguments
 
 
 class ConversationMixin(models.Model):
@@ -234,6 +237,41 @@ class ResultMixin(models.Model):
     references = models.JSONField(null=True, default=None)
 
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def commit_search(self, task, context_and_references: dict, user_input: str) -> dict:
+        task.set_started()
+
+        user_input_with_context = context_and_references['context']
+        references = context_and_references['references']
+        is_context_pruned = context_and_references['is_context_pruned']
+
+        messages = self.conversation.messages + [
+            {'role': 'user', 'content': user_input_with_context}
+        ]
+
+        chat_gpt = ChatGPT()
+        llm_response = chat_gpt.chat(messages=messages)
+
+        gpt_references = llm_response.used_references
+
+        # Adds binary field 'used_by_gpt'
+        for index, reference in enumerate(references):
+            if index in gpt_references:
+                reference['used_by_gpt'] = True
+            else:
+                reference['used_by_gpt'] = False
+
+        return {
+            'model': llm_response.model,
+            'user_input': user_input,
+            'response': llm_response.message,
+            'input_tokens': llm_response.input_tokens,
+            'output_tokens': llm_response.response_tokens,
+            'total_cost': llm_response.total_cost,
+            'response_headers': llm_response.headers,
+            'references': references,
+            'is_context_pruned': is_context_pruned,
+        }
 
     def save_results(self, results: dict) -> None:
         try:
