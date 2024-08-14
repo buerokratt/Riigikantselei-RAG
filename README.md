@@ -36,7 +36,7 @@ spatula since it means you're using the UNSECURE admin password and cryptographi
     * --max-tasks-per-child determines how many tasks a single Celery worker does before restarting itself and creating a new fresh worker (good to release memory in long running tasks). Value around a 100 should be ok.
     * --concurrency sets how many Celery processes are created. Since the process of using Vectorization models for vectorsearch is quite CPU heavy, this number should be conservative, 2-5 depending on the system specs.
 1. Run the webserver of choice. For the development server you can use ```python manage.py runserver```. Similar to Celery, it is recommended to set the RK_ENV_FILE environment variable to the path of the .env file in use.
-1. Configure the datasets in the /api/v1/dataset endpoint or 'Andmestikud' in the user interface. Without these the application will not work.
+1. Configure the datasets in the /api/v1/dataset endpoint or 'Andmestikud' in the user interface. Without these the application will not work. Not that when setting the index value of a dataset, wildcard patterns are allowed for ex: rk_riigiteataja_*
 
 
 ### Docker
@@ -45,7 +45,7 @@ spatula since it means you're using the UNSECURE admin password and cryptographi
 1. Build the image with ```docker-compose build rk_api```
 1. Set up the dependency services MySQL, Redis and Elasticsearch clusters to your liking (alternatively, you can use the services in the docker-compose, however for production its recommended to use a proper Elasticsearch cluster as it does some heavy lifting and a single node Docker instance isn't enough).
 1. Run the service with ```docker-compose up -d rk_api```
-1. Configure the datasets in the /api/v1/dataset endpoint or 'Andmestikud' in the user interface. Without these the application will not work.
+1. Configure the datasets in the /api/v1/dataset endpoint or 'Andmestikud' in the user interface. Without these the application will not work. Not that when setting the index value of a dataset, wildcard patterns are allowed for ex: rk_riigiteataja_*
 
 
 ## Environment Variables
