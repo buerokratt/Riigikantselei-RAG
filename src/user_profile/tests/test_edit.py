@@ -43,9 +43,6 @@ class TestUserProfileEdit(APITestCase):
             'v1:user_profile-decline', kwargs={'pk': self.non_manager_unreviewed_auth_user.id}
         )
 
-        self.ban_endpoint_url = reverse(
-            'v1:user_profile-ban', kwargs={'pk': self.non_manager_reviewed_auth_user.id}
-        )
         self.set_limit_endpoint_url = reverse(
             'v1:user_profile-set-limit', kwargs={'pk': self.non_manager_reviewed_auth_user.id}
         )
@@ -96,15 +93,7 @@ class TestUserProfileEdit(APITestCase):
         response = self.client.post(accept_endpoint_url)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
-    def test_accept_fails_because_already_reviewed(self) -> None:
-        token, _ = Token.objects.get_or_create(user=self.manager_auth_user)
-        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
-
-        response = self.client.post(self.accept_reviewed_endpoint_url)
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
     # Decline
-
     def test_decline(self) -> None:
         token, _ = Token.objects.get_or_create(user=self.manager_auth_user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
@@ -137,48 +126,7 @@ class TestUserProfileEdit(APITestCase):
         response = self.client.post(decline_endpoint_url)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
-    def test_decline_fails_because_already_reviewed(self) -> None:
-        token, _ = Token.objects.get_or_create(user=self.manager_auth_user)
-        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
-
-        response = self.client.post(self.decline_reviewed_endpoint_url)
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-    # Ban
-
-    def test_ban(self) -> None:
-        token, _ = Token.objects.get_or_create(user=self.manager_auth_user)
-        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
-
-        response = self.client.post(self.ban_endpoint_url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        updated_auth_user = User.objects.get(id=self.non_manager_reviewed_auth_user.id)
-        updated_user_profile = updated_auth_user.user_profile
-        self.assertFalse(updated_user_profile.is_allowed_to_spend_resources)
-
-    def test_ban_fails_because_not_authed(self) -> None:
-        response = self.client.post(self.ban_endpoint_url)
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-
-    def test_ban_fails_because_not_manager(self) -> None:
-        token, _ = Token.objects.get_or_create(user=self.non_manager_reviewed_auth_user)
-        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
-
-        response = self.client.post(self.ban_endpoint_url)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
-    def test_ban_fails_because_not_exists(self) -> None:
-        token, _ = Token.objects.get_or_create(user=self.manager_auth_user)
-        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
-
-        ban_endpoint_url = reverse('v1:user_profile-ban', kwargs={'pk': 999})
-
-        response = self.client.post(ban_endpoint_url)
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-
     # set limit
-
     def test_set_limit(self) -> None:
         token, _ = Token.objects.get_or_create(user=self.manager_auth_user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')

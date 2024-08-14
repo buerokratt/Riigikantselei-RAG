@@ -37,7 +37,7 @@ class IsManagerPermission(permissions.BasePermission):
 
 
 class IsAcceptedPermission(permissions.BasePermission):
-    message = _('Your account has not been accepted by a moderator!')
+    message = _('Your account is not enabled! Contact an administrator!')
 
     def has_permission(self, request, view):  # pylint: disable=unused-argument
         # Just in case superuser does not have good UserProfile values set

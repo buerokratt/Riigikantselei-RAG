@@ -11,7 +11,6 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import (
     APIException,
     AuthenticationFailed,
-    ParseError,
     ValidationError,
 )
 from rest_framework.generics import get_object_or_404
@@ -187,16 +186,6 @@ class UserProfileViewSet(viewsets.ViewSet):
         return Response(response)
 
     @action(detail=True, methods=['post'])
-    def ban(self, request: Request, pk: int) -> Response:
-        auth_user = get_object_or_404(User.objects.all(), id=pk)
-        user_profile = auth_user.user_profile
-
-        user_profile.is_allowed_to_spend_resources = False
-        user_profile.save()
-
-        return Response()
-
-    @action(detail=True, methods=['post'])
     def set_limit(self, request: Request, pk: int) -> Response:
         serializer = LimitSerializer(data=request.data)
         if not serializer.is_valid():
@@ -280,10 +269,6 @@ class UserProfileViewSet(viewsets.ViewSet):
 def _set_acceptance(pk: int, to_accept: bool) -> Response:
     auth_user = get_object_or_404(User.objects.all(), user_profile__id=pk)
     user_profile = auth_user.user_profile
-
-    if user_profile.is_reviewed:
-        message = _('Can not set acceptance for an already accepted user.')
-        raise ParseError(message)
 
     user_profile.is_reviewed = True
     user_profile.is_accepted = to_accept
