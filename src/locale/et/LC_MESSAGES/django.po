@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-08-07 12:22+0300\n"
+"POT-Creation-Date: 2024-08-14 15:15+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,7 +18,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: api/settings.py:228
+#: api/settings.py:241
 msgid "Estonian"
 msgstr "Eesti"
 
@@ -47,28 +47,28 @@ msgid ""
 "Could not connect to Elasticsearch, is the location properly configured?"
 msgstr "Ei saanud ühendust Elasticuga! Võtke ühendust administraatoriga!"
 
-#: api/utilities/gpt.py:139
+#: api/utilities/gpt.py:186
 msgid "No OpenAI API key given, can't query API!"
 msgstr "ChatGPT ühendus on seadistamata! Võtke ühendust administraatoriga!"
 
-#: api/utilities/gpt.py:153
+#: api/utilities/gpt.py:201
 msgid "Couldn't authenticate with OpenAI API!"
 msgstr "Autentimine ChatGPT'ga ebaõnnestus! Võtke ühendust administraatoriga!"
 
-#: api/utilities/gpt.py:157
+#: api/utilities/gpt.py:206
 msgid "OpenAI request is not correct!"
 msgstr "Viga ChatGPT päringuga! Võtke ühendust administraatoriga!"
 
-#: api/utilities/gpt.py:167
+#: api/utilities/gpt.py:215
 msgid "Requested resource was not found! Is the right model configured?"
 msgstr ""
 "Palutud ChatGPT mudel ei ole saadaval! Võtke ühendust administraatoriga!"
 
-#: api/utilities/gpt.py:171
+#: api/utilities/gpt.py:220
 msgid "Requested resource was denied!"
 msgstr "Ligipääs keelatud! Võtke ühendust administraatoriga!"
 
-#: api/utilities/gpt.py:191 api/utilities/gpt.py:195
+#: api/utilities/gpt.py:237 api/utilities/gpt.py:242
 msgid "Couldn't connect to the OpenAI API!"
 msgstr "Ei saanud ühendust ChatGPT'ga!"
 
@@ -76,17 +76,19 @@ msgstr "Ei saanud ühendust ChatGPT'ga!"
 msgid "The given value contains forbidden characters."
 msgstr "Sisaldab keelatud tähemärke!"
 
-#: core/mixins.py:114
+#: core/mixins.py:124
 msgid "Task toke too much time!"
-msgstr "Töö ajalimiit ületatud, palun proovige uuesti! Korduva probleemi puhul palun teavitage administraatorit!"
+msgstr ""
+"Töö ajalimiit ületatud, palun proovige uuesti! Korduva probleemi puhul palun "
+"teavitage administraatorit!"
 
-#: core/mixins.py:204
+#: core/mixins.py:214
 #, fuzzy
 #| msgid "Could not find specified data from Elasticsearch!"
 msgid "Couldn't get context from Elasticsearch!"
 msgstr "Andmeid ei leitud!"
 
-#: core/mixins.py:248
+#: core/mixins.py:293
 msgid "Couldn't store ChatGPT results!"
 msgstr ""
 "Ei suutnud salvestada ChatGPT tulemusi! Palun teavitage administraatorit!"
@@ -104,7 +106,7 @@ msgstr "Miinimum aasta piirang peab olema väiksem kui praegune aasta!"
 msgid "Minimum year must be lesser than the maximum year restriction!"
 msgstr "Miinimum aasta piirang ei tohi olla suurem kui maksimum aasta oma!"
 
-#: document_search/tasks.py:196
+#: document_search/tasks.py:165
 msgid "Unknown error, couldn't handle response from ChatGPT!"
 msgstr "Teadmata viga ChatGPT ühenduses! Palun teavitage administraatorit!"
 
@@ -117,8 +119,10 @@ msgid "Your account is not a manager!"
 msgstr "Teie kasutaja pole administraator!"
 
 #: user_profile/permissions.py:40
-msgid "Your account has not been accepted by a moderator!"
-msgstr "Teie kasutaja pole kinnitatud administraatori poolelt!"
+#, fuzzy
+#| msgid "Your account has not been accepted by a moderator!"
+msgid "Your account is not enabled! Contact an administrator!"
+msgstr "Teie kasutaja on välja lülitatud, teavitage administraatorit!"
 
 #: user_profile/permissions.py:51
 msgid "You have reached your monetary limit!"
@@ -156,14 +160,13 @@ msgstr "Kasutajanimi ja/või parool on vale!"
 msgid "You can not change your own status!"
 msgstr "Omaenda admin staatust ei saa muuta!"
 
-#: user_profile/views.py:254
+#: user_profile/views.py:245
 msgid "Sending email failed."
 msgstr "Emaili saatmine ebaõnnestus!"
 
-#: user_profile/views.py:275
+#: user_profile/views.py:266
 msgid "Your password has been reset!"
 msgstr "Teie parool on muudetud!"
 
-#: user_profile/views.py:285
-msgid "Can not set acceptance for an already accepted user."
-msgstr "Aksepteeritud kasutaja staatust ei saa muuta!"
+#~ msgid "Can not set acceptance for an already accepted user."
+#~ msgstr "Aksepteeritud kasutaja staatust ei saa muuta!"
