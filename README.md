@@ -93,7 +93,8 @@ Additionally, some of these settings can be changed on the run through the datab
 ### Celery
 * RK_CELERY_BROKER_URL - Where to keep the task queue, for this application we use Redis (Default: redis://localhost:6379/1).
 * RK_CELERY_RESULT_BACKEND - Where to keep the results of every task, for this application we use Redis (Default: redis://localhost:6379/1)
-
+* RK_WORKERS - How many subprocesses to create for Celery, heavily dependent on system hardware, amount of cores, CPU strength etc.
+* RK_MAX_TASKS - How many tasks should each subprocess make before restarting itself, good to avoid memory leaks for long running processes.
 
 ### Email
 * RK_EMAIL_HOST - Host of the SMTP server.
